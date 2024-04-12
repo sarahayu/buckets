@@ -5,7 +5,7 @@ import { deltaData } from "./data";
 export default function DotPDF({ curScen }) {
   const svgElem = useRef();
 
-  const margin = { top: 10, right: 30, bottom: 30, left: 750 },
+  const margin = { top: 10, right: 30, bottom: 50, left: 50 },
     width = 400,
     height = 400;
 
@@ -23,9 +23,12 @@ export default function DotPDF({ curScen }) {
     svg
       .append("g")
       .attr("transform", `translate(0, ${height})`)
-      .call(d3.axisBottom().scale(x));
+      .call(d3.axisBottom().scale(x))
+      .append("text")
+      .attr("fill", "black")
+      .attr("transform", `translate(${width / 2}, ${30})`)
+      .text("Delivery (TAF)");
     const y_axis = svg.append("g");
-    y_axis.transition().duration(500).call(d3.axisLeft().scale(y));
 
     svg
       .append("path")

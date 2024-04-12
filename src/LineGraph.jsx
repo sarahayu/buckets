@@ -5,7 +5,7 @@ import { deltaData } from "./data";
 export default function LineGraph({ curScen }) {
   const svgElem = useRef();
 
-  const graph_margin = { top: 10, right: 30, bottom: 30, left: 40 },
+  const graph_margin = { top: 10, right: 30, bottom: 50, left: 50 },
     graph_width = 400,
     graph_height = 400;
 
@@ -22,10 +22,23 @@ export default function LineGraph({ curScen }) {
     svg
       .append("g")
       .attr("transform", `translate(0, ${graph_height})`)
-      .call(d3.axisBottom().scale(x));
+      .call(d3.axisBottom().scale(x))
+      .append("text")
+      .attr("fill", "black")
+      .attr("transform", `translate(${graph_width / 2}, ${30})`)
+      .text("Exceedance Probability (%)");
 
     const y = d3.scaleLinear().domain([0, 400]).range([graph_height, 0]);
-    svg.append("g").call(d3.axisLeft().scale(y));
+    svg
+      .append("g")
+      .call(d3.axisLeft().scale(y))
+      .append("text")
+      .attr("fill", "black")
+      .attr(
+        "transform",
+        `translate(${-40}, ${graph_height / 2}) rotate(${-90})`
+      )
+      .text("Delivery (TAF)");
   }, []);
 
   useEffect(() => {
