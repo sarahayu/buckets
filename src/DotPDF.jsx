@@ -6,8 +6,8 @@ export default function DotPDF({ curScen }) {
   const svgElem = useRef();
 
   const margin = { top: 10, right: 30, bottom: 30, left: 750 },
-    width = 450 * 1.2,
-    height = 400 * 1.2;
+    width = 400,
+    height = 400;
 
   useEffect(() => {
     const svg = d3
@@ -39,7 +39,23 @@ export default function DotPDF({ curScen }) {
           [200, 80],
         ])
       )
-      .attr("stroke", "black");
+      .attr("stroke", "gray");
+
+    svg
+      .append("text")
+      .text("test")
+      .style("font-size", 11)
+      .attr("class", "left-text")
+      .attr("text-anchor", "middle")
+      .attr("transform", `translate(${100},${50})`);
+
+    svg
+      .append("text")
+      .text("test2")
+      .style("font-size", 11)
+      .attr("class", "right-text")
+      .attr("text-anchor", "middle")
+      .attr("transform", `translate(${300},${50})`);
   }, []);
 
   useEffect(() => {
@@ -107,7 +123,7 @@ export default function DotPDF({ curScen }) {
       return arr;
     }
 
-    let rad = 10;
+    let rad = 8;
 
     function getCircs(bbins) {
       let circBins = [];
@@ -141,14 +157,14 @@ export default function DotPDF({ curScen }) {
       let circs = [];
       for (let x = 0; x < circBins.length; x++) {
         for (let y = 0; y < circBins[x]; y++) {
-          circs.push([(bins[x].x1 + bins[x].x0) / 2, ((y + 0.5) * 80) / 20]);
+          circs.push([(bins[x].x1 + bins[x].x0) / 2, y * 4 + 2]);
         }
       }
 
       return circs;
     }
-
-    const v = svg.selectAll("circle").data(getCircs(bins), (d, i) => i);
+    const circData = getCircs(bins);
+    const v = svg.selectAll("circle").data(circData, (d, i) => i);
 
     v.join("circle")
       .transition()
@@ -159,6 +175,13 @@ export default function DotPDF({ curScen }) {
       .attr("fill", (d) =>
         d[0] < 200 ? d3.interpolateReds((200 - d[0]) / 400 + 0.5) : "steelblue"
       );
+
+    const amtLeft = circData.filter((d) => d[0] < 200).length;
+
+    svg.select(".left-text").text(`${amtLeft} years / 20 WILL NOT meet demand`);
+    svg
+      .select(".right-text")
+      .text(`${20 - amtLeft} years / 20 WILL meet demand`);
   }, [curScen]);
 
   return <svg ref={svgElem}></svg>;
