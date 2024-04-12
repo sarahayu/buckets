@@ -26,6 +26,20 @@ export default function DotPDF({ curScen }) {
       .call(d3.axisBottom().scale(x));
     const y_axis = svg.append("g");
     y_axis.transition().duration(500).call(d3.axisLeft().scale(y));
+
+    svg
+      .append("path")
+      .attr(
+        "d",
+        d3.line(
+          (d) => x(d[0]),
+          (d) => y(d[1])
+        )([
+          [200, 0],
+          [200, 80],
+        ])
+      )
+      .attr("stroke", "black");
   }, []);
 
   useEffect(() => {
@@ -43,6 +57,7 @@ export default function DotPDF({ curScen }) {
       );
 
     const bins = histogram(data);
+    // console.log(bins);
 
     const u = svg.selectAll("rect").data(bins);
 
@@ -63,17 +78,17 @@ export default function DotPDF({ curScen }) {
       .attr("opacity", 0.2);
 
     function minusLeast(arr) {
-      let indLeast = -1;
-      let least = 1e6;
+      let indMost = -1;
+      let most = -1;
 
       for (let i = 0; i < arr.length; i++) {
-        if (arr[i] != 0 && Math.abs(arr[i] - bins[i].length / 4) < least) {
-          indLeast = i;
-          least = Math.abs(arr[i] - bins[i].length / 4);
+        if (arr[i] != 0 && arr[i] - bins[i].length / 4 > most) {
+          indMost = i;
+          most = arr[i] - bins[i].length / 4;
         }
       }
 
-      arr[indLeast] -= 1;
+      arr[indMost] -= 1;
       return arr;
     }
 
@@ -82,9 +97,9 @@ export default function DotPDF({ curScen }) {
       let most = -1;
 
       for (let i = 0; i < arr.length; i++) {
-        if (Math.abs(arr[i] - bins[i].length / 4) > most) {
+        if (bins[i].length / 4 - arr[i] > most) {
           indMost = i;
-          most = Math.abs(arr[i] - bins[i].length / 4);
+          most = bins[i].length / 4 - arr[i];
         }
       }
 
@@ -141,7 +156,9 @@ export default function DotPDF({ curScen }) {
       .attr("cx", (d) => x(d[0]))
       .attr("cy", (d) => y(d[1]))
       .attr("r", rad)
-      .attr("fill", "steelblue");
+      .attr("fill", (d) =>
+        d[0] < 200 ? d3.interpolateReds((200 - d[0]) / 400 + 0.5) : "steelblue"
+      );
   }, [curScen]);
 
   return <svg ref={svgElem}></svg>;
