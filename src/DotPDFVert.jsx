@@ -1,12 +1,41 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { deltaData } from "./data";
+import { quantileBins, ticksExact } from "./utils";
+
+const DOMAIN = 400;
+const RANGE = 80;
+const NUM_CIRCLES = 20;
+const UNITS_PER_CIRC = RANGE / NUM_CIRCLES;
+
+function getQuantileBins(histBins, dataRange) {
+  let binnedCircs = [];
+
+  for (let bin of histBins) {
+    binnedCircs.push(Math.round(bin.length / UNITS_PER_CIRC));
+  }
+
+  quantileBins(binnedCircs, histBins, UNITS_PER_CIRC, NUM_CIRCLES);
+
+  let circs = [];
+
+  for (let b = 0; b < binnedCircs.length; b++) {
+    for (let y = 0; y < binnedCircs[b]; y++) {
+      circs.push([
+        (histBins[b].x1 + histBins[b].x0) / 2,
+        ((y + 0.5) * dataRange) / NUM_CIRCLES,
+      ]);
+    }
+  }
+
+  return circs;
+}
 
 export default function DotPDFVert({ curScen }) {
   const svgElem = useRef();
 
-  const margin = { top: 10, right: 30, bottom: 30, left: 50 },
-    width = 400,
+  const margin = { top: 10, right: 30, bottom: 50, left: 50 },
+    width = 600,
     height = 400;
 
   useEffect(() => {
@@ -18,37 +47,24 @@ export default function DotPDFVert({ curScen }) {
       .attr("class", "graph-area")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const x = d3.scaleLinear().domain([0, 80]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 400]).range([height, 0]);
-    const y_axis = svg.append("g");
-    y_axis
-      .call(d3.axisLeft().scale(y))
+    svg
+      .append("g")
+      .call(
+        d3
+          .axisLeft()
+          .scale(d3.scaleLinear().domain([0, DOMAIN]).range([0, height]))
+      )
       .append("text")
       .attr("fill", "black")
       .attr("transform", `translate(${-40}, ${height / 2}) rotate(${-90})`)
       .text("Delivery (TAF)");
-
-    svg
-      .append("path")
-      .attr(
-        "d",
-        d3.line(
-          (d) => x(d[0]),
-          (d) => y(d[1])
-        )([
-          [0, 200],
-          [80, 200],
-        ])
-      )
-      .attr("stroke", "gray");
-
     svg
       .append("text")
       .text("test")
       .style("font-size", 11)
       .attr("class", "left-text")
       .attr("text-anchor", "middle")
-      .attr("transform", `translate(${200},${300})`);
+      .attr("transform", `translate(${100},${50})`);
 
     svg
       .append("text")
@@ -56,133 +72,34 @@ export default function DotPDFVert({ curScen }) {
       .style("font-size", 11)
       .attr("class", "right-text")
       .attr("text-anchor", "middle")
-      .attr("transform", `translate(${200},${100})`);
+      .attr("transform", `translate(${300},${50})`);
   }, []);
 
   useEffect(() => {
     const data = deltaData[curScen];
     const svg = d3.select(svgElem.current).select(".graph-area");
-    const x = d3.scaleLinear().domain([0, 80]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 400]).range([height, 0]);
+    const x = d3.scaleLinear().domain([0, RANGE]).range([0, width]);
+    const y = d3.scaleLinear().domain([0, DOMAIN]).range([0, height]);
 
     const histogram = d3
       .histogram()
       .value((d) => d)
-      .domain(y.domain())
+      .domain([0, DOMAIN])
       .thresholds(
-        d3.range(25).map((i) => d3.scaleLinear().range(y.domain())(i / 24))
+        ticksExact(0, DOMAIN, Math.ceil(height / (width / NUM_CIRCLES)))
       );
 
-    const bins = histogram(data);
-    // console.log(bins);
-
-    const u = svg.selectAll("rect").data(bins);
-
-    u.join("rect")
+    const circData = getQuantileBins(histogram(data), RANGE);
+    svg
+      .selectAll("circle")
+      .data(circData, (_, i) => i)
+      .join("circle")
       .transition()
-      .duration(500)
-      .attr("y", 1)
-      .attr("transform", function (d) {
-        return `translate(${x(0)}, ${y(d.x1)})`;
-      })
-      .attr("height", function (d) {
-        return y(d.x0) - y(d.x1) - 1;
-      })
-      .attr("width", function (d) {
-        return x(Math.round(d.length));
-      })
-      .style("fill", "gray")
-      .attr("opacity", 0.2);
-
-    function minusLeast(arr) {
-      let indMost = -1;
-      let most = -1;
-
-      for (let i = 0; i < arr.length; i++) {
-        if (arr[i] != 0 && arr[i] - bins[i].length / 4 > most) {
-          indMost = i;
-          most = arr[i] - bins[i].length / 4;
-        }
-      }
-
-      arr[indMost] -= 1;
-      return arr;
-    }
-
-    function addMost(arr) {
-      let indMost = -1;
-      let most = -1;
-
-      for (let i = 0; i < arr.length; i++) {
-        if (bins[i].length / 4 - arr[i] > most) {
-          indMost = i;
-          most = bins[i].length / 4 - arr[i];
-        }
-      }
-
-      arr[indMost] += 1;
-      return arr;
-    }
-
-    let rad = 8;
-
-    function getCircs(bbins) {
-      let circBins = [];
-      let sum = 0;
-      for (let bin of bbins) {
-        let rounded = Math.round(bin.length / 4);
-        circBins.push(rounded);
-        sum += rounded;
-      }
-
-      while (sum > 20) {
-        circBins = minusLeast(circBins);
-
-        sum = 0;
-        for (let bin of circBins) {
-          let rounded = bin;
-          sum += rounded;
-        }
-      }
-
-      while (sum < 20) {
-        circBins = addMost(circBins);
-
-        sum = 0;
-        for (let bin of circBins) {
-          let rounded = bin;
-          sum += rounded;
-        }
-      }
-
-      let circs = [];
-      for (let x = 0; x < circBins.length; x++) {
-        for (let y = 0; y < circBins[x]; y++) {
-          circs.push([(bins[x].x1 + bins[x].x0) / 2, y * 4 + 2]);
-        }
-      }
-
-      return circs;
-    }
-    const circData = getCircs(bins);
-    const v = svg.selectAll("circle").data(circData, (d, i) => i);
-
-    v.join("circle")
-      .transition()
+      .delay((d) => (d[1] / RANGE) * 100)
       .duration(500)
       .attr("cx", (d) => x(d[1]))
       .attr("cy", (d) => y(d[0]))
-      .attr("r", rad)
-      .attr("fill", (d) =>
-        d[0] < 200 ? d3.interpolateReds((200 - d[0]) / 400 + 0.5) : "steelblue"
-      );
-
-    const amtLeft = circData.filter((d) => d[0] < 200).length;
-
-    svg.select(".left-text").text(`${amtLeft} years / 20 WILL NOT meet demand`);
-    svg
-      .select(".right-text")
-      .text(`${20 - amtLeft} years / 20 WILL meet demand`);
+      .attr("r", width / NUM_CIRCLES / 2);
   }, [curScen]);
 
   return <svg ref={svgElem}></svg>;

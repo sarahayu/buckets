@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
+import * as d3 from "d3";
 import BucketViz from "./BucketViz";
 import DotPDF from "./DotPDF";
 import LineGraph from "./LineGraph";
 import { deltaData } from "./data";
 import DotPDFVert from "./DotPDFVert";
+import { ticksExact } from "./utils";
 
 const scenKeys = Object.keys(deltaData);
 
@@ -46,7 +48,14 @@ export default function App({}) {
           />
         </div>
         <LineGraph curScen={curScen} />
-        <BucketViz curScen={curScen} />
+        <BucketViz
+          levelInterp={d3
+            .scaleLinear()
+            .domain(ticksExact(0, 1, deltaData[curScen].length))
+            .range(deltaData[curScen].map((v) => v / 400 || 0))}
+          width={100}
+          height={100}
+        />
         {vert ? <DotPDFVert curScen={curScen} /> : <DotPDF curScen={curScen} />}
       </div>
     </>

@@ -1,71 +1,87 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { deltaData } from "./data";
+import { bucketPath, ticksExact } from "./utils";
 
-export default function BucketViz({ curScen }) {
+const DEGREE_SWAY = 10;
+const LEVELS = 10;
+
+export default function BucketViz({ levelInterp, width = 200, height = 400 }) {
   const svgElem = useRef();
-
-  const margin = { top: 0, right: 0, bottom: 0, left: 0 },
-    width = 200,
-    height = 400;
+  const { current: prevWaterLevels } = useRef(d3.local());
+  const waters = useRef();
 
   useEffect(() => {
     const svg = d3
       .select(svgElem.current)
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("width", width)
+      .attr("height", height);
+    svg
+      .append("defs")
+      .append("clipPath")
+      .attr("id", "bucket-mask")
+      .append("path")
+      .attr("d", bucketPath(width, height));
 
-    svg.append("g").attr("class", "graph-area");
+    svg
+      .append("g")
+      .attr("class", "graph-area")
+      .attr("clip-path", "url(#bucket-mask)");
+    svg
+      .append("g")
+      .append("path")
+      .attr("d", bucketPath(width, height).split("z")[0])
+      .attr("stroke", "black")
+      .attr("fill", "none");
+
+    waters.current = svg
+      .select(".graph-area")
+      .selectAll(".bucketBox")
+      .data(
+        ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
+        (_, i) => i
+      )
+      .enter()
+      .append("rect")
+      .attr("class", "bucketBox")
+      .attr("width", width * 2)
+      .attr("height", height * 2)
+      .attr("fill", (_, i) => d3.interpolateBlues(i / LEVELS))
+      .attr("x", -width / 2);
   }, []);
 
   useEffect(() => {
-    const data = deltaData[curScen];
-    const grad = d3.select(svgElem.current).select(".graph-area");
-
-    const y = d3.scaleLinear().domain([0, 400]).range([0, height]);
-
-    const line = grad.selectAll(".bucketBox").data(
-      d3.range(10).map((i) => i / 10),
-      function (d, i) {
-        return i;
-      }
+    waters.current.data(
+      ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
+      (_, i) => i
     );
 
-    line
-      .join("rect")
-      .attr("class", "bucketBox")
-      .transition()
-      .duration(500)
-      .attr("x", 0)
-      .attr("y", (d) => height - y(data[Math.floor(d * data.length)]))
-      .attr("width", width)
-      .attr("height", (d) => y(data[Math.floor(d * data.length)]))
-      .attr("fill", (d) => d3.interpolateBlues(d));
-  }, [curScen]);
+    waters.current
+      .transition("waterLevel")
+      .ease(d3.easeElasticOut.period(0.6))
+      .delay((_, i) => i * (100 / LEVELS))
+      .duration(1000)
+      .attr("y", (d) => height - d * height);
 
-  return (
-    <div
-      className="bucket"
-      style={{
-        margin: "30px",
-        marginTop: "10px",
-        display: "inline-block",
-        verticalAlign: "top",
-        background: "black",
-        clipPath: "polygon(0 0, 100% 0, 90% 100%, 10% 100%)",
-      }}
-    >
-      <svg
-        style={{
-          clipPath:
-            "polygon(1px 1px, calc(100% - 1px) 1px, calc(90% - 1px) calc(100% - 1px), calc(10% + 1px) calc(100% - 1px))",
-          background: "white",
-          display: "block",
-        }}
-        ref={svgElem}
-      ></svg>
-    </div>
-  );
+    waters.current
+      .transition("waterSway")
+      .duration(2000)
+      .delay((_, i) => i * 10)
+      .ease(d3.easeQuad)
+      .attrTween("transform", function (d) {
+        let diff = Math.abs(prevWaterLevels.get(this) - d);
+        prevWaterLevels.set(this, d);
+
+        return (t) =>
+          `rotate(${
+            Math.sin(
+              Math.min((Math.PI * 4 * t) / (0.5 * diff + 0.5), Math.PI * 4)
+            ) *
+            diff *
+            DEGREE_SWAY *
+            (1 - t)
+          }, ${width / 2}, ${0})`;
+      });
+  }, [levelInterp]);
+
+  return <svg ref={svgElem}></svg>;
 }
