@@ -3,19 +3,24 @@ import * as d3 from "d3";
 import { deltaData } from "./data";
 import { quantileBins, ticksExact } from "./utils";
 
-const DOMAIN = 400;
-const RANGE = 80;
+const DOMAIN = [0, 400];
+const RANGE = [0, 80];
 const NUM_CIRCLES = 20;
-const UNITS_PER_CIRC = RANGE / NUM_CIRCLES;
+const UNITS_PER_CIRC = (RANGE[1] - RANGE[0]) / NUM_CIRCLES;
 
-function getQuantileBins(histBins, dataRange) {
-  let binnedCircs = [];
+function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
+  let histBins = d3
+    .histogram()
+    .value((d) => d)
+    .domain(dataDomain)
+    .thresholds(
+      ticksExact(
+        ...dataDomain,
+        Math.ceil(graphHeight / (graphWidth / NUM_CIRCLES))
+      )
+    )(data);
 
-  for (let bin of histBins) {
-    binnedCircs.push(Math.round(bin.length / UNITS_PER_CIRC));
-  }
-
-  quantileBins(binnedCircs, histBins, UNITS_PER_CIRC, NUM_CIRCLES);
+  let binnedCircs = quantileBins(histBins, UNITS_PER_CIRC, NUM_CIRCLES);
 
   let circs = [];
 
@@ -23,7 +28,7 @@ function getQuantileBins(histBins, dataRange) {
     for (let y = 0; y < binnedCircs[b]; y++) {
       circs.push([
         (histBins[b].x1 + histBins[b].x0) / 2,
-        ((y + 0.5) * dataRange) / NUM_CIRCLES,
+        d3.scaleLinear(dataRange)((y + 0.5) / NUM_CIRCLES),
       ]);
     }
   }
@@ -50,9 +55,7 @@ export default function DotPDFVert({ curScen }) {
     svg
       .append("g")
       .call(
-        d3
-          .axisLeft()
-          .scale(d3.scaleLinear().domain([0, DOMAIN]).range([0, height]))
+        d3.axisLeft().scale(d3.scaleLinear().domain(DOMAIN).range([0, height]))
       )
       .append("text")
       .attr("fill", "black")
@@ -78,24 +81,16 @@ export default function DotPDFVert({ curScen }) {
   useEffect(() => {
     const data = deltaData[curScen];
     const svg = d3.select(svgElem.current).select(".graph-area");
-    const x = d3.scaleLinear().domain([0, RANGE]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, DOMAIN]).range([0, height]);
+    const x = d3.scaleLinear().domain(RANGE).range([0, width]);
+    const y = d3.scaleLinear().domain(DOMAIN).range([0, height]);
 
-    const histogram = d3
-      .histogram()
-      .value((d) => d)
-      .domain([0, DOMAIN])
-      .thresholds(
-        ticksExact(0, DOMAIN, Math.ceil(height / (width / NUM_CIRCLES)))
-      );
-
-    const circData = getQuantileBins(histogram(data), RANGE);
+    const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
     svg
       .selectAll("circle")
       .data(circData, (_, i) => i)
       .join("circle")
       .transition()
-      .delay((d) => (d[1] / RANGE) * 100)
+      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(500)
       .attr("cx", (d) => x(d[1]))
       .attr("cy", (d) => y(d[0]))
