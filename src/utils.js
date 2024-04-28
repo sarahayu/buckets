@@ -58,3 +58,13 @@ export function quantileBins(numericBins, unitsPerQuantile, maxQuantiles) {
 
   return quantileBins;
 }
+
+export function flatGroupBy(objs, fn) {
+  const newObjs = Object.groupBy(objs, fn);
+
+  for (const key of Object.keys(newObjs)) {
+    newObjs[key] = newObjs[key][0];
+  }
+
+  return newObjs;
+}

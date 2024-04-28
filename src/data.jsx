@@ -1,20 +1,27 @@
-export const deltaData = await (async function () {
-  const scens = await (await fetch("./delta_ag_n.json")).json();
+import { flatGroupBy } from "./utils";
+import * as d3 from "d3";
 
-  const keys = Object.keys(scens);
-  const newScens = {};
+export const objectivesData = await (async function () {
+  const objs = await (await fetch("./all_objectives.json")).json();
 
-  for (const key of keys) {
-    newScens[key] = [];
-    for (let i = 0; i < 80; i++) {
-      let sum = 0;
-      for (let m = 0; m < 12; m++) {
-        sum += scens[key][i * 12 + m];
-      }
-      const avg = (sum / 12) * 0.724;
-      newScens[key].push(avg);
+  for (const obj of objs) {
+    for (const scen of obj["scens"]) {
+      scen["delivs"] = scen["delivs"].sort((a, b) => b - a);
     }
-    newScens[key].sort((a, b) => b - a);
+    obj["scens"] = flatGroupBy(obj["scens"], ({ name }) => name);
+
+    obj["least_to_most"] = Object.keys(obj["scens"]).sort(
+      (a, b) =>
+        d3.median(obj["scens"][a]["delivs"]) -
+        d3.median(obj["scens"][b]["delivs"])
+    );
   }
-  return newScens;
+
+  // // convert array to map
+  // let scen_map = {};
+  // for (const scen of objs[0]["scens"]) {
+  //   scen_map[scen["name"]] = scen["delivs"].sort((a, b) => b - a);
+  // }
+
+  return flatGroupBy(objs, ({ obj }) => obj);
 })();

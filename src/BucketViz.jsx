@@ -5,7 +5,12 @@ import { bucketPath, ticksExact } from "./utils";
 const DEGREE_SWAY = 10;
 const LEVELS = 10;
 
-export default function BucketViz({ levelInterp, width = 200, height = 400 }) {
+export default function BucketViz({
+  bucketId,
+  levelInterp,
+  width = 200,
+  height = 400,
+}) {
   const svgElem = useRef();
   const { current: prevWaterLevels } = useRef(d3.local());
   const waters = useRef();
@@ -18,14 +23,14 @@ export default function BucketViz({ levelInterp, width = 200, height = 400 }) {
     svg
       .append("defs")
       .append("clipPath")
-      .attr("id", "bucket-mask")
+      .attr("id", "bucket-mask-" + bucketId)
       .append("path")
       .attr("d", bucketPath(width, height));
 
     svg
       .append("g")
       .attr("class", "graph-area")
-      .attr("clip-path", "url(#bucket-mask)");
+      .attr("clip-path", `url(#bucket-mask-${bucketId})`);
     svg
       .append("g")
       .append("path")
@@ -83,5 +88,9 @@ export default function BucketViz({ levelInterp, width = 200, height = 400 }) {
       });
   }, [levelInterp]);
 
-  return <svg ref={svgElem}></svg>;
+  return (
+    <div className="bucket-wrapper">
+      <svg ref={svgElem}></svg>
+    </div>
+  );
 }
