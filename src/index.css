@@ -22,7 +22,7 @@ svg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  top: calc(50% + 150px);
+  top: calc(50% + 120px);
   left: 5rem;
   transform: translateX(-50%);
   font-size: 0.9rem;
@@ -31,6 +31,16 @@ svg {
 .scen-name :first-child {
   font-size: 0.7rem;
   color: gray;
+}
+
+.scen-name button {
+  font-size: 0.7rem;
+  color: gray;
+  padding: 0.5em 1em;
+  margin-top: 1em;
+  background-color: white;
+  border: 1px solid gray;
+  cursor: pointer;
 }
 
 .bucket-map-container {
@@ -130,4 +140,27 @@ input::-moz-focus-inner {
   position: absolute;
   cursor: col-resize;
   background-color: gray;
+}
+
+.ridgeline-overlay {
+  --left-space: 20rem;
+
+  background-color: rgb(200, 200, 200);
+  position: fixed;
+  height: 100vh;
+  width: calc(100% - var(--left-space));
+  top: 0;
+  left: var(--left-space);
+  overflow-y: scroll;
+}
+
+.ridgeline-overlay > * {
+  display: flex;
+  align-items: end;
+  font-size: 0.5rem;
+}
+
+.ridgeline-overlay > * + * {
+  /* border: 1px solid red; */
+  margin-top: -40px;
 }

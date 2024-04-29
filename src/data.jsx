@@ -12,8 +12,7 @@ export const objectivesData = await (async function () {
 
     obj["least_to_most"] = Object.keys(obj["scens"]).sort(
       (a, b) =>
-        d3.median(obj["scens"][a]["delivs"]) -
-        d3.median(obj["scens"][b]["delivs"])
+        d3.mean(obj["scens"][a]["delivs"]) - d3.mean(obj["scens"][b]["delivs"])
     );
   }
 
