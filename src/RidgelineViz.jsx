@@ -30,19 +30,26 @@ export default function RidgelineViz({
   const svgElem = useRef();
 
   useEffect(() => {
+    const realheight = height;
+    const realwidth = width;
+    width = width - 20;
+    height = height - 10;
     const svg = d3
       .select(svgElem.current)
-      .attr("width", width)
-      .attr("height", height);
-
-    svg.append("g").attr("class", "ridgeline-area");
+      .attr("width", realwidth)
+      .attr("height", realheight)
+      .append("g")
+      .attr("transform", `translate(${10},${5})`);
 
     const x = d3.scaleLinear().domain([0, maxVal]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 0.05]).range([height, 0]);
+    const y = d3.scaleLinear().domain([0, 0.01]).range([height, 0]).clamp(true);
 
-    const kde = kernelDensityEstimator(kernelEpanechnikov(1), x.ticks(100)); // increase this 40 for more accurate density.
-    // let key = categories[i];
-    let density = kde(data);
+    const kde = kernelDensityEstimator(
+      kernelEpanechnikov(2),
+      x.ticks(maxVal / 8)
+    );
+
+    let density = kde(data.map((d) => Math.max(0, Math.min(d, maxVal))));
 
     console.log(density);
 

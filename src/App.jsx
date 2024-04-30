@@ -62,7 +62,7 @@ export default function App({ data = objectivesData }) {
                 levelInterp={d3
                   .scaleLinear()
                   .domain(ticksExact(0, 1, delivs.length))
-                  .range(delivs.map((v) => v / MAX_DELIVS || 0))
+                  .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
                   .clamp(true)}
                 width={100}
                 height={100}
@@ -71,12 +71,17 @@ export default function App({ data = objectivesData }) {
                 className="bucket-razor"
                 style={{
                   top:
-                    d3.scaleLinear().domain([0, MAX_DELIVS]).range([100, 0])(
-                      goal
-                    ) + "px",
+                    d3
+                      .scaleLinear()
+                      .domain([0, MAX_DELIVS])
+                      .range([100, 0])
+                      .clamp(true)(goal) + "px",
                 }}
               >
-                <span>Goal</span>
+                <p>Goal</p>
+                <p>
+                  {d3.format(".0f")(goal)} <span>TAF</span>
+                </p>
               </div>
             </div>
           </div>
@@ -104,7 +109,7 @@ export default function App({ data = objectivesData }) {
                     )
                     .range(
                       data[name]["scens"][curScen]["delivs"].map(
-                        (v) => v / MAX_DELIVS || 0
+                        (v) => Math.min(1, v / MAX_DELIVS) || 0
                       )
                     )
                     .clamp(true)}
@@ -116,13 +121,22 @@ export default function App({ data = objectivesData }) {
           </div>
         </div>
         <div className="pdf-container">
-          <DotPDF data={delivs} setGoal={setGoal} />
+          <DotPDF
+            data={delivs.map((d) => Math.min(Math.max(0, d), MAX_DELIVS))}
+            goal={goal}
+            setGoal={setGoal}
+          />
         </div>
       </div>
       {showScens && (
         <div className="ridgeline-overlay">
           {Array.from(scenNames)
             .reverse()
+            .filter((_, i) =>
+              ticksExact(0, 0.9, 10)
+                .map((d) => Math.floor((d + 0.05) * scenNames.length))
+                .includes(i)
+            )
             .map((scenName) => (
               <div key={scenName}>
                 <RidgelineViz
@@ -138,67 +152,3 @@ export default function App({ data = objectivesData }) {
     </>
   );
 }
-
-// import { useRef, useState } from "react";
-// import * as d3 from "d3";
-// import BucketViz from "./BucketViz";
-// import DotPDF from "./DotPDF";
-// import LineGraph from "./LineGraph";
-// import { objectivesData } from "./data";
-// import DotPDFVert from "./DotPDFVert";
-// import { ticksExact } from "./utils";
-
-// const scenKeys = Object.keys(deltaData);
-
-// export default function App({}) {
-//   const scenCounter = useRef(0);
-//   const [vert, setVert] = useState(false);
-//   const [curScen, setCurScen] = useState(scenKeys[0]);
-
-//   return (
-//     <>
-//       <div
-//         style={{
-//           width: "max-content",
-//           top: "50%",
-//           left: "50%",
-//           position: "absolute",
-//           transform: "translate(-50%, -50%)",
-//         }}
-//       >
-//         <div
-//           style={{
-//             position: "absolute",
-//             left: "50%",
-//             transform: "translate(-50%, -50px)",
-//           }}
-//         >
-//           <button
-//             onClick={() => void setCurScen(scenKeys[++scenCounter.current])}
-//           >
-//             {curScen}
-//           </button>
-//           <br />
-//           <span>Vertical</span>
-//           <input
-//             type="checkbox"
-//             name="vert"
-//             id="vert"
-//             value={vert}
-//             onChange={(e) => void setVert((d) => !d)}
-//           />
-//         </div>
-//         <LineGraph curScen={curScen} />
-//         <BucketViz
-//           levelInterp={d3
-//             .scaleLinear()
-//             .domain(ticksExact(0, 1, deltaData[curScen].length))
-//             .range(deltaData[curScen].map((v) => v / 400 || 0))}
-//           width={100}
-//           height={100}
-//         />
-//         {vert ? <DotPDFVert curScen={curScen} /> : <DotPDF curScen={curScen} />}
-//       </div>
-//     </>
-//   );
-// }

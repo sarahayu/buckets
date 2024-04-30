@@ -112,18 +112,33 @@ input::-moz-focus-inner {
 
 .bucket-razor {
   position: absolute;
-  height: 5px;
-  background-color: gray;
+  height: 3px;
+  border: none;
+  border-top: 3px dashed #f00;
   width: 100%;
 }
 
-.bucket-razor span {
+.bucket-razor p:first-child {
   display: block;
+  text-align: center;
   margin-left: calc(100% + 0.5rem);
-  margin-top: -0.5em;
+  margin-top: -2em;
   width: min-content;
   font-size: 0.7rem;
   color: gray;
+}
+
+.bucket-razor p:last-child {
+  display: block;
+  text-align: center;
+  margin-left: calc(100% + 0.5rem);
+  /* margin-top: 0.5em; */
+  width: max-content;
+  font-size: 1rem;
+}
+
+.bucket-razor p:last-child > span {
+  font-size: 0.8rem;
 }
 
 .dot-pdf-wrapper {
@@ -139,11 +154,36 @@ input::-moz-focus-inner {
   top: 0;
   position: absolute;
   cursor: col-resize;
-  background-color: gray;
+  border: none;
+  border-right: 3px dashed #f00;
+  font-size: 0.9rem;
+  /* background-color: gray; */
+}
+
+.pdf-razor > * {
+  position: relative;
+}
+
+.pdf-razor span:first-child {
+  position: absolute;
+  display: block;
+  width: 20ch;
+  text-align: center;
+  top: 2rem;
+  right: 2rem;
+}
+
+.pdf-razor span:last-child {
+  position: absolute;
+  display: block;
+  width: 20ch;
+  text-align: center;
+  top: 2rem;
+  left: 2rem;
 }
 
 .ridgeline-overlay {
-  --left-space: 20rem;
+  --left-space: 22rem;
 
   background-color: rgb(200, 200, 200);
   position: fixed;
@@ -162,5 +202,5 @@ input::-moz-focus-inner {
 
 .ridgeline-overlay > * + * {
   /* border: 1px solid red; */
-  margin-top: -40px;
+  /* margin-top: -40px; */
 }

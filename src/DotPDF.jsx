@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { deltaData } from "./data";
 import { quantileBins, ticksExact } from "./utils";
@@ -36,10 +36,13 @@ function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
   return circs;
 }
 
-export default function DotPDF({ data, setGoal }) {
+export default function DotPDF({ data, goal, setGoal }) {
   const svgElem = useRef();
   const razorElem = useRef();
+  const { current: ignoreText } = useRef((e) => e.preventDefault());
   const dragging = useRef(false);
+  const circs = useRef(0);
+  const [count, setCount] = useState(0);
 
   const margin = { top: 10, right: 30, bottom: 50, left: 50 },
     width = 600,
@@ -65,21 +68,6 @@ export default function DotPDF({ data, setGoal }) {
       .attr("fill", "black")
       .attr("transform", `translate(${width / 2}, ${30})`)
       .text("Delivery (TAF)");
-    svg
-      .append("text")
-      .text("test")
-      .style("font-size", 11)
-      .attr("class", "left-text")
-      .attr("text-anchor", "middle")
-      .attr("transform", `translate(${100},${50})`);
-
-    svg
-      .append("text")
-      .text("test2")
-      .style("font-size", 11)
-      .attr("class", "right-text")
-      .attr("text-anchor", "middle")
-      .attr("transform", `translate(${300},${50})`);
 
     razorElem.current = document.querySelector("#pdf-razor");
     razorElem.current.style.left = margin.left + "px";
@@ -87,21 +75,26 @@ export default function DotPDF({ data, setGoal }) {
 
     document.querySelector("#pdf-razor").addEventListener("mousedown", (e) => {
       dragging.current = true;
+      window.addEventListener("selectstart", ignoreText);
     });
 
     document.addEventListener("mouseup", (e) => {
       dragging.current = false;
+      window.removeEventListener("selectstart", ignoreText);
     });
 
     document
       .querySelector("#pdf-wrapper")
       .addEventListener("mousemove", (e) => {
         if (dragging.current === true && e.target.id === "pdf-wrapper") {
-          razorElem.current.style.left = e.offsetX + "px";
+          razorElem.current.style.left =
+            Math.min(Math.max(e.offsetX, margin.left), margin.left + width) +
+            "px";
           const goal = d3
             .scaleLinear()
             .domain([margin.left, width + margin.left])
-            .range(DOMAIN)(e.offsetX);
+            .range(DOMAIN)
+            .clamp(true)(e.offsetX);
           setGoal(goal);
         }
       });
@@ -112,22 +105,64 @@ export default function DotPDF({ data, setGoal }) {
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
     const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
 
-    const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
+    const circData = (circs.current = getQuantileBins(
+      data,
+      DOMAIN,
+      RANGE,
+      width,
+      height
+    ));
     svg
       .selectAll("circle")
       .data(circData, (_, i) => i)
       .join("circle")
-      .transition()
+      .attr("r", height / NUM_CIRCLES / 2)
+      .transition("one")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(500)
       .attr("cx", (d) => x(d[0]))
       .attr("cy", (d) => y(d[1]))
-      .attr("r", height / NUM_CIRCLES / 2);
+      .transition("two")
+      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .duration(0)
+      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
   }, [data]);
+
+  useEffect(() => {
+    const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
+    const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
+    const a = d3
+      .select(svgElem.current)
+      .select(".graph-area")
+      .selectAll("circle")
+      .data(circs.current, (_, i) => i)
+      .join("circle")
+      .attr("r", height / NUM_CIRCLES / 2);
+    a.transition("one")
+      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .duration(500)
+      .attr("cx", (d) => x(d[0]))
+      .attr("cy", (d) => y(d[1]));
+    a.transition("two")
+      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .duration(0)
+      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
+    setCount(circs.current.filter((d) => d[0] > goal).length);
+  }, [goal, data]);
 
   return (
     <div className="dot-pdf-wrapper" id="pdf-wrapper">
-      <div className="pdf-razor" id="pdf-razor"></div>
+      <div className="pdf-razor" id="pdf-razor">
+        <div>
+          <span>
+            {circs.current.length - count} out of {NUM_CIRCLES} years WILL NOT
+            meet demand
+          </span>
+          <span>
+            {count} out of {NUM_CIRCLES} years WILL meet demand
+          </span>
+        </div>
+      </div>
       <svg ref={svgElem}></svg>
     </div>
   );

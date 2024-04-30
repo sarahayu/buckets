@@ -39,7 +39,9 @@ export function quantileBins(numericBins, unitsPerQuantile, maxQuantiles) {
   while (sum > maxQuantiles) {
     quantileBins[
       d3.minIndex(numericBins, (d, i) =>
-        d !== 0 ? d.length / unitsPerQuantile - quantileBins[i] : Infinity
+        d.length !== 0
+          ? d.length / unitsPerQuantile - quantileBins[i]
+          : Infinity
       )
     ] -= 1;
 
@@ -49,7 +51,9 @@ export function quantileBins(numericBins, unitsPerQuantile, maxQuantiles) {
   while (sum < maxQuantiles) {
     quantileBins[
       d3.maxIndex(numericBins, (d, i) =>
-        d !== 0 ? d.length / unitsPerQuantile - quantileBins[i] : -Infinity
+        d.length !== 0
+          ? d.length / unitsPerQuantile - quantileBins[i]
+          : -Infinity
       )
     ] += 1;
 

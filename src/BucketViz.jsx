@@ -16,10 +16,17 @@ export default function BucketViz({
   const waters = useRef();
 
   useEffect(() => {
+    const realwidth = width;
+    const realheight = height;
+    width = width - 2;
+    height = height - 1;
+
     const svg = d3
       .select(svgElem.current)
-      .attr("width", width)
-      .attr("height", height);
+      .attr("width", realwidth)
+      .attr("height", realheight)
+      .append("g")
+      .attr("transform", `translate(${1}, ${0})`);
     svg
       .append("defs")
       .append("clipPath")
@@ -36,6 +43,7 @@ export default function BucketViz({
       .append("path")
       .attr("d", bucketPath(width, height).split("z")[0])
       .attr("stroke", "black")
+      .attr("stroke-width", 1)
       .attr("fill", "none");
 
     waters.current = svg
