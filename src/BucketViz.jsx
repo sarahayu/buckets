@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { bucketPath, ticksExact } from "./utils";
 
-const DEGREE_SWAY = 10;
+const DEGREE_SWAY = 40;
 const LEVELS = 10;
 
 export default function BucketViz({
@@ -12,8 +12,9 @@ export default function BucketViz({
   height = 400,
 }) {
   const svgElem = useRef();
-  const { current: prevWaterLevels } = useRef(d3.local());
+  const prevWaterLevels = useRef(d3.local());
   const waters = useRef();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const realwidth = width;
@@ -59,14 +60,26 @@ export default function BucketViz({
       .attr("width", width * 2)
       .attr("height", height * 2)
       .attr("fill", (_, i) => d3.interpolateBlues(i / LEVELS))
-      .attr("x", -width / 2);
+      .attr("x", -width / 2)
+      .each(function () {
+        prevWaterLevels.current.set(this, 0);
+      });
   }, []);
 
   useEffect(() => {
-    waters.current.data(
-      ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
-      (_, i) => i
-    );
+    const diffMap = {};
+
+    waters.current
+      .data(
+        ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
+        (_, i) => i
+      )
+      .each(function (d, i) {
+        let diff = Math.abs(prevWaterLevels.current.get(this) - d);
+        prevWaterLevels.current.set(this, d);
+
+        diffMap[i] = diff;
+      });
 
     waters.current
       .transition("waterLevel")
@@ -80,16 +93,16 @@ export default function BucketViz({
       .duration(2000)
       .delay((_, i) => i * 10)
       .ease(d3.easeQuad)
-      .attrTween("transform", function (d) {
-        let diff = Math.abs(prevWaterLevels.get(this) - d);
-        prevWaterLevels.set(this, d);
-
+      .attrTween("transform", function (_, i) {
         return (t) =>
           `rotate(${
             Math.sin(
-              Math.min((Math.PI * 4 * t) / (0.5 * diff + 0.5), Math.PI * 4)
+              Math.min(
+                (Math.PI * 4 * t) / (0.5 * diffMap[i] + 0.5),
+                Math.PI * 4
+              )
             ) *
-            diff *
+            diffMap[i] *
             DEGREE_SWAY *
             (1 - t)
           }, ${width / 2}, ${0})`;

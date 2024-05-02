@@ -98,7 +98,7 @@ export default function App({ data = objectivesData }) {
             </div>
           </div>
           <div className="map"></div>
-          {/* <div className="other-buckets-container">
+          <div className="other-buckets-container">
             {OBJ_NAMES.map((name) => (
               <div
                 key={name}
@@ -131,7 +131,7 @@ export default function App({ data = objectivesData }) {
                 />
               </div>
             ))}
-          </div> */}
+          </div>
         </div>
         <div className="pdf-container">
           <DotPDF
