@@ -51,8 +51,6 @@ export default function RidgelineViz({
 
     let density = kde(data.map((d) => Math.max(0, Math.min(d, maxVal))));
 
-    console.log(density);
-
     svg
       .append("g")
       .append("path")

@@ -17,6 +17,7 @@ export default function App({ data = objectivesData }) {
   const [curObjective, setCurObjective] = useState(OBJ_NAMES[0]);
   const [curScenIdx, setCurScenIdx] = useState(0);
   const [curScen, setCurScen] = useState(scenNames[curScenIdx]);
+  const [curScenPreview, setCurScenPreview] = useState(null);
   const [goal, setGoal] = useState(200);
   const [showScens, setShowScens] = useState(false);
 
@@ -26,11 +27,22 @@ export default function App({ data = objectivesData }) {
   }, [curObjective]);
 
   useEffect(() => {
-    setCurScen(scenNames[curScenIdx]);
+    if (curScenPreview === null) {
+      setCurScen(scenNames[curScenIdx]);
+    }
   }, [curScenIdx]);
 
+  useEffect(() => {
+    if (curScenPreview === null) {
+      setCurScenIdx(scenNames.indexOf(curScen));
+    } else {
+      setCurScenIdx(scenNames.indexOf(curScenPreview));
+    }
+  }, [curScenPreview]);
+
   const len = scenNames.length;
-  const delivs = data[curObjective]["scens"][curScen]["delivs"];
+  const delivs =
+    data[curObjective]["scens"][curScenPreview || curScen]["delivs"];
 
   return (
     <>
@@ -47,7 +59,7 @@ export default function App({ data = objectivesData }) {
           />
           <div className="scen-name">
             <span>Current Scenario</span>
-            <span>{curScen}</span>
+            <span>{curScenPreview || curScen}</span>
             <button onClick={() => void setShowScens((d) => !d)}>
               See All
             </button>
@@ -86,7 +98,7 @@ export default function App({ data = objectivesData }) {
             </div>
           </div>
           <div className="map"></div>
-          <div className="other-buckets-container">
+          {/* <div className="other-buckets-container">
             {OBJ_NAMES.map((name) => (
               <div
                 key={name}
@@ -104,13 +116,14 @@ export default function App({ data = objectivesData }) {
                       ticksExact(
                         0,
                         1,
-                        data[name]["scens"][curScen]["delivs"].length
+                        data[name]["scens"][curScenPreview || curScen]["delivs"]
+                          .length
                       )
                     )
                     .range(
-                      data[name]["scens"][curScen]["delivs"].map(
-                        (v) => Math.min(1, v / MAX_DELIVS) || 0
-                      )
+                      data[name]["scens"][curScenPreview || curScen][
+                        "delivs"
+                      ].map((v) => Math.min(1, v / MAX_DELIVS) || 0)
                     )
                     .clamp(true)}
                   width={50}
@@ -118,7 +131,7 @@ export default function App({ data = objectivesData }) {
                 />
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
         <div className="pdf-container">
           <DotPDF
@@ -129,7 +142,13 @@ export default function App({ data = objectivesData }) {
         </div>
       </div>
       {showScens && (
-        <div className="ridgeline-overlay">
+        <div
+          className={
+            "ridgeline-overlay" +
+            (curScenPreview ? " previewing" : " not-previewing")
+          }
+          onMouseLeave={() => setCurScenPreview(null)}
+        >
           {Array.from(scenNames)
             .reverse()
             .filter((_, i) =>
@@ -138,7 +157,17 @@ export default function App({ data = objectivesData }) {
                 .includes(i)
             )
             .map((scenName) => (
-              <div key={scenName}>
+              <div
+                key={scenName}
+                className={
+                  curScenPreview === scenName ? "previewing" : "not-previewing"
+                }
+                onMouseEnter={() => setCurScenPreview(scenName)}
+                onClick={() => {
+                  // setCurScenPreview(null)
+                  setCurScen(scenName);
+                }}
+              >
                 <RidgelineViz
                   data={data[curObjective]["scens"][scenName]["delivs"]}
                   maxVal={MAX_DELIVS}

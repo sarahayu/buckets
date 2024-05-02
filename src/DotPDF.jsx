@@ -41,8 +41,8 @@ export default function DotPDF({ data, goal, setGoal }) {
   const razorElem = useRef();
   const { current: ignoreText } = useRef((e) => e.preventDefault());
   const dragging = useRef(false);
-  const circs = useRef(0);
   const [count, setCount] = useState(0);
+  const [circles, setCircles] = useState([]);
 
   const margin = { top: 10, right: 30, bottom: 50, left: 50 },
     width = 600,
@@ -70,8 +70,14 @@ export default function DotPDF({ data, goal, setGoal }) {
       .text("Delivery (TAF)");
 
     razorElem.current = document.querySelector("#pdf-razor");
-    razorElem.current.style.left = margin.left + "px";
-    setGoal(0);
+    razorElem.current.style.left =
+      d3
+        .scaleLinear()
+        .domain(DOMAIN)
+        .range([margin.left, width + margin.left])
+        .clamp(true)(goal) + "px";
+    // razorElem.current.style.left = margin.left + "px";
+    // setGoal(0);
 
     document.querySelector("#pdf-razor").addEventListener("mousedown", (e) => {
       dragging.current = true;
@@ -105,13 +111,8 @@ export default function DotPDF({ data, goal, setGoal }) {
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
     const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
 
-    const circData = (circs.current = getQuantileBins(
-      data,
-      DOMAIN,
-      RANGE,
-      width,
-      height
-    ));
+    const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
+    setCircles(circData);
     svg
       .selectAll("circle")
       .data(circData, (_, i) => i)
@@ -135,7 +136,7 @@ export default function DotPDF({ data, goal, setGoal }) {
       .select(svgElem.current)
       .select(".graph-area")
       .selectAll("circle")
-      .data(circs.current, (_, i) => i)
+      .data(circles, (_, i) => i)
       .join("circle")
       .attr("r", height / NUM_CIRCLES / 2);
     a.transition("one")
@@ -147,16 +148,16 @@ export default function DotPDF({ data, goal, setGoal }) {
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(0)
       .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
-    setCount(circs.current.filter((d) => d[0] > goal).length);
-  }, [goal, data]);
+    setCount(circles.filter((d) => d[0] > goal).length);
+  }, [goal, circles]);
 
   return (
     <div className="dot-pdf-wrapper" id="pdf-wrapper">
       <div className="pdf-razor" id="pdf-razor">
         <div>
           <span>
-            {circs.current.length - count} out of {NUM_CIRCLES} years WILL NOT
-            meet demand
+            {circles.length - count} out of {NUM_CIRCLES} years WILL NOT meet
+            demand
           </span>
           <span>
             {count} out of {NUM_CIRCLES} years WILL meet demand

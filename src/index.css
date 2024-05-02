@@ -192,12 +192,22 @@ input::-moz-focus-inner {
   top: 0;
   left: var(--left-space);
   overflow-y: scroll;
+  padding: 2rem;
+}
+
+.ridgeline-overlay.previewing > * {
+  opacity: 0.5;
 }
 
 .ridgeline-overlay > * {
   display: flex;
   align-items: end;
-  font-size: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.ridgeline-overlay > *.previewing {
+  opacity: 1;
 }
 
 .ridgeline-overlay > * + * {
