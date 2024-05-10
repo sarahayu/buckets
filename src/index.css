@@ -106,6 +106,10 @@ input::-moz-focus-inner {
   overflow: hidden;
 }
 
+.bucket-and-label {
+  cursor: pointer;
+}
+
 .bucket-and-label.cur-obj {
   visibility: hidden;
 }

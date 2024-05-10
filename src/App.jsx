@@ -8,6 +8,19 @@ import RidgelineViz from "./RidgelineViz";
 
 const MAX_DELIVS = 1200;
 
+function createInterps(data, OBJ_NAMES, curScenPreview, curScen) {
+  const mapFunc = {};
+  OBJ_NAMES.forEach((name) => {
+    const delivs = data[name]["scens"][curScenPreview || curScen]["delivs"];
+    mapFunc[name] = d3
+      .scaleLinear()
+      .domain(ticksExact(0, 1, delivs.length))
+      .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
+      .clamp(true);
+  });
+  return mapFunc;
+}
+
 export default function App({ data = objectivesData }) {
   const { current: OBJ_NAMES } = useRef(Object.keys(data));
   const [scenNames, setScenNames] = useState(
@@ -20,6 +33,9 @@ export default function App({ data = objectivesData }) {
   const [curScenPreview, setCurScenPreview] = useState(null);
   const [goal, setGoal] = useState(200);
   const [showScens, setShowScens] = useState(false);
+  const [delivInterps, setDelivInterps] = useState(
+    createInterps(data, OBJ_NAMES, curScenPreview, curScen)
+  );
 
   useEffect(() => {
     setScenNames(data[curObjective]["least_to_most"]);
@@ -39,6 +55,10 @@ export default function App({ data = objectivesData }) {
       setCurScenIdx(scenNames.indexOf(curScenPreview));
     }
   }, [curScenPreview]);
+
+  useEffect(() => {
+    setDelivInterps(createInterps(data, OBJ_NAMES, curScenPreview, curScen));
+  }, [curScenPreview, curScen]);
 
   const len = scenNames.length;
   const delivs =
@@ -71,11 +91,7 @@ export default function App({ data = objectivesData }) {
               <span className="main-bucket-label">{curObjective}</span>
               <BucketViz
                 bucketId={"mainbucket"}
-                levelInterp={d3
-                  .scaleLinear()
-                  .domain(ticksExact(0, 1, delivs.length))
-                  .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
-                  .clamp(true)}
+                levelInterp={delivInterps[curObjective]}
                 width={100}
                 height={100}
               />
@@ -110,22 +126,7 @@ export default function App({ data = objectivesData }) {
                 <span>{name}</span>
                 <BucketViz
                   bucketId={name}
-                  levelInterp={d3
-                    .scaleLinear()
-                    .domain(
-                      ticksExact(
-                        0,
-                        1,
-                        data[name]["scens"][curScenPreview || curScen]["delivs"]
-                          .length
-                      )
-                    )
-                    .range(
-                      data[name]["scens"][curScenPreview || curScen][
-                        "delivs"
-                      ].map((v) => Math.min(1, v / MAX_DELIVS) || 0)
-                    )
-                    .clamp(true)}
+                  levelInterp={delivInterps[name]}
                   width={50}
                   height={50}
                 />

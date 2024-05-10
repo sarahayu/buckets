@@ -17,6 +17,7 @@ export default function BucketViz({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    console.log("in init");
     const realwidth = width;
     const realheight = height;
     width = width - 2;
