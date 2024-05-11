@@ -143,30 +143,31 @@ export default function App({ data = objectivesData }) {
         </div>
       </div>
       {showScens && (
-        <div
-          className={"ridgeline-overlay"}
-          onMouseLeave={() => setCurScenPreview(null)}
-        >
+        <div className={"ridgeline-overlay"}>
           <div
             className={
               "overlay-container" +
               (curScenPreview ? " previewing" : " not-previewing")
             }
+            onMouseLeave={() => setCurScenPreview(null)}
           >
             {Array.from(scenNames)
               .reverse()
-              .filter((_, i) =>
-                ticksExact(0, 0.9, 10)
-                  .map((d) => Math.floor((d + 0.05) * scenNames.length))
-                  .includes(i)
+              .filter(
+                (scenName, i) =>
+                  scenName === curScen ||
+                  ticksExact(0, 0.9, 10)
+                    .map((d) => Math.floor((d + 0.05) * scenNames.length))
+                    .includes(i)
               )
               .map((scenName) => (
                 <div
                   key={scenName}
                   className={
-                    curScenPreview === scenName
+                    (curScenPreview === scenName
                       ? "previewing"
-                      : "not-previewing"
+                      : "not-previewing") +
+                    (scenName === curScen ? " current-scene" : "")
                   }
                   onMouseEnter={() => setCurScenPreview(scenName)}
                   onClick={() => {
