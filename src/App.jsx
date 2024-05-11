@@ -4,7 +4,7 @@ import { objectivesData } from "./data";
 import { ticksExact } from "./utils";
 import BucketViz from "./BucketViz";
 import DotPDF from "./DotPDF";
-import RidgelineViz from "./RidgelineViz";
+import DotPDFLite from "./DotPDFLite";
 
 const MAX_DELIVS = 1200;
 
@@ -144,39 +144,48 @@ export default function App({ data = objectivesData }) {
       </div>
       {showScens && (
         <div
-          className={
-            "ridgeline-overlay" +
-            (curScenPreview ? " previewing" : " not-previewing")
-          }
+          className={"ridgeline-overlay"}
           onMouseLeave={() => setCurScenPreview(null)}
         >
-          {Array.from(scenNames)
-            .reverse()
-            .filter((_, i) =>
-              ticksExact(0, 0.9, 10)
-                .map((d) => Math.floor((d + 0.05) * scenNames.length))
-                .includes(i)
-            )
-            .map((scenName) => (
-              <div
-                key={scenName}
-                className={
-                  curScenPreview === scenName ? "previewing" : "not-previewing"
-                }
-                onMouseEnter={() => setCurScenPreview(scenName)}
-                onClick={() => {
-                  // setCurScenPreview(null)
-                  setCurScen(scenName);
-                }}
-              >
-                <RidgelineViz
-                  data={data[curObjective]["scens"][scenName]["delivs"]}
-                  maxVal={MAX_DELIVS}
-                  height={50}
-                />
-                <span>{scenName}</span>
-              </div>
-            ))}
+          <div
+            className={
+              "overlay-container" +
+              (curScenPreview ? " previewing" : " not-previewing")
+            }
+          >
+            {Array.from(scenNames)
+              .reverse()
+              .filter((_, i) =>
+                ticksExact(0, 0.9, 10)
+                  .map((d) => Math.floor((d + 0.05) * scenNames.length))
+                  .includes(i)
+              )
+              .map((scenName) => (
+                <div
+                  key={scenName}
+                  className={
+                    curScenPreview === scenName
+                      ? "previewing"
+                      : "not-previewing"
+                  }
+                  onMouseEnter={() => setCurScenPreview(scenName)}
+                  onClick={() => {
+                    // setCurScenPreview(null)
+                    setCurScen(scenName);
+                  }}
+                >
+                  <DotPDFLite
+                    data={data[curObjective]["scens"][scenName]["delivs"].map(
+                      (d) => Math.min(Math.max(0, d), MAX_DELIVS)
+                    )}
+                    goal={goal}
+                    width={300}
+                    height={200}
+                  />
+                  <span>{scenName}</span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </>

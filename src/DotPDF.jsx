@@ -36,7 +36,13 @@ function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
   return circs;
 }
 
-export default function DotPDF({ data, goal, setGoal }) {
+export default function DotPDF({
+  data,
+  goal,
+  setGoal,
+  width = 600,
+  height = 400,
+}) {
   const svgElem = useRef();
   const razorElem = useRef();
   const { current: ignoreText } = useRef((e) => e.preventDefault());
@@ -44,9 +50,7 @@ export default function DotPDF({ data, goal, setGoal }) {
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
 
-  const margin = { top: 10, right: 30, bottom: 50, left: 50 },
-    width = 600,
-    height = 400;
+  const margin = { top: 10, right: 30, bottom: 50, left: 50 };
 
   useEffect(() => {
     const svg = d3
