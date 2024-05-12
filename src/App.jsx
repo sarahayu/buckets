@@ -21,10 +21,28 @@ function createInterps(data, OBJ_NAMES, curScenPreview, curScen) {
   return mapFunc;
 }
 
+function criteriaSort(criteria, data, objective) {
+  if (criteria === "median") {
+    return Object.keys(data[objective]["scens"]).sort(
+      (a, b) =>
+        d3.mean(data[objective]["scens"][a]["delivs"]) -
+        d3.mean(data[objective]["scens"][b]["delivs"])
+    );
+  }
+  if (criteria === "deliveries") {
+    return Object.keys(data[objective]["scens"]).sort(
+      (a, b) =>
+        d3.max(data[objective]["scens"][a]["delivs"]) -
+        d3.max(data[objective]["scens"][b]["delivs"])
+    );
+  }
+}
+
 export default function App({ data = objectivesData }) {
   const { current: OBJ_NAMES } = useRef(Object.keys(data));
+  const [sortMode, setSortMode] = useState("median");
   const [scenNames, setScenNames] = useState(
-    data[OBJ_NAMES[0]]["least_to_most"]
+    criteriaSort(sortMode, data, OBJ_NAMES[0])
   );
 
   const [curObjective, setCurObjective] = useState(OBJ_NAMES[0]);
@@ -38,9 +56,10 @@ export default function App({ data = objectivesData }) {
   );
 
   useEffect(() => {
-    setScenNames(data[curObjective]["least_to_most"]);
-    setCurScenIdx(data[curObjective]["least_to_most"].indexOf(curScen));
-  }, [curObjective]);
+    const a = criteriaSort(sortMode, data, curObjective);
+    setScenNames(a);
+    setCurScenIdx(a.indexOf(curScen));
+  }, [curObjective, sortMode]);
 
   useEffect(() => {
     if (curScenPreview === null) {
@@ -80,8 +99,16 @@ export default function App({ data = objectivesData }) {
           <div className="scen-name">
             <span>Current Scenario</span>
             <span>{curScenPreview || curScen}</span>
+            <span
+              className="preview-indic"
+              style={{
+                visibility: curScenPreview ? "visible" : "",
+              }}
+            >
+              Previewing
+            </span>
             <button onClick={() => void setShowScens((d) => !d)}>
-              See All
+              See Overview
             </button>
           </div>
         </div>
@@ -144,6 +171,27 @@ export default function App({ data = objectivesData }) {
       </div>
       {showScens && (
         <div className={"ridgeline-overlay"}>
+          <div class="sort-types">
+            <input
+              type="radio"
+              name="sort-type"
+              value="median"
+              id="median"
+              checked={sortMode === "median"}
+              onChange={() => void setSortMode("median")}
+            />
+            <label for="median">Median</label>
+
+            <input
+              type="radio"
+              name="sort-type"
+              value="deliveries"
+              id="deliveries"
+              checked={sortMode === "deliveries"}
+              onChange={() => void setSortMode("deliveries")}
+            />
+            <label for="deliveries">Max. Deliveries</label>
+          </div>
           <div
             className={
               "overlay-container" +
@@ -186,6 +234,17 @@ export default function App({ data = objectivesData }) {
                   <span>{scenName}</span>
                 </div>
               ))}
+            <div
+              className="dot-overlay-razor"
+              style={{
+                left:
+                  d3
+                    .scaleLinear()
+                    .domain([0, MAX_DELIVS])
+                    .range([0, 300])
+                    .clamp(true)(goal) + "px",
+              }}
+            ></div>
           </div>
         </div>
       )}

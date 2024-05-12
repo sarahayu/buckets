@@ -44,7 +44,7 @@ export default function BucketViz({
       .append("g")
       .append("path")
       .attr("d", bucketPath(width, height).split("z")[0])
-      .attr("stroke", "black")
+      .attr("stroke", "gray")
       .attr("stroke-width", 1)
       .attr("fill", "none");
 

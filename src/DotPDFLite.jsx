@@ -40,7 +40,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
 
-  const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+  const margin = { top: 10, right: 10, bottom: 10, left: 0 };
 
   useEffect(() => {
     const svg = d3
@@ -60,7 +60,11 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
           .axisBottom()
           .scale(d3.scaleLinear().domain(DOMAIN).range([0, width]))
           .ticks(0, "")
-      );
+      )
+      .call((s) => {
+        s.selectAll("line").attr("stroke", "gray");
+        s.selectAll("path").attr("stroke", "gray");
+      });
   }, []);
 
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       .attr("r", height / NUM_CIRCLES / 2)
       .attr("cx", (d) => x(d[0]))
       .attr("cy", (d) => y(d[1]))
-      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
   }, [data]);
 
   useEffect(() => {
@@ -92,7 +96,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       .attr("r", height / NUM_CIRCLES / 2)
       .attr("cx", (d) => x(d[0]))
       .attr("cy", (d) => y(d[1]))
-      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
     setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 

@@ -56,10 +56,19 @@ svg {
   grid-template-columns: 50px 50px 50px;
   font-size: 0.6rem;
   gap: 1rem;
+  color: gray;
 }
 
 .pdf-container {
   display: grid;
+}
+
+.preview-indic {
+  visibility: hidden;
+  position: absolute;
+  top: 1rem;
+  color: red;
+  left: 100%;
 }
 
 .input-range {
@@ -110,6 +119,10 @@ input::-moz-focus-inner {
   cursor: pointer;
 }
 
+.bucket-and-label:hover {
+  transform: translateY(-5px);
+}
+
 .bucket-and-label.cur-obj {
   visibility: hidden;
 }
@@ -118,7 +131,7 @@ input::-moz-focus-inner {
   position: absolute;
   height: 3px;
   border: none;
-  border-top: 3px dashed #f00;
+  border-top: 1px dashed black;
   width: 100%;
 }
 
@@ -209,6 +222,7 @@ input::-moz-focus-inner {
   /* place-self: center; */
   margin: 0 auto;
   width: min-content;
+  position: relative;
   /* border: 1px solid blue; */
   /* mix-blend-mode: darken; */
 }
@@ -230,7 +244,6 @@ input::-moz-focus-inner {
   filter: none;
   /* border: 1px solid red; */
   width: min-content;
-  padding: 0 1em;
 }
 
 .overlay-container > *.previewing {
@@ -248,5 +261,80 @@ input::-moz-focus-inner {
   /* margin-top: -40px; */
 }
 
+.dot-overlay-razor {
+  position: absolute;
+  width: 5px;
+  top: 0px;
+  height: 100%;
+  border: none;
+  border-left: 1px dashed black;
+}
+
 .dot-pdf-shadowed {
+}
+
+/* cr: https://codepen.io/S-Maas/pen/NrYvdK */
+
+.sort-types {
+  display: flex;
+  max-width: 15rem;
+  width: 100%;
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  font-size: 12px;
+  border: 1px solid steelblue;
+  border-radius: 3px;
+  color: steelblue;
+  margin-bottom: 2rem;
+}
+.sort-types > input {
+  display: none;
+}
+.sort-types > input:checked + label {
+  color: white;
+}
+.sort-types > input:nth-of-type(1):checked ~ label:last-of-type:before {
+  transform: translateX(calc(0% + 0px));
+}
+.sort-types > input:nth-of-type(2):checked ~ label:last-of-type:before {
+  transform: translateX(calc(100% + 0px));
+}
+.sort-types > input:nth-of-type(3):checked ~ label:last-of-type:before {
+  transform: translateX(calc(200% + 0px));
+}
+.sort-types label {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.sort-types label:last-of-type:before {
+  content: "";
+  display: block;
+  max-width: calc(50% - 0px);
+  margin: 0px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  transform: translateX(0);
+}
+.sort-types label {
+  padding: 6px 3px;
+  transition: color 250ms cubic-bezier(0, 0.95, 0.38, 0.98);
+}
+.sort-types label:before {
+  background: steelblue;
+  transition: all 250ms cubic-bezier(0, 0.95, 0.38, 0.98);
+}
+.sort-types label:not(:last-child) {
+  border-right: 1px solid steelblue;
 }

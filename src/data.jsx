@@ -10,10 +10,10 @@ export const objectivesData = await (async function () {
     }
     obj["scens"] = flatGroupBy(obj["scens"], ({ name }) => name);
 
-    obj["least_to_most"] = Object.keys(obj["scens"]).sort(
-      (a, b) =>
-        d3.mean(obj["scens"][a]["delivs"]) - d3.mean(obj["scens"][b]["delivs"])
-    );
+    // obj["least_to_most"] = Object.keys(obj["scens"]).sort(
+    //   (a, b) =>
+    //     d3.mean(obj["scens"][a]["delivs"]) - d3.mean(obj["scens"][b]["delivs"])
+    // );
   }
 
   // // convert array to map

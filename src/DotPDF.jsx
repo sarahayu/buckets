@@ -68,6 +68,11 @@ export default function DotPDF({
       .call(
         d3.axisBottom().scale(d3.scaleLinear().domain(DOMAIN).range([0, width]))
       )
+      .call((s) => {
+        s.selectAll("line").attr("stroke", "gray");
+        s.selectAll("path").attr("stroke", "gray");
+        s.selectAll("text").attr("fill", "gray");
+      })
       .append("text")
       .attr("fill", "black")
       .attr("transform", `translate(${width / 2}, ${30})`)
@@ -130,7 +135,7 @@ export default function DotPDF({
       .transition("two")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(0)
-      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
   }, [data]);
 
   useEffect(() => {
@@ -151,7 +156,7 @@ export default function DotPDF({
     a.transition("two")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(0)
-      .attr("fill", (d) => (d[0] > goal ? "green" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
     setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 
