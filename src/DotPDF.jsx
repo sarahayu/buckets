@@ -8,6 +8,17 @@ const RANGE = [0, 80];
 const NUM_CIRCLES = 20;
 const UNITS_PER_CIRC = (RANGE[1] - RANGE[0]) / NUM_CIRCLES;
 
+const waterdrop = {
+  draw: function (context, size) {
+    context.moveTo(0, -size / 2);
+    context.lineTo(size / 4, -size / 4);
+
+    context.arc(0, 0, size / Math.sqrt(2) / 2, -Math.PI / 4, (Math.PI * 5) / 4);
+    context.lineTo(0, -size / 2);
+    context.closePath();
+  },
+};
+
 function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
   let histBins = d3
     .histogram()
@@ -122,20 +133,42 @@ export default function DotPDF({
 
     const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
     setCircles(circData);
+    // console.log("remaking");
     svg
-      .selectAll("circle")
+      .selectAll(".icons")
       .data(circData, (_, i) => i)
-      .join("circle")
-      .attr("r", height / NUM_CIRCLES / 2)
+      .join(
+        function enter(s) {
+          return s
+            .append("g")
+            .call(
+              (s) =>
+                void s
+                  .append("path")
+                  .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+            );
+        },
+        function update(s) {
+          return s.call(
+            (s) =>
+              void s
+                .selectAll("path")
+                .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+          );
+        }
+      )
+      .attr("class", "icons")
+      // .attr("r", height / NUM_CIRCLES * 4)
       .transition("one")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(500)
-      .attr("cx", (d) => x(d[0]))
-      .attr("cy", (d) => y(d[1]))
+      .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
+      // .attr("cx", (d) => x(d[0]))
+      // .attr("cy", (d) => y(d[1]))
       .transition("two")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(0)
-      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
   }, [data]);
 
   useEffect(() => {
@@ -144,19 +177,23 @@ export default function DotPDF({
     const a = d3
       .select(svgElem.current)
       .select(".graph-area")
-      .selectAll("circle")
+      .selectAll(".icons")
+      // .selectAll("circle")
       .data(circles, (_, i) => i)
-      .join("circle")
-      .attr("r", height / NUM_CIRCLES / 2);
+      .call((s) => {
+        s.selectAll("path").attr(
+          "d",
+          d3.symbol(waterdrop, height / NUM_CIRCLES)
+        );
+      });
     a.transition("one")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(500)
-      .attr("cx", (d) => x(d[0]))
-      .attr("cy", (d) => y(d[1]));
+      .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`);
     a.transition("two")
       .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
       .duration(0)
-      .attr("fill", (d) => (d[0] > goal ? "#ffb703" : "black"));
+      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
     setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 
