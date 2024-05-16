@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { objectivesData } from "./data";
 import { ticksExact } from "./utils";
@@ -50,7 +50,7 @@ export default function App({ data = objectivesData }) {
   const [curScen, setCurScen] = useState(scenNames[curScenIdx]);
   const [curScenPreview, setCurScenPreview] = useState(null);
   const [goal, setGoal] = useState(200);
-  const [showScens, setShowScens] = useState(false);
+  const [showScens, setShowScens] = useState(true);
   const [delivInterps, setDelivInterps] = useState(
     createInterps(data, OBJ_NAMES, curScenPreview, curScen)
   );
@@ -199,41 +199,44 @@ export default function App({ data = objectivesData }) {
             }
             onMouseLeave={() => setCurScenPreview(null)}
           >
-            {Array.from(scenNames)
-              .reverse()
-              .filter(
-                (scenName, i) =>
-                  scenName === curScen ||
-                  ticksExact(0, 0.9, 10)
-                    .map((d) => Math.floor((d + 0.05) * scenNames.length))
-                    .includes(i)
-              )
-              .map((scenName) => (
-                <div
-                  key={scenName}
-                  className={
-                    (curScenPreview === scenName
-                      ? "previewing"
-                      : "not-previewing") +
-                    (scenName === curScen ? " current-scene" : "")
-                  }
-                  onMouseEnter={() => setCurScenPreview(scenName)}
-                  onClick={() => {
-                    // setCurScenPreview(null)
-                    setCurScen(scenName);
-                  }}
-                >
-                  <DotPDFLite
-                    data={data[curObjective]["scens"][scenName]["delivs"].map(
-                      (d) => Math.min(Math.max(0, d), MAX_DELIVS)
-                    )}
-                    goal={goal}
-                    width={300}
-                    height={200}
-                  />
-                  <span>{scenName}</span>
-                </div>
-              ))}
+            <AnimateList>
+              {Array.from(scenNames)
+                .reverse()
+                .filter(
+                  (scenName, i) =>
+                    scenName === curScen ||
+                    ticksExact(0, 0.9, 10)
+                      .map((d) => Math.floor((d + 0.05) * scenNames.length))
+                      .includes(i)
+                )
+                .map((scenName, i) => (
+                  <div
+                    key={scenName}
+                    className={
+                      (curScenPreview === scenName
+                        ? "previewing"
+                        : "not-previewing") +
+                      (scenName === curScen ? " current-scene" : "")
+                    }
+                    onMouseEnter={() => setCurScenPreview(scenName)}
+                    onClick={() => {
+                      // setCurScenPreview(null)
+                      setCurScen(scenName);
+                    }}
+                  >
+                    <DotPDFLite
+                      data={data[curObjective]["scens"][scenName]["delivs"].map(
+                        (d) => Math.min(Math.max(0, d), MAX_DELIVS)
+                      )}
+                      goal={goal}
+                      width={300}
+                      height={100}
+                      grad={i / 11}
+                    />
+                    <span>{scenName}</span>
+                  </div>
+                ))}
+            </AnimateList>
             <div
               className="dot-overlay-razor"
               style={{
@@ -250,4 +253,132 @@ export default function App({ data = objectivesData }) {
       )}
     </>
   );
+}
+
+const getBoundingClientRect = (element) => {
+  const { top, right, bottom, left, width, height, x, y } =
+    element.getBoundingClientRect();
+  return { top, right, bottom, left, width, height, x, y };
+};
+
+const calculateBoundingBoxes = (children, refs) => {
+  const boundingBoxes = {};
+
+  if (!refs) return boundingBoxes;
+
+  React.Children.forEach(children, (child) => {
+    const ref = refs[child.key];
+
+    if (!ref) return;
+    const domNode = ref;
+    const nodeBoundingBox = domNode;
+    if (nodeBoundingBox === null) return;
+
+    boundingBoxes[child.key] = nodeBoundingBox;
+  });
+
+  return boundingBoxes;
+};
+function usePrevious(value) {
+  const currentRef = useRef(value);
+  const previousRef = useRef();
+
+  if (currentRef.current !== value) {
+    previousRef.current = currentRef.current;
+    currentRef.current = value;
+  }
+  return previousRef.current;
+}
+
+function AnimateList({ children }) {
+  const [boundingBox, setBoundingBox] = useState({});
+  const [prevBoundingBox, setPrevBoundingBox] = useState({});
+  const prevChildren = usePrevious(children);
+
+  const itemsRef = useRef({});
+
+  const curRef = useRef({});
+  const previousRef = useRef({});
+  const domRefs = useRef({});
+
+  useLayoutEffect(() => {
+    // const exists = React.Children.map(children, (child) => child.key);
+    // for (let k in itemsRef.current) {
+    //   if (!exists.includes(k)) delete itemsRef.current[k];
+    // }
+    // itemsRef.current = itemsRef.current.slice(0, children.length);
+  }, [children]);
+
+  useLayoutEffect(() => {
+    previousRef.current = structuredClone(curRef.current);
+    curRef.current = structuredClone(itemsRef.current);
+
+    // console.log("asdf", previousRef.current);
+    // console.log(curRef.current);
+  }, [children]);
+
+  useLayoutEffect(() => {
+    const newBoundingBox = calculateBoundingBoxes(children, itemsRef.current);
+    setBoundingBox((a) => ({
+      ...a,
+      ...newBoundingBox,
+    }));
+  }, [children]);
+
+  useLayoutEffect(() => {
+    const prevBoundingBox = calculateBoundingBoxes(
+      prevChildren,
+      previousRef.current
+    );
+    setPrevBoundingBox((a) => ({
+      ...a,
+      ...prevBoundingBox,
+    }));
+  }, [prevChildren]);
+
+  useLayoutEffect(() => {
+    const hasPrevBoundingBox = Object.keys(prevBoundingBox).length;
+
+    if (hasPrevBoundingBox) {
+      React.Children.forEach(children, (child) => {
+        if (itemsRef.current[child.key] === undefined) return;
+
+        const domNode = itemsRef.current[child.key];
+        const firstBox = prevBoundingBox[child.key];
+        const lastBox = boundingBox[child.key];
+
+        if (lastBox === undefined || firstBox === undefined) return;
+        const changeInX = firstBox.top - lastBox.top;
+
+        if (changeInX) {
+          requestAnimationFrame(() => {
+            // Before the DOM paints, invert child to old position
+            domRefs.current[
+              child.key
+            ].style.transform = `translateY(${changeInX}px)`;
+            domRefs.current[child.key].style.transition = "transform 0s";
+
+            requestAnimationFrame(() => {
+              // After the previous frame, remove
+              // the transistion to play the animation
+              domRefs.current[child.key].style.transform = "";
+              domRefs.current[child.key].style.transition = "transform 500ms";
+            });
+          });
+        }
+      });
+    }
+  }, [prevBoundingBox]);
+
+  return React.Children.map(children, (child) => {
+    return React.cloneElement(child, {
+      ref: (el) => {
+        const a = el;
+        if (a) {
+          itemsRef.current[child.key] = getBoundingClientRect(el);
+          domRefs.current[child.key] = a;
+        }
+      },
+    });
+  });
 }

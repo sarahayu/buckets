@@ -4,7 +4,7 @@ import { quantileBins, ticksExact } from "./utils";
 
 const DOMAIN = [0, 1200];
 const RANGE = [0, 80];
-const NUM_CIRCLES = 20;
+const NUM_CIRCLES = 10;
 const UNITS_PER_CIRC = (RANGE[1] - RANGE[0]) / NUM_CIRCLES;
 
 const waterdrop = {
@@ -46,7 +46,13 @@ function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
   return circs;
 }
 
-export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
+export default function DotPDFLite({
+  data,
+  goal,
+  width = 600,
+  height = 400,
+  grad,
+}) {
   const svgElem = useRef();
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
@@ -110,7 +116,9 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       )
       .attr("class", "icons")
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
-      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
+      .attr("fill", (d) =>
+        d[0] > goal ? d3.interpolate("blue", "red")(grad) : "black"
+      );
   }, [data]);
 
   useEffect(() => {
@@ -128,7 +136,9 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
         );
       })
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
-      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
+      .attr("fill", (d) =>
+        d[0] > goal ? d3.interpolate("blue", "red")(grad) : "black"
+      );
     setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 
