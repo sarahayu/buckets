@@ -73,13 +73,12 @@ svg {
 
 .input-range {
   place-self: center;
-  -webkit-appearance: none;
   height: 200px;
   border-radius: 5px;
   background: #ccc;
   outline: none;
-  writing-mode: bt-lr; /* IE */
-  -webkit-appearance: slider-vertical; /* WebKit */
+  writing-mode: vertical-lr;
+  direction: rtl;
 }
 
 /* Firefox Overrides */

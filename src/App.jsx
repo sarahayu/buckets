@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
 import { objectivesData } from "./data";
 import { ticksExact } from "./utils";
@@ -41,13 +47,13 @@ function criteriaSort(criteria, data, objective) {
 export default function App({ data = objectivesData }) {
   const { current: OBJ_NAMES } = useRef(Object.keys(data));
   const [sortMode, setSortMode] = useState("median");
-  const [scenNames, setScenNames] = useState(
+  const [orderedScenNames, setOrderedScenNames] = useState(
     criteriaSort(sortMode, data, OBJ_NAMES[0])
   );
 
   const [curObjective, setCurObjective] = useState(OBJ_NAMES[0]);
   const [curScenIdx, setCurScenIdx] = useState(0);
-  const [curScen, setCurScen] = useState(scenNames[curScenIdx]);
+  const [curScen, setCurScen] = useState(orderedScenNames[curScenIdx]);
   const [curScenPreview, setCurScenPreview] = useState(null);
   const [goal, setGoal] = useState(200);
   const [showScens, setShowScens] = useState(true);
@@ -56,32 +62,39 @@ export default function App({ data = objectivesData }) {
   );
 
   useEffect(() => {
-    const a = criteriaSort(sortMode, data, curObjective);
-    setScenNames(a);
-    setCurScenIdx(a.indexOf(curScen));
+    const newOrderedScenNames = criteriaSort(sortMode, data, curObjective);
+
+    setOrderedScenNames(newOrderedScenNames);
+    setCurScenIdx(newOrderedScenNames.indexOf(curScen));
   }, [curObjective, sortMode]);
 
   useEffect(() => {
-    if (curScenPreview === null) {
-      setCurScen(scenNames[curScenIdx]);
-    }
+    setCurScen(orderedScenNames[curScenIdx]);
   }, [curScenIdx]);
 
   useEffect(() => {
-    if (curScenPreview === null) {
-      setCurScenIdx(scenNames.indexOf(curScen));
-    } else {
-      setCurScenIdx(scenNames.indexOf(curScenPreview));
-    }
-  }, [curScenPreview]);
+    setCurScenIdx(orderedScenNames.indexOf(curScen));
+  }, [curScen]);
 
   useEffect(() => {
     setDelivInterps(createInterps(data, OBJ_NAMES, curScenPreview, curScen));
   }, [curScenPreview, curScen]);
 
-  const len = scenNames.length;
+  const len = orderedScenNames.length;
   const delivs =
     data[curObjective]["scens"][curScenPreview || curScen]["delivs"];
+
+  const scenList = useMemo(() => {
+    return Array.from(orderedScenNames)
+      .reverse()
+      .filter(
+        (scenName, i) =>
+          scenName === curScen ||
+          ticksExact(0, 0.9, 10)
+            .map((d) => Math.floor((d + 0.05) * orderedScenNames.length))
+            .includes(i)
+      );
+  }, [orderedScenNames, curScen]);
 
   return (
     <>
@@ -91,7 +104,11 @@ export default function App({ data = objectivesData }) {
             className="input-range"
             orient="vertical"
             type="range"
-            value={curScenIdx}
+            value={
+              curScenPreview
+                ? orderedScenNames.indexOf(curScenPreview)
+                : curScenIdx
+            }
             min="0"
             max={len - 1}
             onChange={(e) => void setCurScenIdx(e.target.value)}
@@ -171,7 +188,7 @@ export default function App({ data = objectivesData }) {
       </div>
       {showScens && (
         <div className={"ridgeline-overlay"}>
-          <div class="sort-types">
+          <div className="sort-types">
             <input
               type="radio"
               name="sort-type"
@@ -180,7 +197,7 @@ export default function App({ data = objectivesData }) {
               checked={sortMode === "median"}
               onChange={() => void setSortMode("median")}
             />
-            <label for="median">Median</label>
+            <label htmlFor="median">Median</label>
 
             <input
               type="radio"
@@ -190,52 +207,38 @@ export default function App({ data = objectivesData }) {
               checked={sortMode === "deliveries"}
               onChange={() => void setSortMode("deliveries")}
             />
-            <label for="deliveries">Max. Deliveries</label>
+            <label htmlFor="deliveries">Max. Deliveries</label>
           </div>
           <div
             className={
-              "overlay-container" +
-              (curScenPreview ? " previewing" : " not-previewing")
+              "overlay-container" + (curScenPreview ? " previewing" : "")
             }
             onMouseLeave={() => setCurScenPreview(null)}
           >
-            <AnimateList>
-              {Array.from(scenNames)
-                .reverse()
-                .filter(
-                  (scenName, i) =>
-                    scenName === curScen ||
-                    ticksExact(0, 0.9, 10)
-                      .map((d) => Math.floor((d + 0.05) * scenNames.length))
-                      .includes(i)
-                )
-                .map((scenName, i) => (
-                  <div
-                    key={scenName}
-                    className={
-                      (curScenPreview === scenName
-                        ? "previewing"
-                        : "not-previewing") +
-                      (scenName === curScen ? " current-scene" : "")
-                    }
-                    onMouseEnter={() => setCurScenPreview(scenName)}
-                    onClick={() => {
-                      // setCurScenPreview(null)
-                      setCurScen(scenName);
-                    }}
-                  >
-                    <DotPDFLite
-                      data={data[curObjective]["scens"][scenName]["delivs"].map(
-                        (d) => Math.min(Math.max(0, d), MAX_DELIVS)
-                      )}
-                      goal={goal}
-                      width={300}
-                      height={100}
-                      grad={i / 11}
-                    />
-                    <span>{scenName}</span>
-                  </div>
-                ))}
+            <AnimateList keyList={scenList}>
+              {scenList.map((scenName) => (
+                <div
+                  key={scenName === curScen ? "highlighted" : scenName}
+                  className={
+                    (curScenPreview === scenName ? "previewing " : "") +
+                    (scenName === curScen ? " current-scene" : "")
+                  }
+                  onMouseEnter={() => setCurScenPreview(scenName)}
+                  onClick={() => {
+                    setCurScen(scenName);
+                  }}
+                >
+                  <DotPDFLite
+                    data={data[curObjective]["scens"][scenName]["delivs"].map(
+                      (d) => Math.min(Math.max(0, d), MAX_DELIVS)
+                    )}
+                    goal={goal}
+                    width={300}
+                    height={100}
+                  />
+                  <span>{scenName}</span>
+                </div>
+              ))}
             </AnimateList>
             <div
               className="dot-overlay-razor"
@@ -255,112 +258,46 @@ export default function App({ data = objectivesData }) {
   );
 }
 
-const getBoundingClientRect = (element) => {
-  const { top, right, bottom, left, width, height, x, y } =
-    element.getBoundingClientRect();
-  return { top, right, bottom, left, width, height, x, y };
-};
+function AnimateList({ keyList, children }) {
+  const currBBoxes = useRef({});
 
-const calculateBoundingBoxes = (children, refs) => {
-  const boundingBoxes = {};
-
-  if (!refs) return boundingBoxes;
-
-  React.Children.forEach(children, (child) => {
-    const ref = refs[child.key];
-
-    if (!ref) return;
-    const domNode = ref;
-    const nodeBoundingBox = domNode;
-    if (nodeBoundingBox === null) return;
-
-    boundingBoxes[child.key] = nodeBoundingBox;
-  });
-
-  return boundingBoxes;
-};
-function usePrevious(value) {
-  const currentRef = useRef(value);
-  const previousRef = useRef();
-
-  if (currentRef.current !== value) {
-    previousRef.current = currentRef.current;
-    currentRef.current = value;
-  }
-  return previousRef.current;
-}
-
-function AnimateList({ children }) {
-  const [boundingBox, setBoundingBox] = useState({});
-  const [prevBoundingBox, setPrevBoundingBox] = useState({});
-  const prevChildren = usePrevious(children);
-
-  const itemsRef = useRef({});
-
-  const curRef = useRef({});
-  const previousRef = useRef({});
+  const prevBBoxes = useRef({});
   const domRefs = useRef({});
 
   useLayoutEffect(() => {
-    // const exists = React.Children.map(children, (child) => child.key);
-    // for (let k in itemsRef.current) {
-    //   if (!exists.includes(k)) delete itemsRef.current[k];
-    // }
-    // itemsRef.current = itemsRef.current.slice(0, children.length);
-  }, [children]);
+    prevBBoxes.current = {};
 
-  useLayoutEffect(() => {
-    previousRef.current = structuredClone(curRef.current);
-    curRef.current = structuredClone(itemsRef.current);
+    for (const k in currBBoxes.current) {
+      prevBBoxes.current[k] = currBBoxes.current[k];
+    }
 
-    // console.log("asdf", previousRef.current);
-    // console.log(curRef.current);
-  }, [children]);
+    currBBoxes.current = {};
 
-  useLayoutEffect(() => {
-    const newBoundingBox = calculateBoundingBoxes(children, itemsRef.current);
-    setBoundingBox((a) => ({
-      ...a,
-      ...newBoundingBox,
-    }));
-  }, [children]);
+    for (const k in domRefs.current) {
+      currBBoxes.current[k] = domRefs.current[k].getBoundingClientRect();
+    }
 
-  useLayoutEffect(() => {
-    const prevBoundingBox = calculateBoundingBoxes(
-      prevChildren,
-      previousRef.current
-    );
-    setPrevBoundingBox((a) => ({
-      ...a,
-      ...prevBoundingBox,
-    }));
-  }, [prevChildren]);
-
-  useLayoutEffect(() => {
-    const hasPrevBoundingBox = Object.keys(prevBoundingBox).length;
+    const hasPrevBoundingBox = Object.keys(prevBBoxes.current).length;
 
     if (hasPrevBoundingBox) {
       React.Children.forEach(children, (child) => {
-        if (itemsRef.current[child.key] === undefined) return;
-
-        const domNode = itemsRef.current[child.key];
-        const firstBox = prevBoundingBox[child.key];
-        const lastBox = boundingBox[child.key];
+        const firstBox = currBBoxes.current[child.key];
+        const lastBox = prevBBoxes.current[child.key];
 
         if (lastBox === undefined || firstBox === undefined) return;
         const changeInX = firstBox.top - lastBox.top;
 
-        if (changeInX) {
+        if (
+          changeInX &&
+          (child.key !== "highlighted" || keyList.length != 10)
+        ) {
           requestAnimationFrame(() => {
-            // Before the DOM paints, invert child to old position
             domRefs.current[
               child.key
-            ].style.transform = `translateY(${changeInX}px)`;
+            ].style.transform = `translateY(${-changeInX}px)`;
             domRefs.current[child.key].style.transition = "transform 0s";
 
             requestAnimationFrame(() => {
-              // After the previous frame, remove
-              // the transistion to play the animation
               domRefs.current[child.key].style.transform = "";
               domRefs.current[child.key].style.transition = "transform 500ms";
             });
@@ -368,15 +305,15 @@ function AnimateList({ children }) {
         }
       });
     }
-  }, [prevBoundingBox]);
+  }, [keyList]);
+
+  domRefs.current = {};
 
   return React.Children.map(children, (child) => {
     return React.cloneElement(child, {
       ref: (el) => {
-        const a = el;
-        if (a) {
-          itemsRef.current[child.key] = getBoundingClientRect(el);
-          domRefs.current[child.key] = a;
+        if (el) {
+          domRefs.current[child.key] = el;
         }
       },
     });

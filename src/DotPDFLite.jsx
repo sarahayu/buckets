@@ -46,13 +46,7 @@ function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
   return circs;
 }
 
-export default function DotPDFLite({
-  data,
-  goal,
-  width = 600,
-  height = 400,
-  grad,
-}) {
+export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
   const svgElem = useRef();
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
@@ -116,9 +110,7 @@ export default function DotPDFLite({
       )
       .attr("class", "icons")
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
-      .attr("fill", (d) =>
-        d[0] > goal ? d3.interpolate("blue", "red")(grad) : "black"
-      );
+      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
   }, [data]);
 
   useEffect(() => {
@@ -136,9 +128,7 @@ export default function DotPDFLite({
         );
       })
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
-      .attr("fill", (d) =>
-        d[0] > goal ? d3.interpolate("blue", "red")(grad) : "black"
-      );
+      .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
     setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 
