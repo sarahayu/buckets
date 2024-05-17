@@ -48,15 +48,15 @@ export default function App({ data = objectivesData }) {
   const { current: OBJ_NAMES } = useRef(Object.keys(data));
   const [sortMode, setSortMode] = useState("median");
   const [orderedScenNames, setOrderedScenNames] = useState(
-    criteriaSort(sortMode, data, OBJ_NAMES[0])
+    criteriaSort(sortMode, data, OBJ_NAMES[13])
   );
 
-  const [curObjective, setCurObjective] = useState(OBJ_NAMES[0]);
+  const [curObjective, setCurObjective] = useState(OBJ_NAMES[13]);
   const [curScenIdx, setCurScenIdx] = useState(0);
   const [curScen, setCurScen] = useState(orderedScenNames[curScenIdx]);
   const [curScenPreview, setCurScenPreview] = useState(null);
   const [goal, setGoal] = useState(200);
-  const [showScens, setShowScens] = useState(true);
+  const [showScens, setShowScens] = useState(false);
   const [delivInterps, setDelivInterps] = useState(
     createInterps(data, OBJ_NAMES, curScenPreview, curScen)
   );
@@ -69,11 +69,13 @@ export default function App({ data = objectivesData }) {
   }, [curObjective, sortMode]);
 
   useEffect(() => {
-    setCurScen(orderedScenNames[curScenIdx]);
+    if (orderedScenNames[curScenIdx] !== curScen)
+      setCurScen(orderedScenNames[curScenIdx]);
   }, [curScenIdx]);
 
   useEffect(() => {
-    setCurScenIdx(orderedScenNames.indexOf(curScen));
+    if (orderedScenNames.indexOf(curScen) !== curScenIdx)
+      setCurScenIdx(orderedScenNames.indexOf(curScen));
   }, [curScen]);
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function App({ data = objectivesData }) {
       .filter(
         (scenName, i) =>
           scenName === curScen ||
-          ticksExact(0, 0.9, 10)
+          ticksExact(0, 0.9, 20)
             .map((d) => Math.floor((d + 0.05) * orderedScenNames.length))
             .includes(i)
       );
@@ -234,7 +236,7 @@ export default function App({ data = objectivesData }) {
                     )}
                     goal={goal}
                     width={300}
-                    height={100}
+                    height={200}
                   />
                   <span>{scenName}</span>
                 </div>
@@ -289,7 +291,7 @@ function AnimateList({ keyList, children }) {
 
         if (
           changeInX &&
-          (child.key !== "highlighted" || keyList.length != 10)
+          (child.key !== "highlighted" || keyList.length != 20)
         ) {
           requestAnimationFrame(() => {
             domRefs.current[

@@ -238,11 +238,19 @@ input::-moz-focus-inner {
   align-items: end;
   font-size: 1rem;
   cursor: pointer;
-  height: 63px;
+  height: 23px;
   -webkit-filter: none;
   filter: none;
   /* border: 1px solid red; */
   width: min-content;
+}
+
+.overlay-container .icons {
+  visibility: hidden;
+}
+
+.overlay-container .previewing .icons {
+  visibility: visible;
 }
 
 .overlay-container > *.previewing {
