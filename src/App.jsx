@@ -220,7 +220,7 @@ export default function App({ data = objectivesData }) {
             <AnimateList keyList={scenList}>
               {scenList.map((scenName) => (
                 <div
-                  key={scenName === curScen ? "highlighted" : scenName}
+                  key={scenName}
                   className={
                     (curScenPreview === scenName ? "previewing " : "") +
                     (scenName === curScen ? " current-scene" : "")
@@ -289,10 +289,7 @@ function AnimateList({ keyList, children }) {
         if (lastBox === undefined || firstBox === undefined) return;
         const changeInX = firstBox.top - lastBox.top;
 
-        if (
-          changeInX &&
-          (child.key !== "highlighted" || keyList.length != 20)
-        ) {
+        if (changeInX) {
           requestAnimationFrame(() => {
             domRefs.current[
               child.key
