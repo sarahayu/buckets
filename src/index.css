@@ -2,6 +2,10 @@
   font-family: Helvetica, sans-serif !important;
 }
 
+body {
+  background-color: rgb(251, 251, 255);
+}
+
 svg {
   vertical-align: top;
 }
@@ -212,7 +216,8 @@ input::-moz-focus-inner {
   isolation: isolate;
   /* display: grid; */
 
-  background-color: rgba(200, 200, 200, 0.6);
+  background-color: rgba(251, 251, 255, 0.6);
+  box-shadow: -1px 0px 8px rgba(200, 200, 200, 1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -236,7 +241,9 @@ input::-moz-focus-inner {
   position: relative;
   display: flex;
   align-items: end;
-  font-size: 1rem;
+  font-size: 0.7rem;
+  color: gray;
+  font-weight: 300;
   cursor: pointer;
   height: 23px;
   -webkit-filter: none;

@@ -70,7 +70,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
 
-  const margin = { top: 10, right: 10, bottom: 10, left: 0 };
+  const margin = { top: 10, right: 10, bottom: 3, left: 0 };
 
   useEffect(() => {
     const svg = d3
@@ -113,7 +113,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       .datum(density)
       .attr("fill", "none")
       .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
+      .attr("stroke-width", 1)
       .attr(
         "d",
         d3
@@ -149,7 +149,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       .datum(density)
       .attr("fill", "none")
       .attr("stroke", "steelblue")
-      .attr("stroke-width", 1.5)
+      .attr("stroke-width", 1)
       .attr(
         "d",
         d3
