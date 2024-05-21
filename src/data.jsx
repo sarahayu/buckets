@@ -24,3 +24,9 @@ export const objectivesData = await (async function () {
 
   return flatGroupBy(objs, ({ obj }) => obj);
 })();
+
+export const factorsData = await (async function () {
+  const objs = await (await fetch("./factors.json")).json();
+
+  return objs;
+})();

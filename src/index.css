@@ -352,3 +352,17 @@ input::-moz-focus-inner {
 .sort-types label:not(:last-child) {
   border-right: 1px solid steelblue;
 }
+
+.editor {
+  display: flex;
+  align-items: center;
+  gap: 5rem;
+  margin: 1rem auto;
+  width: min-content;
+}
+
+.sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
