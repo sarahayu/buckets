@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { useRef } from "react";
 
 export function ticksExact(start, stop, count) {
   return d3.range(count).map((i) => (i / (count - 1)) * (stop - start) + start);
@@ -71,4 +72,28 @@ export function flatGroupBy(objs, fn) {
   }
 
   return newObjs;
+}
+
+// https://www.developerway.com/posts/implementing-advanced-use-previous-hook
+export function usePrevious(value, isEqualFunc) {
+  // initialise the ref with previous and current values
+  const ref = useRef({
+    value: value,
+    prev: null,
+  });
+
+  const current = ref.current.value;
+
+  // if the value passed into hook doesn't match what we store as "current"
+  // move the "current" to the "previous"
+  // and store the passed value as "current"
+  if (isEqualFunc ? !isEqualFunc(value, current) : value !== current) {
+    ref.current = {
+      value: value,
+      prev: current,
+    };
+  }
+
+  // return the previous value only
+  return ref.current.prev;
 }

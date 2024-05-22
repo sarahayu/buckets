@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { bucketPath, ticksExact } from "./utils";
+import { bucketPath, ticksExact, usePrevious } from "./utils";
 
 const DEGREE_SWAY = 40;
 const LEVELS = 10;
@@ -12,9 +12,14 @@ export default function BucketViz({
   height = 400,
 }) {
   const svgElem = useRef();
-  const prevWaterLevels = useRef(d3.local());
   const waters = useRef();
-  const [ready, setReady] = useState(false);
+
+  const waterLevels = useMemo(
+    () => ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
+    [levelInterp]
+  );
+
+  const prevWaterLevels = usePrevious(waterLevels);
 
   useEffect(() => {
     console.log("in init");
@@ -51,36 +56,27 @@ export default function BucketViz({
     waters.current = svg
       .select(".graph-area")
       .selectAll(".bucketBox")
-      .data(
-        ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
-        (_, i) => i
-      )
+      .data(waterLevels, (_, i) => i)
       .enter()
       .append("rect")
       .attr("class", "bucketBox")
       .attr("width", width * 2)
       .attr("height", height * 2)
       .attr("fill", (_, i) => d3.interpolateBlues(i / LEVELS))
-      .attr("x", -width / 2)
-      .each(function () {
-        prevWaterLevels.current.set(this, 0);
-      });
+      .attr("x", -width / 2);
   }, []);
 
   useEffect(() => {
     const diffMap = {};
 
     waters.current
-      .data(
-        ticksExact(0, 1, LEVELS + 1).map((d) => levelInterp(d)),
-        (_, i) => i
-      )
-      .each(function (d, i) {
-        let diff = Math.abs(prevWaterLevels.current.get(this) - d);
-        prevWaterLevels.current.set(this, d);
-
-        diffMap[i] = diff;
-      });
+      .data(waterLevels, (_, i) => i)
+      .each(
+        (d, i) =>
+          void (diffMap[i] = prevWaterLevels
+            ? Math.abs(prevWaterLevels[i] - d)
+            : 0)
+      );
 
     waters.current
       .transition("waterLevel")

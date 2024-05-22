@@ -67,7 +67,6 @@ function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
 
 export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
   const svgElem = useRef();
-  const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
 
   const margin = { top: 10, right: 10, bottom: 3, left: 0 };
@@ -210,7 +209,6 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       })
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
       .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
-    setCount(circles.filter((d) => d[0] > goal).length);
   }, [goal, circles]);
 
   return <svg className="dot-pdf-shadowed" ref={svgElem}></svg>;

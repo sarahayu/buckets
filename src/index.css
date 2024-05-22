@@ -75,6 +75,10 @@ svg {
   left: 100%;
 }
 
+.preview-indic.visible {
+  visibility: visible;
+}
+
 .input-range {
   place-self: center;
   height: 200px;

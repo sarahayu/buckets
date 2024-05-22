@@ -1,5 +1,4 @@
 import { flatGroupBy } from "./utils";
-import * as d3 from "d3";
 
 export const objectivesData = await (async function () {
   const objs = await (await fetch("./all_objectives.json")).json();
