@@ -1,27 +1,25 @@
-import { flatGroupBy } from "./utils";
+import { mapBy } from "./utils";
+
+export const MAX_DELIVS = 1200;
+export const SCENARIO_KEY_STRING = "scens";
+export const DELIV_KEY_STRING = "delivs";
 
 export const objectivesData = await (async function () {
   const objs = await (await fetch("./all_objectives.json")).json();
 
   for (const obj of objs) {
-    for (const scen of obj["scens"]) {
-      scen["delivs"] = scen["delivs"].sort((a, b) => b - a);
+    for (const scen of obj[SCENARIO_KEY_STRING]) {
+      scen[DELIV_KEY_STRING] = scen[DELIV_KEY_STRING].map((v) =>
+        Math.min(Math.max(0, v), MAX_DELIVS)
+      ).sort((a, b) => b - a);
     }
-    obj["scens"] = flatGroupBy(obj["scens"], ({ name }) => name);
-
-    // obj["least_to_most"] = Object.keys(obj["scens"]).sort(
-    //   (a, b) =>
-    //     d3.mean(obj["scens"][a]["delivs"]) - d3.mean(obj["scens"][b]["delivs"])
-    // );
+    obj[SCENARIO_KEY_STRING] = mapBy(
+      obj[SCENARIO_KEY_STRING],
+      ({ name }) => name
+    );
   }
 
-  // // convert array to map
-  // let scen_map = {};
-  // for (const scen of objs[0]["scens"]) {
-  //   scen_map[scen["name"]] = scen["delivs"].sort((a, b) => b - a);
-  // }
-
-  return flatGroupBy(objs, ({ obj }) => obj);
+  return mapBy(objs, ({ obj }) => obj);
 })();
 
 export const factorsData = await (async function () {

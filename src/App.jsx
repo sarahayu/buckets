@@ -1,4 +1,6 @@
 import React, {
+  createContext,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -6,186 +8,197 @@ import React, {
   useState,
 } from "react";
 import * as d3 from "d3";
-import { objectivesData } from "./data";
-import { ticksExact, usePrevious } from "./utils";
-import BucketViz from "./BucketViz";
-import DotPDF from "./DotPDF";
-import DotPDFLite from "./DotPDFLite";
+import {
+  DELIV_KEY_STRING,
+  MAX_DELIVS,
+  SCENARIO_KEY_STRING,
+  objectivesData,
+} from "./data";
+import { ticksExact, usePrevious } from "./bucket-lib/utils";
+import BucketGlyph from "./bucket-lib/BucketGlyph";
+import DotHistogram from "./DotHistogram";
+import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
 
-const MAX_DELIVS = 1200;
+const DEFAULT_GOAL = 200;
+const DEFAULT_OBJECTIVE_IDX = 13;
+const DEFAULT_SORT_MODE = "median";
+
+const AppContext = createContext({});
 
 export default function App({ data = objectivesData }) {
-  const { current: OBJECTIVE_NAMES } = useRef(Object.keys(data));
-  const { current: FIRST_OBJECTIVE } = useRef(OBJECTIVE_NAMES[13]);
+  const { current: objectiveIDs } = useRef(Object.keys(data));
 
-  const [sortMode, setSortMode] = useState("median");
-  const [curObjective, setCurObjective] = useState(FIRST_OBJECTIVE);
+  const [goal, setGoal] = useState(DEFAULT_GOAL);
+  const [showScens, setShowScens] = useState(false);
+  const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
+
+  const [curObjectiveID, setCurObjectiveID] = useState(
+    objectiveIDs[DEFAULT_OBJECTIVE_IDX]
+  );
   const [curScenIdx, setCurScenIdx] = useState(0);
   const [curScenPreviewIdx, setCurScenPreviewIdx] = useState(null);
 
-  const [goal, setGoal] = useState(200);
-  const [showScens, setShowScens] = useState(false);
-
-  const orderedScenNames = useMemo(
-    () => criteriaSort(sortMode, data, curObjective),
-    [sortMode, curObjective]
+  const { curDelivInterps, curPercentileScens, curOrderedScenIDs } = useCaches(
+    data,
+    objectiveIDs,
+    curObjectiveID,
+    curScenIdx,
+    curScenPreviewIdx,
+    sortMode
   );
-  const prevOrderedScenNames = usePrevious(orderedScenNames);
 
-  const curScenActual = orderedScenNames[curScenIdx];
-  const curScenPreview =
-    curScenPreviewIdx !== null ? orderedScenNames[curScenPreviewIdx] : null;
-  const curScen = curScenPreview || curScenActual;
-
-  useEffect(() => {
-    if (prevOrderedScenNames)
-      setCurScenIdx(orderedScenNames.indexOf(prevOrderedScenNames[curScenIdx]));
-  }, [sortMode, curObjective]);
-
-  const delivInterps = useMemo(() => {
-    return createInterps(data, OBJECTIVE_NAMES, curScen);
-  }, [curScenIdx, curScenPreviewIdx]);
-
-  const delivsMap = useMemo(() => {
-    const map = {};
-
-    for (const scenName of orderedScenNames) {
-      map[scenName] = data[curObjective]["scens"][scenName]["delivs"].map((d) =>
-        Math.min(Math.max(0, d), MAX_DELIVS)
-      );
-    }
-
-    return map;
-  }, [curObjective]);
-
-  const scenList = useMemo(() => {
-    return Array.from(orderedScenNames)
-      .reverse()
-      .filter(
-        (scenName, i) =>
-          scenName === curScen ||
-          ticksExact(0, 0.9, 20)
-            .map((d) => Math.floor((d + 0.05) * orderedScenNames.length))
-            .includes(i)
-      );
-  }, [curScenIdx]);
-
-  const levelInterp = useMemo(
-    () => delivInterps[curObjective],
+  // TODO: fix? gotta memoize so bucket animations trigger
+  const curMainInterp = useMemo(
+    () => curDelivInterps[curObjectiveID],
     [curScenIdx, curScenPreviewIdx]
   );
 
+  const prevScenID = usePrevious(curOrderedScenIDs[curScenIdx]);
+
+  const curScenIDActual = curOrderedScenIDs[curScenIdx];
+  const curScenIDPreview =
+    curScenPreviewIdx !== null ? curOrderedScenIDs[curScenPreviewIdx] : null;
+  const curScenID = curScenIDPreview || curScenIDActual;
+
+  useEffect(() => {
+    if (prevScenID) setCurScenIdx(curOrderedScenIDs.indexOf(prevScenID));
+  }, [sortMode, curObjectiveID]);
+
   return (
-    <>
+    <AppContext.Provider
+      value={{
+        data,
+        objectiveIDs,
+        sortMode,
+        curObjectiveID,
+        curScenIdx,
+        curScenPreviewIdx,
+        curScenID,
+        curScenIDPreview,
+        curScenIDActual,
+        curPercentileScens,
+        goal,
+        showScens,
+        curOrderedScenIDs,
+      }}
+    >
       <div className="dashboard">
         <div className="slider-container">
-          <Inputter
-            {...{
-              curScenPreviewIdx,
-              curScenIdx,
-              orderedScenNames,
-              setCurScenIdx,
-              curScen,
-              setShowScens,
-            }}
+          <InputArea
+            setCurScenIdx={setCurScenIdx}
+            setShowScens={setShowScens}
           />
         </div>
         <div className="bucket-map-container">
-          <MainBucket {...{ curObjective, levelInterp, goal }} />
+          <MainBucket levelInterp={curMainInterp} />
 
           <div className="other-buckets-container">
-            {OBJECTIVE_NAMES.map((name) => (
-              <OtherBucketViz
-                key={name}
-                {...{ name, curObjective, setCurObjective, delivInterps }}
-              />
+            {objectiveIDs.map((objectiveID) => (
+              <SmallBucketTile
+                key={objectiveID}
+                label={objectiveID}
+                active={objectiveID !== curObjectiveID}
+                onClick={() => setCurObjectiveID(objectiveID)}
+              >
+                <BucketGlyph
+                  levelInterp={curDelivInterps[objectiveID]}
+                  width={50}
+                  height={50}
+                />
+              </SmallBucketTile>
             ))}
           </div>
         </div>
         <div className="pdf-container">
-          <DotPDF data={delivsMap[curScen]} goal={goal} setGoal={setGoal} />
+          <DotHistogram
+            data={
+              data[curObjectiveID][SCENARIO_KEY_STRING][curScenID][
+                DELIV_KEY_STRING
+              ]
+            }
+            goal={goal}
+            setGoal={setGoal}
+          />
         </div>
       </div>
       {showScens && (
         <Overlay
-          {...{
-            sortMode,
-            setSortMode,
-            curScenPreviewIdx,
-            setCurScenIdx,
-            setCurScenPreviewIdx,
-            curScenPreview,
-            curScenActual,
-            orderedScenNames,
-            delivsMap,
-            goal,
-            scenList,
-          }}
+          setSortMode={setSortMode}
+          setCurScenIdx={setCurScenIdx}
+          setCurScenPreviewIdx={setCurScenPreviewIdx}
         />
       )}
-    </>
+    </AppContext.Provider>
   );
 }
 
-function createInterps(data, objectives, scenName) {
-  const mapFunc = {};
-  objectives.forEach((name) => {
-    const delivs = data[name]["scens"][scenName]["delivs"];
-    mapFunc[name] = d3
-      .scaleLinear()
-      .domain(ticksExact(0, 1, delivs.length))
-      .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
-      .clamp(true);
-  });
-  return mapFunc;
+//
+// custom hook
+//
+
+function useCaches(
+  data,
+  objectiveIDs,
+  curObjectiveID,
+  curScenIdx,
+  curScenPreviewIdx,
+  sortMode
+) {
+  const curOrderedScenIDs = useMemo(
+    () => criteriaSort(sortMode, data, curObjectiveID),
+    [sortMode, curObjectiveID]
+  );
+
+  const curScenIDActual = curOrderedScenIDs[curScenIdx];
+  const curScenIDPreview =
+    curScenPreviewIdx !== null ? curOrderedScenIDs[curScenPreviewIdx] : null;
+  const curScenID = curScenIDPreview || curScenIDActual;
+
+  const curDelivInterps = useMemo(() => {
+    return createInterps(data, objectiveIDs, curScenID);
+  }, [curScenIdx, curScenPreviewIdx]);
+
+  const curPercentileScens = useMemo(() => {
+    return Array.from(curOrderedScenIDs)
+      .reverse()
+      .filter(
+        (scenID, i) =>
+          scenID === curScenID ||
+          ticksExact(0, 0.9, 20)
+            .map((d) => Math.floor((d + 0.05) * curOrderedScenIDs.length))
+            .includes(i)
+      );
+  }, [curScenIdx]);
+
+  return {
+    curDelivInterps,
+    curPercentileScens,
+    curOrderedScenIDs,
+  };
 }
 
-function criteriaSort(criteria, data, objective) {
-  if (criteria === "median") {
-    return Object.keys(data[objective]["scens"]).sort(
-      (a, b) =>
-        d3.mean(data[objective]["scens"][a]["delivs"]) -
-        d3.mean(data[objective]["scens"][b]["delivs"])
-    );
-  }
-  if (criteria === "deliveries") {
-    return Object.keys(data[objective]["scens"]).sort(
-      (a, b) =>
-        d3.max(data[objective]["scens"][a]["delivs"]) -
-        d3.max(data[objective]["scens"][b]["delivs"])
-    );
-  }
-}
+//
+// some components
+//
 
-function OtherBucketViz({ name, curObjective, setCurObjective, delivInterps }) {
+function SmallBucketTile({ label, active, onClick, children }) {
   return (
     <div
-      key={name}
       className={classNames("bucket-and-label", {
-        "cur-obj": name === curObjective,
+        "cur-obj": !active,
       })}
-      onClick={() => setCurObjective(name)}
+      onClick={onClick}
     >
-      <span>{name}</span>
-      <BucketViz
-        bucketId={name}
-        levelInterp={delivInterps[name]}
-        width={50}
-        height={50}
-      />
+      <span>{label}</span>
+      {children}
     </div>
   );
 }
 
-function Inputter({
-  curScenPreviewIdx,
-  curScenIdx,
-  orderedScenNames,
-  setCurScenIdx,
-  curScen,
-  setShowScens,
-}) {
+function InputArea({ setCurScenIdx, setShowScens }) {
+  const { curScenPreviewIdx, curScenIdx, curOrderedScenIDs, curScenID } =
+    useContext(AppContext);
   return (
     <>
       <input
@@ -194,12 +207,12 @@ function Inputter({
         type="range"
         value={curScenPreviewIdx === null ? curScenIdx : curScenPreviewIdx}
         min="0"
-        max={orderedScenNames.length - 1}
+        max={curOrderedScenIDs.length - 1}
         onChange={(e) => void setCurScenIdx(e.target.value)}
       />
       <div className="scen-name">
         <span>Current Scenario</span>
-        <span>{curScen}</span>
+        <span>{curScenID}</span>
         <span
           className={classNames("preview-indic", {
             visible: curScenPreviewIdx !== null,
@@ -215,17 +228,13 @@ function Inputter({
   );
 }
 
-function MainBucket({ curObjective, levelInterp, goal }) {
+function MainBucket({ levelInterp }) {
+  const { curObjectiveID, goal } = useContext(AppContext);
   return (
     <div className="bucket-viz">
       <div className="bucket-viz-container">
-        <span className="main-bucket-label">{curObjective}</span>
-        <BucketViz
-          bucketId={"mainbucket"}
-          levelInterp={levelInterp}
-          width={100}
-          height={100}
-        />
+        <span className="main-bucket-label">{curObjectiveID}</span>
+        <BucketGlyph levelInterp={levelInterp} width={100} height={100} />
         <div
           className="bucket-razor"
           style={{
@@ -247,19 +256,18 @@ function MainBucket({ curObjective, levelInterp, goal }) {
   );
 }
 
-function Overlay({
-  sortMode,
-  setSortMode,
-  curScenPreviewIdx,
-  setCurScenIdx,
-  setCurScenPreviewIdx,
-  curScenPreview,
-  curScenActual,
-  orderedScenNames,
-  delivsMap,
-  goal,
-  scenList,
-}) {
+function Overlay({ setSortMode, setCurScenIdx, setCurScenPreviewIdx }) {
+  const {
+    data,
+    sortMode,
+    curObjectiveID,
+    curScenPreviewIdx,
+    curScenIDPreview,
+    curScenIDActual,
+    curOrderedScenIDs,
+    goal,
+    curPercentileScens,
+  } = useContext(AppContext);
   return (
     <div className={"ridgeline-overlay"}>
       <div className="sort-types">
@@ -289,28 +297,32 @@ function Overlay({
         })}
         onMouseLeave={() => setCurScenPreviewIdx(null)}
       >
-        <AnimateList keyList={scenList}>
-          {scenList.map((scenName) => (
+        <AnimateList keyList={curPercentileScens}>
+          {curPercentileScens.map((scenID) => (
             <div
-              key={scenName}
+              key={scenID}
               className={classNames({
-                previewing: scenName === curScenPreview,
-                "current-scene": scenName === curScenActual,
+                previewing: scenID === curScenIDPreview,
+                "current-scene": scenID === curScenIDActual,
               })}
               onMouseEnter={() =>
-                setCurScenPreviewIdx(orderedScenNames.indexOf(scenName))
+                setCurScenPreviewIdx(curOrderedScenIDs.indexOf(scenID))
               }
               onClick={() => {
-                setCurScenIdx(orderedScenNames.indexOf(scenName));
+                setCurScenIdx(curOrderedScenIDs.indexOf(scenID));
               }}
             >
-              <DotPDFLite
-                data={delivsMap[scenName]}
+              <DotHistogramSmall
+                data={
+                  data[curObjectiveID][SCENARIO_KEY_STRING][scenID][
+                    DELIV_KEY_STRING
+                  ]
+                }
                 goal={goal}
                 width={300}
                 height={200}
               />
-              <span>{scenName}</span>
+              <span>{scenID}</span>
             </div>
           ))}
         </AnimateList>
@@ -387,4 +399,38 @@ function AnimateList({ keyList, children }) {
       },
     });
   });
+}
+
+//
+// some functions
+//
+
+function createInterps(data, objectives, scenID) {
+  const mapFunc = {};
+  objectives.forEach((name) => {
+    const delivs = data[name][SCENARIO_KEY_STRING][scenID][DELIV_KEY_STRING];
+    mapFunc[name] = d3
+      .scaleLinear()
+      .domain(ticksExact(0, 1, delivs.length))
+      .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
+      .clamp(true);
+  });
+  return mapFunc;
+}
+
+function criteriaSort(criteria, data, objective) {
+  if (criteria === "median") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.mean(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.mean(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
+  if (criteria === "deliveries") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
 }

@@ -1,13 +1,12 @@
 import * as d3 from "d3";
 import { useEffect, useRef, useState } from "react";
-import { quantileBins, ticksExact } from "./utils";
+import { getQuantileBins } from "./bucket-lib/quantile-histogram";
+import { WATERDROP_ICON } from "./utils";
+import { MAX_DELIVS } from "./data";
 
-const DOMAIN = [0, 1200];
-const RANGE = [0, 80];
+const DOMAIN = [0, MAX_DELIVS];
 const NUM_CIRCLES = 20;
-const UNITS_PER_CIRC = (RANGE[1] - RANGE[0]) / NUM_CIRCLES;
 
-// This is what I need to compute kernel density estimation
 function kernelDensityEstimator(kernel, X) {
   return function (V) {
     return X.map(function (x) {
@@ -26,60 +25,26 @@ function kernelEpanechnikov(k) {
   };
 }
 
-const waterdrop = {
-  draw: function (context, size) {
-    context.moveTo(0, -size / 2);
-    context.lineTo(size / 4, -size / 4);
+const MARGIN = { top: 10, right: 10, bottom: 3, left: 0 };
 
-    context.arc(0, 0, size / Math.sqrt(2) / 2, -Math.PI / 4, (Math.PI * 5) / 4);
-    context.lineTo(0, -size / 2);
-    context.closePath();
-  },
-};
-
-function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
-  let histBins = d3
-    .histogram()
-    .value((d) => d)
-    .domain(dataDomain)
-    .thresholds(
-      ticksExact(
-        ...dataDomain,
-        Math.ceil(graphWidth / (graphHeight / NUM_CIRCLES))
-      )
-    )(data);
-
-  let binnedCircs = quantileBins(histBins, UNITS_PER_CIRC, NUM_CIRCLES);
-
-  let circs = [];
-
-  for (let b = 0; b < binnedCircs.length; b++) {
-    for (let y = 0; y < binnedCircs[b]; y++) {
-      circs.push([
-        (histBins[b].x1 + histBins[b].x0) / 2,
-        d3.scaleLinear(dataRange)((y + 0.5) / NUM_CIRCLES),
-      ]);
-    }
-  }
-
-  return circs;
-}
-
-export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
+export default function DotHistogramSmall({
+  data,
+  goal,
+  width = 600,
+  height = 400,
+}) {
   const svgElem = useRef();
   const [circles, setCircles] = useState([]);
-
-  const margin = { top: 10, right: 10, bottom: 3, left: 0 };
 
   useEffect(() => {
     const svg = d3
       .select(svgElem.current)
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
+      .attr("width", width + MARGIN.left + MARGIN.right)
+      .attr("height", height + MARGIN.top + MARGIN.bottom)
       .style("pointer-events", "none")
       .append("g")
       .attr("class", "graph-area")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
 
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
     const y = d3.scaleLinear().domain([0, 0.05]).range([height, 0]).clamp(true);
@@ -96,12 +61,6 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
     svg
       .append("g")
       .attr("transform", `translate(0, ${height})`)
-      // .call(
-      //   d3
-      //     .axisBottom()
-      //     .scale(d3.scaleLinear().domain(DOMAIN).range([0, width]))
-      //     .ticks(0, "")
-      // )
       .call((s) => {
         s.selectAll("line").attr("stroke", "gray");
         s.selectAll("path").attr("stroke", "gray");
@@ -122,7 +81,6 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
             return x(d[0]);
           })
           .y(function (d) {
-            // console.log(y(d[1]));
             return y(d[1]);
           })
       );
@@ -158,15 +116,20 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
             return x(d[0]);
           })
           .y(function (d) {
-            // console.log(y(d[1]));
             return y(d[1]);
           })
       );
 
     x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
-    y = d3.scaleLinear().domain(RANGE).range([height, 0]);
+    y = d3.scaleLinear().domain([0, data.length]).range([height, 0]);
 
-    const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
+    const circData = getQuantileBins(
+      data,
+      DOMAIN,
+      data.length / NUM_CIRCLES,
+      width,
+      height
+    );
     svg
       .selectAll(".icons")
       .data(circData, (_, i) => i)
@@ -178,7 +141,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
               (s) =>
                 void s
                   .append("path")
-                  .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+                  .attr("d", d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES))
             );
         },
         function update(s) {
@@ -186,7 +149,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
             (s) =>
               void s
                 .selectAll("path")
-                .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+                .attr("d", d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES))
           );
         }
       )
@@ -196,7 +159,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
 
   useEffect(() => {
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
-    const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
+    const y = d3.scaleLinear().domain([0, data.length]).range([height, 0]);
     d3.select(svgElem.current)
       .select(".graph-area")
       .selectAll(".icons")
@@ -204,7 +167,7 @@ export default function DotPDFLite({ data, goal, width = 600, height = 400 }) {
       .call((s) => {
         s.selectAll("path").attr(
           "d",
-          d3.symbol(waterdrop, height / NUM_CIRCLES)
+          d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES)
         );
       })
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)

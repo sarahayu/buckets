@@ -1,53 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { deltaData } from "./data";
-import { quantileBins, ticksExact } from "./utils";
+import { getQuantileBins } from "./bucket-lib/quantile-histogram";
+import { WATERDROP_ICON } from "./utils";
 
-const DOMAIN = [0, 1200];
-const RANGE = [0, 80];
 const NUM_CIRCLES = 20;
-const UNITS_PER_CIRC = (RANGE[1] - RANGE[0]) / NUM_CIRCLES;
+const MARGIN = { top: 10, right: 30, bottom: 50, left: 50 };
+const DOMAIN = [0, 1200];
 
-const waterdrop = {
-  draw: function (context, size) {
-    context.moveTo(0, -size / 2);
-    context.lineTo(size / 4, -size / 4);
-
-    context.arc(0, 0, size / Math.sqrt(2) / 2, -Math.PI / 4, (Math.PI * 5) / 4);
-    context.lineTo(0, -size / 2);
-    context.closePath();
-  },
-};
-
-function getQuantileBins(data, dataDomain, dataRange, graphWidth, graphHeight) {
-  let histBins = d3
-    .histogram()
-    .value((d) => d)
-    .domain(dataDomain)
-    .thresholds(
-      ticksExact(
-        ...dataDomain,
-        Math.ceil(graphWidth / (graphHeight / NUM_CIRCLES))
-      )
-    )(data);
-
-  let binnedCircs = quantileBins(histBins, UNITS_PER_CIRC, NUM_CIRCLES);
-
-  let circs = [];
-
-  for (let b = 0; b < binnedCircs.length; b++) {
-    for (let y = 0; y < binnedCircs[b]; y++) {
-      circs.push([
-        (histBins[b].x1 + histBins[b].x0) / 2,
-        d3.scaleLinear(dataRange)((y + 0.5) / NUM_CIRCLES),
-      ]);
-    }
-  }
-
-  return circs;
-}
-
-export default function DotPDF({
+export default function DotHistogram({
   data,
   goal,
   setGoal,
@@ -56,22 +16,20 @@ export default function DotPDF({
 }) {
   const svgElem = useRef();
   const razorElem = useRef();
-  const { current: ignoreText } = useRef((e) => e.preventDefault());
   const dragging = useRef(false);
+
   const [count, setCount] = useState(0);
   const [circles, setCircles] = useState([]);
-
-  const margin = { top: 10, right: 30, bottom: 50, left: 50 };
 
   useEffect(() => {
     const svg = d3
       .select(svgElem.current)
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
+      .attr("width", width + MARGIN.left + MARGIN.right)
+      .attr("height", height + MARGIN.top + MARGIN.bottom)
       .style("pointer-events", "none")
       .append("g")
       .attr("class", "graph-area")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
 
     svg
       .append("g")
@@ -94,19 +52,19 @@ export default function DotPDF({
       d3
         .scaleLinear()
         .domain(DOMAIN)
-        .range([margin.left, width + margin.left])
+        .range([MARGIN.left, width + MARGIN.left])
         .clamp(true)(goal) + "px";
-    // razorElem.current.style.left = margin.left + "px";
-    // setGoal(0);
+
+    let ignoreFn = (e) => e.preventDefault();
 
     document.querySelector("#pdf-razor").addEventListener("mousedown", (e) => {
       dragging.current = true;
-      window.addEventListener("selectstart", ignoreText);
+      window.addEventListener("selectstart", ignoreFn);
     });
 
     document.addEventListener("mouseup", (e) => {
       dragging.current = false;
-      window.removeEventListener("selectstart", ignoreText);
+      window.removeEventListener("selectstart", ignoreFn);
     });
 
     document
@@ -114,11 +72,11 @@ export default function DotPDF({
       .addEventListener("mousemove", (e) => {
         if (dragging.current === true && e.target.id === "pdf-wrapper") {
           razorElem.current.style.left =
-            Math.min(Math.max(e.offsetX, margin.left), margin.left + width) +
+            Math.min(Math.max(e.offsetX, MARGIN.left), MARGIN.left + width) +
             "px";
           const goal = d3
             .scaleLinear()
-            .domain([margin.left, width + margin.left])
+            .domain([MARGIN.left, width + MARGIN.left])
             .range(DOMAIN)
             .clamp(true)(e.offsetX);
           setGoal(goal);
@@ -127,13 +85,19 @@ export default function DotPDF({
   }, []);
 
   useEffect(() => {
+    const dataRange = [0, data.length];
     const svg = d3.select(svgElem.current).select(".graph-area");
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
-    const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
+    const y = d3.scaleLinear().domain(dataRange).range([height, 0]);
 
-    const circData = getQuantileBins(data, DOMAIN, RANGE, width, height);
+    const circData = getQuantileBins(
+      data,
+      DOMAIN,
+      data.length / NUM_CIRCLES,
+      width,
+      height
+    );
     setCircles(circData);
-    // console.log("remaking");
     svg
       .selectAll(".icons")
       .data(circData, (_, i) => i)
@@ -145,7 +109,7 @@ export default function DotPDF({
               (s) =>
                 void s
                   .append("path")
-                  .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+                  .attr("d", d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES))
             );
         },
         function update(s) {
@@ -153,45 +117,42 @@ export default function DotPDF({
             (s) =>
               void s
                 .selectAll("path")
-                .attr("d", d3.symbol(waterdrop, height / NUM_CIRCLES))
+                .attr("d", d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES))
           );
         }
       )
       .attr("class", "icons")
-      // .attr("r", height / NUM_CIRCLES * 4)
       .transition("one")
-      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .delay((d) => d3.scaleLinear(dataRange).invert(d[1]) * 100)
       .duration(500)
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`)
-      // .attr("cx", (d) => x(d[0]))
-      // .attr("cy", (d) => y(d[1]))
       .transition("two")
-      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .delay((d) => d3.scaleLinear(dataRange).invert(d[1]) * 100)
       .duration(0)
       .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
   }, [data]);
 
   useEffect(() => {
+    const dataRange = [0, data.length];
     const x = d3.scaleLinear().domain(DOMAIN).range([0, width]);
-    const y = d3.scaleLinear().domain(RANGE).range([height, 0]);
+    const y = d3.scaleLinear().domain(dataRange).range([height, 0]);
     const a = d3
       .select(svgElem.current)
       .select(".graph-area")
       .selectAll(".icons")
-      // .selectAll("circle")
       .data(circles, (_, i) => i)
       .call((s) => {
         s.selectAll("path").attr(
           "d",
-          d3.symbol(waterdrop, height / NUM_CIRCLES)
+          d3.symbol(WATERDROP_ICON, height / NUM_CIRCLES)
         );
       });
     a.transition("one")
-      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .delay((d) => d3.scaleLinear(dataRange).invert(d[1]) * 100)
       .duration(500)
       .attr("transform", (d) => `translate(${x(d[0])},${y(d[1])})`);
     a.transition("two")
-      .delay((d) => d3.scaleLinear(RANGE).invert(d[1]) * 100)
+      .delay((d) => d3.scaleLinear(dataRange).invert(d[1]) * 100)
       .duration(0)
       .attr("fill", (d) => (d[0] > goal ? "steelblue" : "black"));
     setCount(circles.filter((d) => d[0] > goal).length);
