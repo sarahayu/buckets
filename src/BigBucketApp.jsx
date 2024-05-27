@@ -1,159 +1,90 @@
 import React, { useMemo, useState } from "react";
 import "./index.css";
-import "./reset.css";
 
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
-import { ticksExact } from "./utils";
-import { objectivesData } from "./data";
+import { ticksExact } from "./bucket-lib/utils";
+import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
 
-import { bucketPath, usePrevious } from "./utils";
+import { bucketPath } from "./bucket-lib/utils";
 
-const DEGREE_SWAY = 40;
 const LEVELS = 10;
+const LINE_WIDTH = 3;
+const DEFAULT_OBJECTIVE_IDX = 0;
 
-function createInterps(name, curScen) {
-  const delivs = objectivesData[name]["scens"][curScen]["delivs"];
-  return d3
-    .scaleLinear()
-    .domain(ticksExact(0, 1, delivs.length))
-    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
-    .clamp(true);
-}
+export default function BigBucketApp({ width = 600, height = 600 }) {
+  const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
+  const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
 
-function criteriaSort(criteria, data, objective) {
-  if (criteria === "median") {
-    return Object.keys(data[objective]["scens"]).sort(
-      (a, b) =>
-        d3.mean(data[objective]["scens"][a]["delivs"]) -
-        d3.mean(data[objective]["scens"][b]["delivs"])
-    );
-  }
-  if (criteria === "deliveries") {
-    return Object.keys(data[objective]["scens"]).sort(
-      (a, b) =>
-        d3.max(data[objective]["scens"][a]["delivs"]) -
-        d3.max(data[objective]["scens"][b]["delivs"])
-    );
-  }
-}
+  const bucketSvgSelector = useRef();
 
-export default function BigBucketApp({
-  bucketId = "bigbucket",
-  width = 600,
-  height = 600,
-}) {
-  const { current: OBJ_NAMES } = useRef(Object.keys(objectivesData));
-  const svgElem = useRef();
-  const waters = useRef();
-  const [objectiveIdx, setObjectiveIdx] = useState(0);
-
-  const orderedScenNames = useMemo(
-    () => criteriaSort("median", objectivesData, OBJ_NAMES[objectiveIdx]),
-    [objectiveIdx]
+  const orderedScenIDs = useMemo(
+    () => criteriaSort("median", objectivesData, objectiveIDs[curObjectiveIdx]),
+    [curObjectiveIdx]
   );
 
-  const scenList = useMemo(() => {
-    return Array.from(orderedScenNames).filter((_, i) =>
+  const curPercentileScens = useMemo(() => {
+    return Array.from(orderedScenIDs).filter((_, i) =>
       ticksExact(0, 0.9, 20)
-        .map((d) => Math.floor((d + 0.05) * orderedScenNames.length))
+        .map((d) => Math.floor((d + 0.05) * orderedScenIDs.length))
         .includes(i)
     );
-  }, [orderedScenNames]);
-
-  const levelInterp = useMemo(() => {
-    return createInterps(OBJ_NAMES[objectiveIdx], "expl0000");
-  }, [objectiveIdx]);
+  }, [orderedScenIDs]);
 
   const waterLevels = useMemo(
     () =>
       ticksExact(0, 1, LEVELS + 1).map((d) =>
-        scenList.map((s) => createInterps(OBJ_NAMES[objectiveIdx], s)(d))
+        curPercentileScens.map((s) =>
+          createInterps(objectiveIDs[curObjectiveIdx], s)(d)
+        )
       ),
-    [scenList, objectiveIdx]
+    [curPercentileScens, curObjectiveIdx]
   );
 
-  const prevWaterLevels = usePrevious(waterLevels);
+  const innerWidth = width - LINE_WIDTH * 2;
+  const innerHeight = height - LINE_WIDTH;
+
+  const x = d3.scaleLinear().range([0, innerWidth]);
+  const y = d3.scaleLinear().range([innerHeight, 0]);
 
   useEffect(() => {
-    console.log("in init");
-    const realwidth = width;
-    const realheight = height;
-    width = width - 2;
-    height = height - 1;
-
-    const svg = d3
-      .select(svgElem.current)
-      .attr("width", realwidth)
-      .attr("height", realheight)
+    const svgContainer = bucketSvgSelector.current
+      .attr("width", width)
+      .attr("height", height)
       .append("g")
-      .attr("transform", `translate(${1}, ${0})`);
-    svg
+      .attr("class", "svg-container")
+      .attr("transform", `translate(${LINE_WIDTH}, ${LINE_WIDTH / 2})`);
+
+    svgContainer
       .append("defs")
       .append("clipPath")
-      .attr("id", "bucket-mask-" + bucketId)
+      .attr("id", "bucket-mask")
       .append("path")
-      .attr("d", bucketPath(width, height));
+      .attr("d", bucketPath(innerWidth, innerHeight));
 
-    svg
+    svgContainer
       .append("g")
       .attr("class", "graph-area")
-      .attr("clip-path", `url(#bucket-mask-${bucketId})`);
-    svg
-      .append("g")
-      .append("path")
-      .attr("d", bucketPath(width, height).split("z")[0])
-      .attr("stroke", "lightgray")
-      .attr("stroke-width", 3)
-      .attr("fill", "none");
-
-    const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 1]).range([height, 0]).clamp(true);
-
-    waters.current = svg
-      .select(".graph-area")
+      .attr("clip-path", `url(#bucket-mask)`)
       .selectAll("path")
       .data(waterLevels)
       .join("path")
-      .attr("fill", (_, i) => d3.interpolateBlues(i / waterLevels.length))
-      .attr("d", (dd) => {
-        const ddd = [dd[0]];
+      .attr("fill", (_, i) => d3.interpolateBlues(i / waterLevels.length));
 
-        for (let i = 1; i < dd.length; i++) {
-          ddd.push(dd[i - 1]);
-          ddd.push(dd[i]);
-        }
-
-        return (
-          d3
-            .area()
-            // .curve(d3.curveBasis)
-            .x(function (_, i) {
-              return x(Math.ceil(i / 2) / (dd.length - 1));
-            })
-            .y1(function (d) {
-              return y(d);
-            })
-            .y0(function () {
-              return y(0);
-            })(ddd)
-        );
-      });
+    svgContainer
+      .append("path")
+      .attr("d", bucketPath(innerWidth, innerHeight).split("z")[0])
+      .attr("stroke", "lightgray")
+      .attr("stroke-linecap", "round")
+      .attr("stroke-width", LINE_WIDTH)
+      .attr("fill", "none");
   }, []);
 
   useEffect(() => {
-    const diffMap = {};
-    const realwidth = width;
-    const realheight = height;
-    width = width - 2;
-    height = height - 1;
-
-    const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 1]).range([height, 0]).clamp(true);
-    waters.current
+    bucketSvgSelector.current
+      .select(".graph-area")
+      .selectAll("path")
       .data(waterLevels)
-      .join("path")
-      .attr("fill", (_, i) => d3.interpolateBlues(i / waterLevels.length))
       .transition()
       .duration(500)
       .attr("d", (dd) => {
@@ -179,21 +110,48 @@ export default function BigBucketApp({
             })(ddd)
         );
       });
-  }, [levelInterp]);
+  }, [waterLevels]);
 
   return (
     <div className="big-bucket-wrapper">
       <select
-        value={objectiveIdx}
-        onChange={(e) => setObjectiveIdx(parseInt(e.target.value))}
+        value={curObjectiveIdx}
+        onChange={(e) => setCurObjectiveIdx(parseInt(e.target.value))}
       >
-        {OBJ_NAMES.map((o, i) => (
+        {objectiveIDs.map((o, i) => (
           <option name={i} value={i}>
             {o}
           </option>
         ))}
       </select>
-      <svg ref={svgElem}></svg>
+      <svg ref={(e) => void (bucketSvgSelector.current = d3.select(e))}></svg>
     </div>
   );
+}
+
+function createInterps(name, curScen) {
+  const delivs =
+    objectivesData[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
+  return d3
+    .scaleLinear()
+    .domain(ticksExact(0, 1, delivs.length))
+    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
+    .clamp(true);
+}
+
+function criteriaSort(criteria, data, objective) {
+  if (criteria === "median") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.mean(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.mean(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
+  if (criteria === "deliveries") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
 }

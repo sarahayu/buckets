@@ -1,16 +1,25 @@
 import React, { useMemo } from "react";
-import "./reset.css";
 import "./index.css";
 
-import { objectivesData } from "./data";
+import {
+  DELIV_KEY_STRING,
+  MAX_DELIVS,
+  SCENARIO_KEY_STRING,
+  objectivesData,
+} from "./data";
 import { factorsData } from "./data";
 
 import * as d3 from "d3";
 import { useEffect, useRef, useState } from "react";
-import BucketViz from "./BucketViz";
-import { ticksExact } from "./utils";
+import BucketGlyph from "./bucket-lib/BucketGlyph";
+import { ticksExact } from "./bucket-lib/utils";
 
-const domains = {
+const DEFAULT_SCENARIO = "expl0000";
+const DEFAULT_OBJECTIVE_IDX = 0;
+const DEFAULT_SLIDER_VALS = 0.25;
+const LEVELS = 10;
+
+const DOMAINS = {
   demand: d3.scaleLinear([1, 4]),
   carryover: d3.scaleLinear([1, 3]),
   priority: d3.scaleLinear([1, 2]),
@@ -18,16 +27,196 @@ const domains = {
   minflow: d3.scaleLinear([1, 4]),
 };
 
-function getKey({ demand, carryover, priority, regs, minflow }) {
+export default function SliderApp() {
+  const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
+
+  const [curScenID, setCurScenID] = useState(DEFAULT_SCENARIO);
+  const [objectiveIdx, setObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
+
+  const [demand, setDemand] = useState(DEFAULT_SLIDER_VALS);
+  const [carryover, setCarryover] = useState(DEFAULT_SLIDER_VALS);
+  const [priority, setPriority] = useState(DEFAULT_SLIDER_VALS);
+  const [regs, setRegs] = useState(DEFAULT_SLIDER_VALS);
+  const [minflow, setMinflow] = useState(DEFAULT_SLIDER_VALS);
+
+  const curInterp = useMemo(
+    () => createInterps(objectiveIDs[objectiveIdx], curScenID),
+    [curScenID, objectiveIdx]
+  );
+
+  useEffect(
+    () =>
+      void setCurScenID(
+        factorsData[
+          getKey(
+            Math.round(DOMAINS["demand"](demand)),
+            Math.round(DOMAINS["carryover"](carryover)),
+            Math.round(DOMAINS["priority"](priority)),
+            Math.round(DOMAINS["regs"](regs)),
+            Math.round(DOMAINS["minflow"](minflow))
+          )
+        ]
+      ),
+    [demand, carryover, priority, regs, minflow]
+  );
+
+  const variables = [
+    {
+      label: "demand [1, 0.9, 0.8, 0.7]",
+      controlVar: "demand",
+      val: demand,
+      setter: setDemand,
+    },
+    {
+      label: "carryover [1.0, 1.1, 1.2]",
+      controlVar: "carryover",
+      val: carryover,
+      setter: setCarryover,
+    },
+    {
+      label: "priority [0, 1]",
+      controlVar: "priority",
+      val: priority,
+      setter: setPriority,
+    },
+    {
+      label: "regs [1, 2, 3, 4]",
+      controlVar: "regs",
+      val: regs,
+      setter: setRegs,
+    },
+    {
+      label: "minflow [0, 0.4, 0.6, 0.8]",
+      controlVar: "minflow",
+      val: minflow,
+      setter: setMinflow,
+    },
+  ];
+
+  return (
+    <>
+      <div className="editor">
+        <div className="sliders">
+          <select
+            value={objectiveIdx}
+            onChange={(e) => setObjectiveIdx(parseInt(e.target.value))}
+          >
+            {objectiveIDs.map((objectiveID, i) => (
+              <option name={i} value={i}>
+                {objectiveID}
+              </option>
+            ))}
+          </select>
+          {variables.map(({ label, controlVar, val, setter }) => (
+            <div>
+              <span>{label}</span>
+              <LineSlider
+                data={getLocalProbs(
+                  { demand, carryover, priority, regs, minflow },
+                  controlVar,
+                  objectiveIDs[objectiveIdx]
+                )}
+                val={val}
+                setVal={setter}
+              />
+            </div>
+          ))}
+        </div>
+        <div>
+          <BucketGlyph
+            levelInterp={curInterp}
+            width={300}
+            height={400}
+            resolution={LEVELS}
+          />
+          <span
+            style={{
+              display: "block",
+              textAlign: "center",
+            }}
+          >
+            {curScenID}
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const MARGIN = { top: 0, right: 0, bottom: 0, left: 0 };
+
+function LineSlider({ data, val, setVal, width = 400, height = 50 }) {
+  const svgElem = useRef();
+  const x = d3.scaleLinear().range([0, width]);
+  const y = d3.scaleLinear().range([height, 0]);
+
+  useEffect(() => {
+    svgElem.current
+      .attr("width", width + MARGIN.left + MARGIN.right)
+      .attr("height", height + MARGIN.top + MARGIN.bottom)
+      .style("border", "1px solid lightgrey")
+      .call((s) =>
+        s.node().addEventListener("mousedown", (e) =>
+          setVal(
+            d3
+              .scaleLinear()
+              .domain([MARGIN.left, width + MARGIN.left])
+              .clamp(true)(e.offsetX)
+          )
+        )
+      )
+      .append("g")
+      .attr("class", "graph-area")
+      .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
+      .call((s) =>
+        s
+          .selectAll("path")
+          .data(data)
+          .join("path")
+          .attr("fill", (_, i) => d3.interpolateBlues(i / data.length))
+      )
+      .append("rect")
+      .attr("fill", "red")
+      .attr("width", 5)
+      .attr("height", height);
+  }, []);
+
+  useEffect(() => {
+    svgElem.current
+      .selectAll("path")
+      .data(data)
+      .attr("d", (dd) =>
+        d3
+          .area()
+          .x((_, i) => x(i / (dd.length - 1)))
+          .y1((d) => y(d))
+          .y0(y(0))(dd)
+      );
+  }, [data]);
+
+  useEffect(() => {
+    svgElem.current.select("rect").attr("x", x(val));
+  }, [val]);
+
+  return (
+    <svg
+      className="line-slider"
+      ref={(e) => void (svgElem.current = d3.select(e))}
+    ></svg>
+  );
+}
+
+function getKey(demand, carryover, priority, regs, minflow) {
   return `${demand}${carryover}${priority}${regs}${minflow}`;
 }
 
 function createInterps(name, curScen) {
-  const delivs = objectivesData[name]["scens"][curScen]["delivs"];
+  const delivs =
+    objectivesData[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
   return d3
     .scaleLinear()
     .domain(ticksExact(0, 1, delivs.length))
-    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
+    .range(delivs.map((v) => Math.min(1, v / MAX_DELIVS) || 0))
     .clamp(true);
 }
 
@@ -38,44 +227,38 @@ function getLocalProbs(
 ) {
   let localProbs = [];
   for (const _demand of variable !== "demand"
-    ? [Math.round(domains["demand"](demand))]
+    ? [Math.round(DOMAINS["demand"](demand))]
     : d3.range(
-        domains["demand"].range()[0],
-        domains["demand"].range()[1] + 1
+        DOMAINS["demand"].range()[0],
+        DOMAINS["demand"].range()[1] + 1
       )) {
     for (const _carryover of variable !== "carryover"
-      ? [Math.round(domains["carryover"](carryover))]
+      ? [Math.round(DOMAINS["carryover"](carryover))]
       : d3.range(
-          domains["carryover"].range()[0],
-          domains["carryover"].range()[1] + 1
+          DOMAINS["carryover"].range()[0],
+          DOMAINS["carryover"].range()[1] + 1
         )) {
       for (const _priority of variable !== "priority"
-        ? [Math.round(domains["priority"](priority))]
+        ? [Math.round(DOMAINS["priority"](priority))]
         : d3.range(
-            domains["priority"].range()[0],
-            domains["priority"].range()[1] + 1
+            DOMAINS["priority"].range()[0],
+            DOMAINS["priority"].range()[1] + 1
           )) {
         for (const _regs of variable !== "regs"
-          ? [Math.round(domains["regs"](regs))]
+          ? [Math.round(DOMAINS["regs"](regs))]
           : d3.range(
-              domains["regs"].range()[0],
-              domains["regs"].range()[1] + 1
+              DOMAINS["regs"].range()[0],
+              DOMAINS["regs"].range()[1] + 1
             )) {
           for (const _minflow of variable !== "minflow"
-            ? [Math.round(domains["minflow"](minflow))]
+            ? [Math.round(DOMAINS["minflow"](minflow))]
             : d3.range(
-                domains["minflow"].range()[0],
-                domains["minflow"].range()[1] + 1
+                DOMAINS["minflow"].range()[0],
+                DOMAINS["minflow"].range()[1] + 1
               )) {
             localProbs.push(
               factorsData[
-                getKey({
-                  demand: _demand,
-                  carryover: _carryover,
-                  priority: _priority,
-                  regs: _regs,
-                  minflow: _minflow,
-                })
+                getKey(_demand, _carryover, _priority, _regs, _minflow)
               ]
             );
           }
@@ -90,236 +273,5 @@ function getLocalProbs(
     interps.push(createInterps(objective, scen));
   }
 
-  return ticksExact(0, 1, 10 + 1).map((t) => interps.map((d) => d(t)));
-}
-
-export default function SliderApp() {
-  const [scen, setScen] = useState("expl0000");
-  const { current: OBJ_NAMES } = useRef(Object.keys(objectivesData));
-  const [objectiveIdx, setObjectiveIdx] = useState(0);
-
-  const [demand, setDemand] = useState(0.25);
-  const [carryover, setCarryover] = useState(0.25);
-  const [priority, setPriority] = useState(0.25);
-  const [regs, setRegs] = useState(0.25);
-  const [minflow, setMinflow] = useState(0.25);
-
-  const interps = useMemo(() => {
-    return createInterps(OBJ_NAMES[objectiveIdx], scen);
-  }, [scen, objectiveIdx]);
-
-  useEffect(() => {
-    setScen(
-      factorsData[
-        getKey({
-          demand: Math.round(domains["demand"](demand)),
-          carryover: Math.round(domains["carryover"](carryover)),
-          priority: Math.round(domains["priority"](priority)),
-          regs: Math.round(domains["regs"](regs)),
-          minflow: Math.round(domains["minflow"](minflow)),
-        })
-      ]
-    );
-  }, [demand, carryover, priority, regs, minflow]);
-
-  return (
-    <>
-      <div className="editor">
-        <div className="sliders">
-          <select
-            value={objectiveIdx}
-            onChange={(e) => setObjectiveIdx(parseInt(e.target.value))}
-          >
-            {OBJ_NAMES.map((o, i) => (
-              <option name={i} value={i}>
-                {o}
-              </option>
-            ))}
-          </select>
-          <div>
-            <span>{"demand [1, 0.9, 0.8, 0.7]"}</span>
-            <LineSlider
-              data={getLocalProbs(
-                { demand, carryover, priority, regs, minflow },
-                "demand",
-                OBJ_NAMES[objectiveIdx]
-              )}
-              val={demand}
-              setVal={setDemand}
-            />
-          </div>
-          <div>
-            <span>{"carryover [1.0, 1.1, 1.2]"}</span>
-            <LineSlider
-              data={getLocalProbs(
-                { demand, carryover, priority, regs, minflow },
-                "carryover",
-                OBJ_NAMES[objectiveIdx]
-              )}
-              val={carryover}
-              setVal={setCarryover}
-            />
-          </div>
-          <div>
-            <span>{"priority [0, 1]"}</span>
-            <LineSlider
-              data={getLocalProbs(
-                { demand, carryover, priority, regs, minflow },
-                "priority",
-                OBJ_NAMES[objectiveIdx]
-              )}
-              val={priority}
-              setVal={setPriority}
-            />
-          </div>
-          <div>
-            <span>{"regs [1, 2, 3, 4]"}</span>
-            <LineSlider
-              data={getLocalProbs(
-                { demand, carryover, priority, regs, minflow },
-                "regs",
-                OBJ_NAMES[objectiveIdx]
-              )}
-              val={regs}
-              setVal={setRegs}
-            />
-          </div>
-          <div>
-            <span>{"minflow [0, 0.4, 0.6, 0.8]"}</span>
-            <LineSlider
-              data={getLocalProbs(
-                { demand, carryover, priority, regs, minflow },
-                "minflow",
-                OBJ_NAMES[objectiveIdx]
-              )}
-              val={minflow}
-              setVal={setMinflow}
-            />
-          </div>
-        </div>
-        <div>
-          <BucketViz
-            bucketId={1}
-            levelInterp={interps}
-            width={300}
-            height={400}
-          />
-          <span
-            style={{
-              display: "block",
-              textAlign: "center",
-            }}
-          >
-            {scen}
-          </span>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function LineSlider({
-  data = [
-    [0.2, 0.8],
-    [0.2, 0.5, 0.7],
-    [0.1, 0.3, 0.35],
-    [0.0, 0.0, 0.1],
-  ],
-  val,
-  setVal,
-  width = 400,
-  height = 50,
-}) {
-  const svgElem = useRef();
-
-  const margin = { top: 0, right: 0, bottom: 0, left: 0 };
-
-  useEffect(() => {
-    const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 1]).range([height, 0]).clamp(true);
-
-    const svg = d3
-      .select(svgElem.current)
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      //   .style("pointer-events", "none")
-      .style("border", "1px solid lightgrey")
-      .call((ee) => {
-        ee.node().addEventListener("mousedown", (e) => {
-          //   console.log("yo");
-          //   const left =
-          //     Math.min(Math.max(e.offsetX, margin.left), margin.left + width) +
-          //     "px";
-
-          //   ee.selectAll("rect").attr("x", left);
-          const val = d3
-            .scaleLinear()
-            .domain([margin.left, width + margin.left])
-            .range([0, 1])
-            .clamp(true)(e.offsetX);
-          setVal(val);
-        });
-      })
-      .append("g")
-      .attr("class", "graph-area")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .call((e) => {
-        e.selectAll("path")
-          .data(data)
-          .join("path")
-          .attr("fill", (_, i) => d3.interpolateBlues(i / data.length))
-          .attr("d", (dd) =>
-            d3
-              .area()
-              .x(function (_, i) {
-                return x(i / (dd.length - 1));
-              })
-              .y1(function (d) {
-                return y(d);
-              })
-              .y0(function () {
-                return y(0);
-              })(dd)
-          );
-      })
-      .append("rect");
-  }, []);
-
-  useEffect(() => {
-    const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-    const y = d3.scaleLinear().domain([0, 1]).range([height, 0]).clamp(true);
-
-    d3.select(svgElem.current)
-      .selectAll("path")
-      .data(data)
-      .join("path")
-      .attr("fill", (_, i) => d3.interpolateBlues(i / data.length))
-      .attr("d", (dd) =>
-        d3
-          .area()
-          .x(function (_, i) {
-            return x(i / (dd.length - 1));
-          })
-          .y1(function (d) {
-            return y(d);
-          })
-          .y0(function () {
-            return y(0);
-          })(dd)
-      );
-  }, [data]);
-
-  useEffect(() => {
-    const svg = d3.select(svgElem.current);
-    const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-
-    svg
-      .select("rect")
-      .attr("fill", "red")
-      .attr("width", 5)
-      .attr("height", height)
-      .attr("x", x(val));
-  }, [val]);
-
-  return <svg className="line-slider" ref={svgElem}></svg>;
+  return ticksExact(0, 1, LEVELS + 1).map((t) => interps.map((d) => d(t)));
 }

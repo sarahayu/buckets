@@ -23,6 +23,9 @@ export default function BucketGlyph({
 
   const prevLiquidLevels = usePrevious(liquidLevels);
 
+  const innerWidth = width - LINE_WIDTH * 2;
+  const innerHeight = height - LINE_WIDTH;
+
   useLayoutEffect(() => {
     const svgContainer = svgSelector.current
       .append("g")
@@ -52,9 +55,6 @@ export default function BucketGlyph({
   }, [id]);
 
   useLayoutEffect(() => {
-    const innerWidth = width - LINE_WIDTH * 2;
-    const innerHeight = height - LINE_WIDTH;
-
     const svgContainer = svgSelector.current
       .attr("width", width)
       .attr("height", height)
@@ -92,7 +92,7 @@ export default function BucketGlyph({
       .ease(d3.easeElasticOut.period(0.6))
       .delay((_, i) => i * (100 / resolution))
       .duration(1000)
-      .attr("y", (d) => height - d * height);
+      .attr("y", (d) => innerHeight - d * innerHeight);
 
     liquids
       .transition("liquidSway")
@@ -109,7 +109,7 @@ export default function BucketGlyph({
             diff *
             DEGREE_SWAY *
             (1 - t)
-          }, ${width / 2}, ${0})`;
+          }, ${innerWidth / 2}, ${0})`;
       });
   }, [liquidLevels, prevLiquidLevels, resolution, width, height]);
 

@@ -1,29 +1,15 @@
 import * as d3 from "d3";
 import { useEffect, useRef, useState } from "react";
 import { getQuantileBins } from "./bucket-lib/quantile-histogram";
-import { WATERDROP_ICON } from "./utils";
+import {
+  WATERDROP_ICON,
+  kernelDensityEstimator,
+  kernelEpanechnikov,
+} from "./utils";
 import { MAX_DELIVS } from "./data";
 
 const DOMAIN = [0, MAX_DELIVS];
 const NUM_CIRCLES = 20;
-
-function kernelDensityEstimator(kernel, X) {
-  return function (V) {
-    return X.map(function (x) {
-      return [
-        x,
-        d3.mean(V, function (v) {
-          return kernel(x - v);
-        }),
-      ];
-    });
-  };
-}
-function kernelEpanechnikov(k) {
-  return function (v) {
-    return Math.abs((v /= k)) <= 1 ? (0.75 * (1 - v * v)) / k : 0;
-  };
-}
 
 const MARGIN = { top: 10, right: 10, bottom: 3, left: 0 };
 
@@ -60,7 +46,7 @@ export default function DotHistogramSmall({
 
     svg
       .append("g")
-      .attr("transform", `translate(0, ${height})`)
+      .attr("transform", `translateY(${height})`)
       .call((s) => {
         s.selectAll("line").attr("stroke", "gray");
         s.selectAll("path").attr("stroke", "gray");
