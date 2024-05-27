@@ -63,7 +63,8 @@ export default function BucketViz({
       .attr("width", width * 2)
       .attr("height", height * 2)
       .attr("fill", (_, i) => d3.interpolateBlues(i / LEVELS))
-      .attr("x", -width / 2);
+      .attr("x", -width / 2)
+      .attr("y", height);
   }, []);
 
   useEffect(() => {
