@@ -52,7 +52,7 @@ export default function BucketGlyph({
       .attr("stroke-linecap", "round")
       .attr("stroke-width", LINE_WIDTH)
       .attr("fill", "none");
-  }, [id]);
+  }, [id]); // id shouldn't change, basically empty dependency array
 
   useLayoutEffect(() => {
     const svgContainer = svgSelector.current
@@ -67,25 +67,19 @@ export default function BucketGlyph({
     svgContainer
       .select(".bucket-outline")
       .attr("d", bucketPath(innerWidth, innerHeight).split("z")[0]);
+  }, [width, height, innerWidth, innerHeight]);
 
-    svgContainer
+  useLayoutEffect(() => {
+    const liquids = svgSelector.current
       .select(".graph-area")
       .selectAll(".bucketBox")
-      .data(ticksExact(0, 1, resolution + 1), (_, i) => i)
-      .enter()
-      .append("rect")
+      .data(liquidLevels)
+      .join("rect")
       .attr("class", "bucketBox")
       .attr("width", innerWidth * 2)
       .attr("height", innerHeight * 2)
       .attr("x", -innerWidth / 2)
-      .attr("y", innerHeight)
       .attr("fill", (_, i) => colorInterp(i / LEVELS));
-  }, [width, height, resolution, colorInterp]);
-
-  useLayoutEffect(() => {
-    const liquids = svgSelector.current
-      .selectAll(".bucketBox")
-      .data(liquidLevels, (_, i) => i);
 
     liquids
       .transition("liquidLevel")
@@ -111,7 +105,16 @@ export default function BucketGlyph({
             (1 - t)
           }, ${innerWidth / 2}, ${0})`;
       });
-  }, [liquidLevels, prevLiquidLevels, resolution, width, height]);
+  }, [
+    liquidLevels,
+    prevLiquidLevels,
+    width,
+    height,
+    innerWidth,
+    innerHeight,
+    resolution,
+    colorInterp,
+  ]);
 
   return (
     <div className="bucket-wrapper">

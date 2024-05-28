@@ -65,11 +65,7 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
     svgContainer
       .append("g")
       .attr("class", "graph-area")
-      .attr("clip-path", `url(#bucket-mask)`)
-      .selectAll("path")
-      .data(waterLevels)
-      .join("path")
-      .attr("fill", (_, i) => d3.interpolateBlues(i / waterLevels.length));
+      .attr("clip-path", `url(#bucket-mask)`);
 
     svgContainer
       .append("path")
@@ -85,6 +81,8 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
       .select(".graph-area")
       .selectAll("path")
       .data(waterLevels)
+      .join("path")
+      .attr("fill", (_, i) => d3.interpolateBlues(i / waterLevels.length))
       .transition()
       .duration(500)
       .attr("d", (dd) => {
@@ -102,12 +100,8 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
             .x(function (_, i) {
               return x(Math.ceil(i / 2) / (dd.length - 1));
             })
-            .y1(function (d) {
-              return y(d);
-            })
-            .y0(function () {
-              return y(0);
-            })(ddd)
+            .y1((d) => y(d))
+            .y0(() => y(0))(ddd)
         );
       });
   }, [waterLevels]);
@@ -118,9 +112,9 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
         value={curObjectiveIdx}
         onChange={(e) => setCurObjectiveIdx(parseInt(e.target.value))}
       >
-        {objectiveIDs.map((o, i) => (
+        {objectiveIDs.map((objectiveID, i) => (
           <option name={i} value={i}>
-            {o}
+            {objectiveID}
           </option>
         ))}
       </select>
