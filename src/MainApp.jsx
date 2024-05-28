@@ -26,7 +26,7 @@ const DEFAULT_SORT_MODE = "median";
 
 const AppContext = createContext({});
 
-export default function App({ data = objectivesData }) {
+export default function MainApp({ data = objectivesData }) {
   const { current: objectiveIDs } = useRef(Object.keys(data));
 
   const [goal, setGoal] = useState(DEFAULT_GOAL);
@@ -239,11 +239,8 @@ function MainBucket({ levelInterp }) {
           className="bucket-razor"
           style={{
             top:
-              d3
-                .scaleLinear()
-                .domain([0, MAX_DELIVS])
-                .range([100, 0])
-                .clamp(true)(goal) + "px",
+              d3.scaleLinear().domain([0, MAX_DELIVS]).range([100, 0])(goal) +
+              "px",
           }}
         >
           <p>Goal</p>
@@ -330,11 +327,8 @@ function Overlay({ setSortMode, setCurScenIdx, setCurScenPreviewIdx }) {
           className="dot-overlay-razor"
           style={{
             left:
-              d3
-                .scaleLinear()
-                .domain([0, MAX_DELIVS])
-                .range([0, 300])
-                .clamp(true)(goal) + "px",
+              d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(goal) +
+              "px",
           }}
         ></div>
       </div>
@@ -402,7 +396,7 @@ function AnimateList({ keyList, children }) {
 }
 
 //
-// some functions
+// some util functions
 //
 
 function createInterps(data, objectives, scenID) {
