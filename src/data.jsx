@@ -19,11 +19,15 @@ export const objectivesData = await (async function () {
     );
   }
 
+  console.log("DATA: loading objectives data");
+
   return mapBy(objs, ({ obj }) => obj);
 })();
 
 export const factorsData = await (async function () {
   const objs = await (await fetch("./factors.json")).json();
+
+  console.log("DATA: loading factors data");
 
   return objs;
 })();

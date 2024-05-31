@@ -1,6 +1,4 @@
 import React, { useMemo } from "react";
-import "./index.css";
-
 import {
   DELIV_KEY_STRING,
   MAX_DELIVS,

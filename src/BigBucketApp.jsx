@@ -1,6 +1,4 @@
 import React, { useMemo, useState } from "react";
-import "./index.css";
-
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
