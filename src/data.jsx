@@ -13,11 +13,14 @@ export const objectivesData = await (async function () {
         Math.min(Math.max(0, v), MAX_DELIVS)
       ).sort((a, b) => b - a);
     }
+    // obj[SCENARIO_KEY_STRING] = obj[SCENARIO_KEY_STRING].slice(0, 100);
     obj[SCENARIO_KEY_STRING] = mapBy(
       obj[SCENARIO_KEY_STRING],
       ({ name }) => name
     );
   }
+
+  // objs = objs.slice(0, 100);
 
   console.log("DATA: loading objectives data");
 
