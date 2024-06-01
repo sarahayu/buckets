@@ -76,14 +76,21 @@ export default function BubblesApp({ width = 800, height = 600 }) {
                 .data(dd.l, (_, i) => i)
                 .enter()
                 .append("path")
-                .attr("class", "stroked-paths")
+                // .attr("class", "stroked-paths")
+                // .attr("opacity", (1 / LEVELS) * 3)
                 .attr("d", "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z")
-                .attr("fill", (_, i) => d3.interpolateBlues(i / LEVELS))
-                .attr("stroke", (_, i) => d3.interpolateBlues((i + 2) / LEVELS))
-                .attr("stroke-width", 0.1);
+                .attr("fill", (_, i) =>
+                  d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
+                );
+              // .attr("stroke", (_, i) =>
+              //   d3.interpolateBlues(
+              //     d3.scaleLinear([0.2, 1.0])((i + 2) / LEVELS)
+              //   )
+              // )
+              // .attr("stroke-width", 0.1);
             });
           })
-          .attr("opacity", 0.9)
+          // .attr("opacity", 0.95)
           .attr("transform", (d) => `translate(${d.x}, ${d.y}) rotate(${d.t})`)
           .each(function (dd) {
             d3.select(this)
