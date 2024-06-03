@@ -9,8 +9,34 @@ const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 0;
 const RAD_PX = 10;
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
-const distance = ([x1, y1], [x2, y2]) =>
-  Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+
+function bounce(h) {
+  if (!arguments.length) h = 0.25;
+  var b0 = 1 - h,
+    b1 = b0 * (1 - b0) + b0,
+    b2 = b0 * (1 - b1) + b1,
+    x0 = 2 * Math.sqrt(h),
+    x1 = x0 * Math.sqrt(h),
+    x2 = x1 * Math.sqrt(h),
+    t0 = 1 / (1 + x0 + x1 + x2),
+    t1 = t0 + t0 * x0,
+    t2 = t1 + t0 * x1,
+    m0 = t0 + (t0 * x0) / 2,
+    m1 = t1 + (t0 * x1) / 2,
+    m2 = t2 + (t0 * x2) / 2,
+    a = 1 / (t0 * t0);
+  return function (t) {
+    return t >= 1
+      ? 1
+      : t < t0
+      ? a * t * t
+      : t < t1
+      ? a * (t -= m0) * t + b0
+      : t < t2
+      ? a * (t -= m1) * t + b1
+      : a * (t -= m2) * t + b2;
+  };
+}
 
 export default function BubblesApp() {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
@@ -49,65 +75,42 @@ export default function BubblesApp() {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    const DELTA_Y = 20;
-    let curY = -10;
-
-    const PER_ROW = 5;
-
     const nodes = waterLevels.reverse().map((levs, i) => ({
       levs: levs,
       maxLev: levs[0],
       tilt: Math.random() * 50 - 25,
+      dur: Math.random() * 500 + 1000,
       active: false,
-      fx: d3.scaleLinear([width / 2 - RAD_PX * 3, width / 2 + RAD_PX * 3])(
+      startX: d3.scaleLinear([width / 2 - RAD_PX * 3, width / 2 + RAD_PX * 3])(
         Math.random()
       ),
-      fy: d3.scaleLinear([
-        100 - RAD_PX * 4 - RAD_PX * 3,
-        100 - RAD_PX * 4 + RAD_PX * 3,
-      ])(Math.random()),
+      startY: d3.scaleLinear([-RAD_PX * 4 - RAD_PX * 3, -RAD_PX * 4])(
+        Math.random()
+      ),
+      endX: d3.scaleLinear([width / 2 - RAD_PX * 8, width / 2 + RAD_PX * 8])(
+        Math.random()
+      ),
+      endY: height - (height * i) / waterLevels.length,
     }));
 
-    if (simulation.current) simulation.current.stop();
+    var b1 = 3 / 4,
+      b2 = 9 / 11,
+      b3 = 10 / 11,
+      b4 = 15 / 16,
+      b5 = 21 / 22,
+      b6 = 63 / 64,
+      b0 = 1 / b1 / b1;
 
-    simulation.current = d3
-      .forceSimulation(nodes)
-      .alphaDecay(0.01)
-      .alphaMin(0.05)
-      .force("y", d3.forceY(height * 2).strength(0.01))
-      // .force(
-      //   "center",
-      //   d3.forceCenter(width / 2, (height * 2) / 3).strength(0.05)
-      // )
-      .force("circle", () => {
-        nodes.forEach((node) => {
-          if (
-            node.y > height / 2 &&
-            distance([node.x, node.y], [width / 2, height / 2]) > 200
-          ) {
-            const theta = Math.atan2(node.y - height / 2, node.x - width / 2);
-            node.x += (width / 2 + 200 * Math.cos(theta) - node.x) * 1;
-            node.y += (height / 2 + 200 * Math.sin(theta) - node.y) * 1;
-          }
-        });
-      })
-      .force(
-        "collide",
-        d3
-          .forceCollide()
-          .radius((wd) => wd.maxLev * RAD_PX + 1)
-          .strength(0.9)
-          .iterations(5)
-      )
-      .on("tick", function ticked() {
-        let curActiCounter = 0;
-        bucketSvgSelector.current
-          .selectAll(".drop")
-          .data(nodes, (_, i) => i)
-          .join((enter) => {
-            return enter
-              .append("g")
-              .attr("class", "drop")
+    bucketSvgSelector.current
+      .selectAll(".dropY")
+      .data(nodes, (_, i) => i)
+      .join((enter) => {
+        return enter
+          .append("g")
+          .attr("class", "dropY")
+          .call((s) => {
+            s.append("g")
+              .attr("class", "dropTrans")
               .each(function (wd, i) {
                 d3.select(this)
                   .append("defs")
@@ -135,48 +138,59 @@ export default function BubblesApp() {
                     d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
                   );
               });
-          })
+          });
+      })
+      .attr("transform", (wd) => `translate(0, ${wd.startY})`)
+      .each(function (wd) {
+        d3.select(this)
+          .select(".dropTrans")
           .attr(
             "transform",
-            (wd) => `translate(${wd.x}, ${wd.y}) rotate(${wd.tilt})`
-          )
-          .each(function (wd) {
-            d3.select(this)
-              .selectAll("rect")
-              .data(wd.levs, (_, i) => i)
-              .attr("width", wd.maxLev * RAD_PX * 2)
-              .attr("height", wd.maxLev * RAD_PX * 2)
-              .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
-              .attr(
-                "y",
-                (l) =>
-                  (wd.maxLev * RAD_PX * 2) / 2 -
-                  percentToRatioFilled(l / wd.maxLev) * (wd.maxLev * RAD_PX * 2)
-              );
-            d3.select(this)
-              .select("path")
-              .attr(
-                "transform",
-                `scale(${
-                  (wd.maxLev * RAD_PX) /
-                  2 /
-                  Math.sqrt(2) /
-                  SVG_DROPLET_WIDTH_DONT_CHANGE
-                })`
-              );
-            if (curActiCounter < 5 && wd.active === false) {
-              curActiCounter += 1;
-              wd.active = true;
-
-              // wd.x = wd.fx;
-              // wd.y = wd.fy;
-
-              wd.fx = null;
-              wd.fy = null;
-              // wd.vx = 0;
-              // wd.vy = 0;
-            }
-          });
+            (wd) => `translate(${wd.startX}, 0) rotate(${wd.tilt})`
+          );
+        d3.select(this)
+          .select(".dropTrans")
+          .selectAll("rect")
+          .data(wd.levs, (_, i) => i)
+          .attr("width", wd.maxLev * RAD_PX * 2)
+          .attr("height", wd.maxLev * RAD_PX * 2)
+          .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
+          .attr(
+            "y",
+            (l) =>
+              (wd.maxLev * RAD_PX * 2) / 2 -
+              percentToRatioFilled(l / wd.maxLev) * (wd.maxLev * RAD_PX * 2)
+          );
+        d3.select(this)
+          .select(".dropTrans")
+          .select("path")
+          .attr(
+            "transform",
+            `scale(${
+              (wd.maxLev * RAD_PX) /
+              2 /
+              Math.sqrt(2) /
+              SVG_DROPLET_WIDTH_DONT_CHANGE
+            })`
+          );
+      })
+      .call((s) => {
+        s.transition("y")
+          .duration((wd) => wd.dur)
+          .delay((_, i) => i * 10)
+          .ease(bounce(0.05))
+          .attr("transform", (wd) => `translate(0, ${wd.endY})`);
+      })
+      .call((s) => {
+        s.transition("trans")
+          .duration((wd) => wd.dur)
+          .delay((_, i) => i * 10)
+          .ease(d3.easeLinear)
+          .select(".dropTrans")
+          .attr(
+            "transform",
+            (wd) => `translate(${wd.endX}, 0) rotate(${wd.tilt})`
+          );
       });
   }, [waterLevels]);
 
