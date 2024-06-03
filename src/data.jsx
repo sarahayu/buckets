@@ -20,8 +20,6 @@ export const objectivesData = await (async function () {
     );
   }
 
-  // objs = objs.slice(0, 100);
-
   console.log("DATA: loading objectives data");
 
   return mapBy(objs, ({ obj }) => obj);

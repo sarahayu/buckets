@@ -34,6 +34,13 @@ export const WATERDROP_ICON = {
   },
 };
 
+export function percentToRatioFilled(p) {
+  return Math.min(
+    1,
+    Math.max(0, 3.1304 * p ** 3 - 4.2384 * p ** 2 + 3.3471 * p + 0.0298)
+  );
+}
+
 export function kernelDensityEstimator(kernel, X) {
   return function (V) {
     return X.map(function (x) {

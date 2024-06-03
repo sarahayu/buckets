@@ -1,13 +1,18 @@
 import React, { useLayoutEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
+import { percentToRatioFilled } from "./utils";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 0;
+const RAD_PX = 10;
+const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
+const distance = ([x1, y1], [x2, y2]) =>
+  Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
 
-export default function BubblesApp({ width = 800, height = 600 }) {
+export default function BubblesApp() {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const simulation = useRef();
   const winDim = useRef();
@@ -34,69 +39,143 @@ export default function BubblesApp({ width = 800, height = 600 }) {
       width: window.innerWidth,
       height: window.innerHeight,
     };
-    width = winDim.current.width;
-    height = winDim.current.height;
-    bucketSvgSelector.current.attr("width", width).attr("height", height);
+
+    bucketSvgSelector.current
+      .attr("width", window.innerWidth)
+      .attr("height", window.innerHeight);
   }, []);
 
   useLayoutEffect(() => {
-    const RAD_SCALE = 20;
-    const nodes = waterLevels
-      .reverse()
-      .map((w) => ({ l: w, t: Math.random() * 50 - 25 }));
+    const width = winDim.current.width,
+      height = winDim.current.height;
+
+    const DELTA_Y = 20;
+    let curY = -10;
+
+    const PER_ROW = 5;
+
+    const nodes = waterLevels.reverse().map((levs, i) => ({
+      levs: levs,
+      maxLev: levs[0],
+      tilt: Math.random() * 50 - 25,
+      active: false,
+      fx: d3.scaleLinear([width / 2 - RAD_PX * 3, width / 2 + RAD_PX * 3])(
+        Math.random()
+      ),
+      fy: d3.scaleLinear([
+        100 - RAD_PX * 4 - RAD_PX * 3,
+        100 - RAD_PX * 4 + RAD_PX * 3,
+      ])(Math.random()),
+    }));
 
     if (simulation.current) simulation.current.stop();
 
-    width = winDim.current.width;
-    height = winDim.current.height;
-
     simulation.current = d3
       .forceSimulation(nodes)
-      // .alphaTarget(0.3)
-      // .velocityDecay(0.1)
-      .force("x", d3.forceX().strength(0.01))
-      .force("y", d3.forceY().strength(0.01))
+      .alphaDecay(0.01)
+      .alphaMin(0.05)
+      .force("y", d3.forceY(height * 2).strength(0.01))
+      // .force(
+      //   "center",
+      //   d3.forceCenter(width / 2, (height * 2) / 3).strength(0.05)
+      // )
+      .force("circle", () => {
+        nodes.forEach((node) => {
+          if (
+            node.y > height / 2 &&
+            distance([node.x, node.y], [width / 2, height / 2]) > 200
+          ) {
+            const theta = Math.atan2(node.y - height / 2, node.x - width / 2);
+            node.x += (width / 2 + 200 * Math.cos(theta) - node.x) * 1;
+            node.y += (height / 2 + 200 * Math.sin(theta) - node.y) * 1;
+          }
+        });
+      })
       .force(
         "collide",
         d3
           .forceCollide()
-          .radius((d) => d.l[0] * RAD_SCALE + 1)
-          .iterations(3)
+          .radius((wd) => wd.maxLev * RAD_PX + 1)
+          .strength(0.9)
+          .iterations(5)
       )
-      .force("charge", d3.forceManyBody().strength(0))
-      .force("center", d3.forceCenter(width / 2, height / 2))
       .on("tick", function ticked() {
+        let curActiCounter = 0;
         bucketSvgSelector.current
-          .selectAll("g")
+          .selectAll(".drop")
           .data(nodes, (_, i) => i)
           .join((enter) => {
-            return enter.append("g").each(function (dd) {
-              d3.select(this)
-                .selectAll("path")
-                .data(dd.l, (_, i) => i)
-                .enter()
-                .append("path")
-                // .attr("class", "stroked-paths")
-                // .attr("opacity", (1 / LEVELS) * 3)
-                .attr("d", "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z")
-                .attr("fill", (_, i) =>
-                  d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
-                );
-              // .attr("stroke", (_, i) =>
-              //   d3.interpolateBlues(
-              //     d3.scaleLinear([0.2, 1.0])((i + 2) / LEVELS)
-              //   )
-              // )
-              // .attr("stroke-width", 0.1);
-            });
+            return enter
+              .append("g")
+              .attr("class", "drop")
+              .each(function (wd, i) {
+                d3.select(this)
+                  .append("defs")
+                  .append("clipPath")
+                  .attr("id", "drop-mask-" + i)
+                  .append("path")
+                  .attr(
+                    "transform",
+                    `scale(${
+                      (wd.maxLev * RAD_PX) / 2 / SVG_DROPLET_WIDTH_DONT_CHANGE
+                    })`
+                  )
+                  .attr("d", "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z");
+                d3.select(this)
+                  .append("g")
+                  .attr("clip-path", `url(#drop-mask-${i})`)
+                  .selectAll("rect")
+                  .data(wd.levs, (_, i) => i)
+                  .join("rect")
+                  .attr("width", wd.maxLev * RAD_PX * 2)
+                  .attr("height", wd.maxLev * RAD_PX * 2)
+                  .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
+                  .attr("y", (-wd.maxLev * RAD_PX * 2) / 2)
+                  .attr("fill", (_, i) =>
+                    d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
+                  );
+              });
           })
-          // .attr("opacity", 0.95)
-          .attr("transform", (d) => `translate(${d.x}, ${d.y}) rotate(${d.t})`)
-          .each(function (dd) {
+          .attr(
+            "transform",
+            (wd) => `translate(${wd.x}, ${wd.y}) rotate(${wd.tilt})`
+          )
+          .each(function (wd) {
             d3.select(this)
-              .selectAll("path")
-              .data(dd.l, (_, i) => i)
-              .attr("transform", (d) => `scale(${((d * RAD_SCALE) / 20) * 2})`);
+              .selectAll("rect")
+              .data(wd.levs, (_, i) => i)
+              .attr("width", wd.maxLev * RAD_PX * 2)
+              .attr("height", wd.maxLev * RAD_PX * 2)
+              .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
+              .attr(
+                "y",
+                (l) =>
+                  (wd.maxLev * RAD_PX * 2) / 2 -
+                  percentToRatioFilled(l / wd.maxLev) * (wd.maxLev * RAD_PX * 2)
+              );
+            d3.select(this)
+              .select("path")
+              .attr(
+                "transform",
+                `scale(${
+                  (wd.maxLev * RAD_PX) /
+                  2 /
+                  Math.sqrt(2) /
+                  SVG_DROPLET_WIDTH_DONT_CHANGE
+                })`
+              );
+            if (curActiCounter < 5 && wd.active === false) {
+              curActiCounter += 1;
+              wd.active = true;
+
+              // wd.x = wd.fx;
+              // wd.y = wd.fy;
+
+              wd.fx = null;
+              wd.fy = null;
+              // wd.vx = 0;
+              // wd.vy = 0;
+            }
           });
       });
   }, [waterLevels]);
