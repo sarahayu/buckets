@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
 import { mapBy, percentToRatioFilled } from "./utils";
+import Matter from "matter-js";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 0;
@@ -81,50 +82,64 @@ export default function BubblesApp() {
 
     let clock = 0;
 
-    const nodes_pos = waterLevels.reverse().map((levs, i) => ({
+    const nodes_info = waterLevels.reverse().map((levs, i) => ({
       levs: levs,
       idx: i,
-      fx: d3.scaleLinear([width / 2 - RAD_PX * 2, width / 2 + RAD_PX * 2])(
-        Math.random()
-      ),
-      fy: d3.scaleLinear([0, 0])(Math.random()),
+      fx: width / 2,
+      fy: height / 6,
     }));
-    d3.forceSimulation(nodes_pos)
-      .alphaDecay(0)
-      .alphaMin(0)
-      .force("y", d3.forceY(height).strength(0.003))
-      .force("activator", () => {
-        clock += 1;
-        let activated = false;
 
-        nodes_pos.forEach((node) => {
-          if (!activated && clock % 10 == 0 && node.fy !== null) {
-            node.x = node.fx;
-            node.y = node.fy;
+    // module aliases
+    let Engine = Matter.Engine,
+      Bodies = Matter.Bodies,
+      Composite = Matter.Composite;
 
-            node.fx = null;
-            node.fy = null;
+    // create an engine
+    let engine = Engine.create();
 
-            activated = true;
-          }
-        });
+    const nodes_pos = nodes_info.map((node) =>
+      Bodies.circle(node.fx, node.fy, node.levs[0] * RAD_PX + 1, {
+        restitution: 0,
       })
-      .stop()
-      .tick(nodes_pos.length * 10 + 100);
+    );
+
+    let ground = Bodies.rectangle(width / 2, height - 50, width, 50, {
+      isStatic: true,
+    });
+
+    let ground1 = Bodies.rectangle(width / 3, height / 2, 40, height - 50, {
+      isStatic: true,
+    });
+
+    let ground2 = Bodies.rectangle(
+      (width / 3) * 2,
+      height / 2,
+      40,
+      height - 50,
+      {
+        isStatic: true,
+      }
+    );
+
+    Composite.add(engine.world, [...nodes_pos, ground, ground1, ground2]);
+
+    const FPS = 60;
+
+    for (let i = 0; i < FPS * 3; i++) Engine.update(engine, 1000 / FPS);
 
     const nodes = nodes_pos
-      .sort((a, b) => b.y - a.y)
-      .map((n) => ({
-        levs: n.levs,
-        maxLev: n.levs[0],
+      .sort((a, b) => b.position.y - a.position.y)
+      .map((n, i) => ({
+        levs: nodes_info[i].levs,
+        maxLev: nodes_info[i].levs[0],
         tilt: Math.random() * 50 - 25,
         dur: Math.random() * 500 + 1000,
-        startX: n.x,
+        startX: n.position.x,
         startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
           Math.random()
         ),
-        endX: n.x,
-        endY: n.y,
+        endX: n.position.x,
+        endY: n.position.y,
       }));
 
     bucketSvgSelector.current
