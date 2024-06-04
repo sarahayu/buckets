@@ -3,13 +3,17 @@ import * as d3 from "d3";
 import { useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
-import { percentToRatioFilled } from "./utils";
+import { mapBy, percentToRatioFilled } from "./utils";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 0;
 const RAD_PX = 10;
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
 
+const distance = ([x1, y1], [x2, y2]) =>
+  Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+
+// https://gist.github.com/mbostock/5743979
 function bounce(h) {
   if (!arguments.length) h = 0.25;
   var b0 = 1 - h,
@@ -75,31 +79,53 @@ export default function BubblesApp() {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    const nodes = waterLevels.reverse().map((levs, i) => ({
-      levs: levs,
-      maxLev: levs[0],
-      tilt: Math.random() * 50 - 25,
-      dur: Math.random() * 500 + 1000,
-      active: false,
-      startX: d3.scaleLinear([width / 2 - RAD_PX * 3, width / 2 + RAD_PX * 3])(
-        Math.random()
-      ),
-      startY: d3.scaleLinear([-RAD_PX * 4 - RAD_PX * 3, -RAD_PX * 4])(
-        Math.random()
-      ),
-      endX: d3.scaleLinear([width / 2 - RAD_PX * 8, width / 2 + RAD_PX * 8])(
-        Math.random()
-      ),
-      endY: height - (height * i) / waterLevels.length,
-    }));
+    let clock = 0;
 
-    var b1 = 3 / 4,
-      b2 = 9 / 11,
-      b3 = 10 / 11,
-      b4 = 15 / 16,
-      b5 = 21 / 22,
-      b6 = 63 / 64,
-      b0 = 1 / b1 / b1;
+    const nodes_pos = waterLevels.reverse().map((levs, i) => ({
+      levs: levs,
+      idx: i,
+      fx: d3.scaleLinear([width / 2 - RAD_PX * 2, width / 2 + RAD_PX * 2])(
+        Math.random()
+      ),
+      fy: d3.scaleLinear([0, 0])(Math.random()),
+    }));
+    d3.forceSimulation(nodes_pos)
+      .alphaDecay(0)
+      .alphaMin(0)
+      .force("y", d3.forceY(height).strength(0.003))
+      .force("activator", () => {
+        clock += 1;
+        let activated = false;
+
+        nodes_pos.forEach((node) => {
+          if (!activated && clock % 10 == 0 && node.fy !== null) {
+            node.x = node.fx;
+            node.y = node.fy;
+
+            node.fx = null;
+            node.fy = null;
+
+            activated = true;
+          }
+        });
+      })
+      .stop()
+      .tick(nodes_pos.length * 10 + 100);
+
+    const nodes = nodes_pos
+      .sort((a, b) => b.y - a.y)
+      .map((n) => ({
+        levs: n.levs,
+        maxLev: n.levs[0],
+        tilt: Math.random() * 50 - 25,
+        dur: Math.random() * 500 + 1000,
+        startX: n.x,
+        startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
+          Math.random()
+        ),
+        endX: n.x,
+        endY: n.y,
+      }));
 
     bucketSvgSelector.current
       .selectAll(".dropY")
@@ -147,7 +173,8 @@ export default function BubblesApp() {
           .attr(
             "transform",
             (wd) => `translate(${wd.startX}, 0) rotate(${wd.tilt})`
-          );
+          )
+          .style("opacity", 0.2);
         d3.select(this)
           .select(".dropTrans")
           .selectAll("rect")
@@ -177,20 +204,21 @@ export default function BubblesApp() {
       .call((s) => {
         s.transition("y")
           .duration((wd) => wd.dur)
-          .delay((_, i) => i * 10)
-          .ease(bounce(0.05))
+          .delay((_, i) => Math.floor(i / 1) * 5)
+          .ease(d3.easeExpOut)
           .attr("transform", (wd) => `translate(0, ${wd.endY})`);
       })
       .call((s) => {
         s.transition("trans")
-          .duration((wd) => wd.dur)
-          .delay((_, i) => i * 10)
+          .duration((wd) => wd.dur * 0.5)
+          .delay((_, i) => Math.floor(i / 1) * 5)
           .ease(d3.easeLinear)
           .select(".dropTrans")
           .attr(
             "transform",
             (wd) => `translate(${wd.endX}, 0) rotate(${wd.tilt})`
-          );
+          )
+          .style("opacity", 1);
       });
   }, [waterLevels]);
 
