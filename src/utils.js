@@ -59,3 +59,68 @@ export function kernelEpanechnikov(k) {
     return Math.abs((v /= k)) <= 1 ? (0.75 * (1 - v * v)) / k : 0;
   };
 }
+
+// inner diameter of 1
+export const WATERDROP_CAGE_COORDS = (function () {
+  const outer = [];
+  const inner = [];
+
+  const partitions = 20;
+  const delta = (Math.PI * 3) / 2 / partitions;
+
+  outer.push(
+    ...[
+      {
+        x: Math.cos((Math.PI * 5) / 4) * 0.7,
+        y: Math.sin((Math.PI * 5) / 4) * 0.7,
+      },
+      {
+        x: 0,
+        y: -Math.SQRT2 * 0.7,
+      },
+      // {
+      //   x: Math.cos((Math.PI * -1) / 4) * 0.7,
+      //   y: Math.sin((Math.PI * -1) / 4) * 0.7,
+      // },
+    ]
+  );
+
+  for (let i = 0; i <= partitions; i++) {
+    outer.push({
+      x: Math.cos(i * delta - Math.PI / 4) * 0.7,
+      y: Math.sin(i * delta - Math.PI / 4) * 0.7,
+    });
+  }
+
+  inner.push(
+    ...[
+      {
+        x: Math.cos((Math.PI * 5) / 4) * 0.5,
+        y: Math.sin((Math.PI * 5) / 4) * 0.5,
+      },
+      {
+        x: 0,
+        y: -Math.SQRT2 * 0.5,
+      },
+      // {
+      //   x: Math.cos((Math.PI * -1) / 4) * 0.5,
+      //   y: Math.sin((Math.PI * -1) / 4) * 0.5,
+      // },
+    ]
+  );
+
+  for (let i = 0; i <= partitions; i++) {
+    inner.push({
+      x: Math.cos(i * delta - Math.PI / 4) * 0.5,
+      y: Math.sin(i * delta - Math.PI / 4) * 0.5,
+    });
+  }
+
+  const coords = [];
+
+  for (let i = 0; i < outer.length - 1; i++) {
+    coords.push([outer[i], outer[i + 1], inner[i + 1], inner[i]]);
+  }
+
+  return coords;
+})();

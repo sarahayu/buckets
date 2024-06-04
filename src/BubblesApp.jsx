@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import { useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
-import { mapBy, percentToRatioFilled } from "./utils";
+import { WATERDROP_CAGE_COORDS, mapBy, percentToRatioFilled } from "./utils";
 import Matter from "matter-js";
 
 const LEVELS = 5;
@@ -82,19 +82,24 @@ export default function BubblesApp() {
 
     let clock = 0;
 
+    const DELTA = d3.mean(waterLevels.map((levs) => levs[0] * RAD_PX));
+    const WIDTH_AREA = DELTA * 17;
+    const WIDTH = Math.floor(WIDTH_AREA / DELTA);
+
     const nodes_info = waterLevels.reverse().map((levs, i) => ({
       levs: levs,
       idx: i,
-      fx: width / 2,
-      fy: height / 6,
+      fx: width / 2 - (WIDTH / 2) * DELTA + (i % WIDTH) * DELTA,
+      fy:
+        height / 2 -
+        (Math.floor(waterLevels.length / WIDTH) / 2) * DELTA +
+        Math.floor(i / WIDTH) * DELTA,
     }));
 
-    // module aliases
     let Engine = Matter.Engine,
       Bodies = Matter.Bodies,
       Composite = Matter.Composite;
 
-    // create an engine
     let engine = Engine.create();
 
     const nodes_pos = nodes_info.map((node) =>
@@ -103,29 +108,30 @@ export default function BubblesApp() {
       })
     );
 
-    let ground = Bodies.rectangle(width / 2, height - 50, width, 50, {
-      isStatic: true,
-    });
+    const parts = [];
 
-    let ground1 = Bodies.rectangle(width / 3, height / 2, 40, height - 50, {
-      isStatic: true,
-    });
-
-    let ground2 = Bodies.rectangle(
-      (width / 3) * 2,
-      height / 2,
-      40,
-      height - 50,
-      {
+    for (const quad of WATERDROP_CAGE_COORDS) {
+      console.log(quad);
+      const body = Matter.Body.create({
+        position: Matter.Vertices.centre(quad),
+        vertices: quad,
         isStatic: true,
-      }
-    );
+      });
+      parts.push(body);
+    }
+    const cage = Matter.Body.create({
+      isStatic: true,
+    });
 
-    Composite.add(engine.world, [...nodes_pos, ground, ground1, ground2]);
+    Matter.Body.setParts(cage, parts);
+    Matter.Body.scale(cage, WIDTH_AREA * 1.4, WIDTH_AREA * 1.4);
+    Matter.Body.translate(cage, { x: width / 2, y: height / 2 });
+
+    Composite.add(engine.world, [...nodes_pos, cage]);
 
     const FPS = 60;
 
-    for (let i = 0; i < FPS * 3; i++) Engine.update(engine, 1000 / FPS);
+    for (let i = 0; i < FPS * 1.5; i++) Engine.update(engine, 1000 / FPS);
 
     const nodes = nodes_pos
       .sort((a, b) => b.position.y - a.position.y)
@@ -138,8 +144,8 @@ export default function BubblesApp() {
         startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
           Math.random()
         ),
-        endX: n.position.x,
-        endY: n.position.y,
+        endX: n.position.x + (n.position.x - width / 2) * 0.5,
+        endY: n.position.y + (n.position.y - height / 2) * 0.5,
       }));
 
     bucketSvgSelector.current
