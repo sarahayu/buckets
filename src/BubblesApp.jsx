@@ -1,51 +1,17 @@
-import React, { useLayoutEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
-import { useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ticksExact } from "./bucket-lib/utils";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
-import { WATERDROP_CAGE_COORDS, mapBy, percentToRatioFilled } from "./utils";
-import Matter from "matter-js";
+import { percentToRatioFilled, placeDropsUsingPhysics } from "./utils";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 0;
-const RAD_PX = 10;
+const RAD_PX = 20;
+const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
-
-const distance = ([x1, y1], [x2, y2]) =>
-  Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-
-// https://gist.github.com/mbostock/5743979
-function bounce(h) {
-  if (!arguments.length) h = 0.25;
-  var b0 = 1 - h,
-    b1 = b0 * (1 - b0) + b0,
-    b2 = b0 * (1 - b1) + b1,
-    x0 = 2 * Math.sqrt(h),
-    x1 = x0 * Math.sqrt(h),
-    x2 = x1 * Math.sqrt(h),
-    t0 = 1 / (1 + x0 + x1 + x2),
-    t1 = t0 + t0 * x0,
-    t2 = t1 + t0 * x1,
-    m0 = t0 + (t0 * x0) / 2,
-    m1 = t1 + (t0 * x1) / 2,
-    m2 = t2 + (t0 * x2) / 2,
-    a = 1 / (t0 * t0);
-  return function (t) {
-    return t >= 1
-      ? 1
-      : t < t0
-      ? a * t * t
-      : t < t1
-      ? a * (t -= m0) * t + b0
-      : t < t2
-      ? a * (t -= m1) * t + b1
-      : a * (t -= m2) * t + b2;
-  };
-}
 
 export default function BubblesApp() {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
-  const simulation = useRef();
   const winDim = useRef();
   const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
 
@@ -58,10 +24,12 @@ export default function BubblesApp() {
 
   const waterLevels = useMemo(
     () =>
-      orderedScenIDs.map((s) => {
-        const i = createInterps(objectiveIDs[curObjectiveIdx], s);
-        return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-      }),
+      orderedScenIDs
+        .map((s) => {
+          const i = createInterps(objectiveIDs[curObjectiveIdx], s);
+          return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+        })
+        .reverse(),
     [curObjectiveIdx]
   );
 
@@ -80,85 +48,39 @@ export default function BubblesApp() {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    let clock = 0;
-
-    const DELTA = d3.mean(waterLevels.map((levs) => levs[0] * RAD_PX));
-    const WIDTH_AREA = DELTA * 17;
-    const WIDTH = Math.floor(WIDTH_AREA / DELTA);
-
-    const nodes_info = waterLevels.reverse().map((levs, i) => ({
-      levs: levs,
-      idx: i,
-      fx: width / 2 - (WIDTH / 2) * DELTA + (i % WIDTH) * DELTA,
-      fy:
-        height / 2 -
-        (Math.floor(waterLevels.length / WIDTH) / 2) * DELTA +
-        Math.floor(i / WIDTH) * DELTA,
-    }));
-
-    let Engine = Matter.Engine,
-      Bodies = Matter.Bodies,
-      Composite = Matter.Composite;
-
-    let engine = Engine.create();
-
-    const nodes_pos = nodes_info.map((node) =>
-      Bodies.circle(node.fx, node.fy, node.levs[0] * RAD_PX + 1, {
-        restitution: 0,
-      })
+    const nodes_pos = placeDropsUsingPhysics(
+      width / 2,
+      height / 2,
+      waterLevels.map((levs, idx) => ({
+        r: levs[0] * RAD_PX,
+        id: idx,
+      }))
     );
 
-    const parts = [];
-
-    for (const quad of WATERDROP_CAGE_COORDS) {
-      console.log(quad);
-      const body = Matter.Body.create({
-        position: Matter.Vertices.centre(quad),
-        vertices: quad,
-        isStatic: true,
-      });
-      parts.push(body);
-    }
-    const cage = Matter.Body.create({
-      isStatic: true,
-    });
-
-    Matter.Body.setParts(cage, parts);
-    Matter.Body.scale(cage, WIDTH_AREA * 1.4, WIDTH_AREA * 1.4);
-    Matter.Body.translate(cage, { x: width / 2, y: height / 2 });
-
-    Composite.add(engine.world, [...nodes_pos, cage]);
-
-    const FPS = 60;
-
-    for (let i = 0; i < FPS * 1.5; i++) Engine.update(engine, 1000 / FPS);
-
-    const nodes = nodes_pos
-      .sort((a, b) => b.position.y - a.position.y)
-      .map((n, i) => ({
-        levs: nodes_info[i].levs,
-        maxLev: nodes_info[i].levs[0],
-        tilt: Math.random() * 50 - 25,
-        dur: Math.random() * 500 + 1000,
-        startX: n.position.x,
-        startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
-          Math.random()
-        ),
-        endX: n.position.x + (n.position.x - width / 2) * 0.5,
-        endY: n.position.y + (n.position.y - height / 2) * 0.5,
-      }));
+    const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
+      levs: waterLevels[idx],
+      maxLev: waterLevels[idx][0],
+      tilt: Math.random() * 50 - 25,
+      dur: Math.random() * 500 + 1000,
+      startX: x,
+      startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
+        Math.random()
+      ),
+      endX: x,
+      endY: y,
+    }));
 
     bucketSvgSelector.current
-      .selectAll(".dropY")
+      .selectAll(".dropTranslateY")
       .data(nodes, (_, i) => i)
       .join((enter) => {
         return enter
           .append("g")
-          .attr("class", "dropY")
+          .attr("class", "dropTranslateY")
           .call((s) => {
             s.append("g")
-              .attr("class", "dropTrans")
-              .each(function (wd, i) {
+              .attr("class", "dropTranslateX")
+              .each(function ({ levs, maxLev }, i) {
                 d3.select(this)
                   .append("defs")
                   .append("clipPath")
@@ -167,77 +89,71 @@ export default function BubblesApp() {
                   .attr(
                     "transform",
                     `scale(${
-                      (wd.maxLev * RAD_PX) / 2 / SVG_DROPLET_WIDTH_DONT_CHANGE
+                      (maxLev * RAD_PX) / 2 / SVG_DROPLET_WIDTH_DONT_CHANGE
                     })`
                   )
-                  .attr("d", "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z");
+                  .attr("d", DROPLET_SHAPE);
                 d3.select(this)
                   .append("g")
                   .attr("clip-path", `url(#drop-mask-${i})`)
                   .selectAll("rect")
-                  .data(wd.levs, (_, i) => i)
+                  .data(levs, (_, i) => i)
                   .join("rect")
-                  .attr("width", wd.maxLev * RAD_PX * 2)
-                  .attr("height", wd.maxLev * RAD_PX * 2)
-                  .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
-                  .attr("y", (-wd.maxLev * RAD_PX * 2) / 2)
+                  .attr("width", maxLev * RAD_PX * 2)
+                  .attr("height", maxLev * RAD_PX * 2)
+                  .attr("x", (-maxLev * RAD_PX * 2) / 2)
+                  .attr("y", (-maxLev * RAD_PX * 2) / 2)
                   .attr("fill", (_, i) =>
                     d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
                   );
               });
           });
       })
-      .attr("transform", (wd) => `translate(0, ${wd.startY})`)
-      .each(function (wd) {
+      .attr("transform", ({ startY }) => `translate(0, ${startY})`)
+      .each(function ({ startX, tilt, levs, maxLev }) {
         d3.select(this)
-          .select(".dropTrans")
-          .attr(
-            "transform",
-            (wd) => `translate(${wd.startX}, 0) rotate(${wd.tilt})`
-          )
+          .select(".dropTranslateX")
+          .attr("transform", `translate(${startX}, 0) rotate(${tilt})`)
           .style("opacity", 0.2);
         d3.select(this)
-          .select(".dropTrans")
+          .select(".dropTranslateX")
           .selectAll("rect")
-          .data(wd.levs, (_, i) => i)
-          .attr("width", wd.maxLev * RAD_PX * 2)
-          .attr("height", wd.maxLev * RAD_PX * 2)
-          .attr("x", (-wd.maxLev * RAD_PX * 2) / 2)
+          .data(levs, (_, i) => i)
+          .attr("width", maxLev * RAD_PX * 2)
+          .attr("height", maxLev * RAD_PX * 2)
+          .attr("x", (-maxLev * RAD_PX * 2) / 2)
           .attr(
             "y",
             (l) =>
-              (wd.maxLev * RAD_PX * 2) / 2 -
-              percentToRatioFilled(l / wd.maxLev) * (wd.maxLev * RAD_PX * 2)
+              (maxLev * RAD_PX * 2) / 2 -
+              percentToRatioFilled(l / maxLev) * (maxLev * RAD_PX * 2)
           );
         d3.select(this)
-          .select(".dropTrans")
+          .select(".dropTranslateX")
           .select("path")
           .attr(
             "transform",
             `scale(${
-              (wd.maxLev * RAD_PX) /
-              2 /
-              Math.sqrt(2) /
-              SVG_DROPLET_WIDTH_DONT_CHANGE
+              (maxLev * RAD_PX) / 2 / Math.SQRT2 / SVG_DROPLET_WIDTH_DONT_CHANGE
             })`
           );
       })
       .call((s) => {
         s.transition("y")
-          .duration((wd) => wd.dur)
+          .duration(({ dur }) => dur)
           .delay((_, i) => Math.floor(i / 1) * 5)
           .ease(d3.easeExpOut)
-          .attr("transform", (wd) => `translate(0, ${wd.endY})`);
+          .attr("transform", ({ endY }) => `translate(0, ${endY})`);
       })
       .call((s) => {
         s.transition("trans")
-          .duration((wd) => wd.dur * 0.5)
+          .duration(({ dur }) => dur * 0.5)
           .delay((_, i) => Math.floor(i / 1) * 5)
           .ease(d3.easeLinear)
-          .select(".dropTrans")
+          .select(".dropTranslateX")
           .attr(
             "transform",
-            (wd) => `translate(${wd.endX}, 0) rotate(${wd.tilt})`
+            ({ endX, tilt }) => `translate(${endX}, 0) rotate(${tilt})`
           )
           .style("opacity", 1);
       });
