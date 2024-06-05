@@ -17,7 +17,7 @@ import os
 import re
 
 SRC_DIR = 'src'
-BUILD_DIR = 'dist'
+BUILD_DIR = 'build'
 OUT_DIR = 'out'
 APP_COMPONENT_PATTERN = 'APP_COMPONENT'
 
@@ -42,7 +42,7 @@ for app_name in apps:
         
     # compile and move build files to `out` folder
     os.system('npm run build')
-    os.rename(f'{BUILD_DIR}/', os.path.join(OUT_DIR, app_name))
+    os.rename(f'{BUILD_DIR}/', f'{OUT_DIR}/{app_name}')
             
 
 # restore renamed index.jsx

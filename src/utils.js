@@ -137,7 +137,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   RANDO_CACHE =
     RANDO_CACHE || generateRandoPoints(generateWaterdrop(1), nodes.length);
 
-  const DELTA = d3.mean(nodes.map(({ r }) => r + 5));
+  const DELTA = d3.mean(nodes.map(({ r }) => r * 2));
   const WIDTH_AREA = DELTA * Math.floor(Math.sqrt(nodes.length));
 
   const randoPoints = RANDO_CACHE.map(([x, y]) => [
@@ -156,7 +156,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
 
   const node_bodies = nodes.map(({ r, id }, i) => {
     const [nx, ny] = nodePos[i];
-    return Bodies.circle(nx + x, ny + y, r + 5, {
+    return Bodies.circle(nx + x, ny + y, r * 2, {
       restitution: 0,
       id: id,
     });
