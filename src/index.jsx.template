@@ -1,7 +1,0 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import "./index.css";
-import APP_COMPONENT from "./APP_COMPONENT";
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<APP_COMPONENT />);

@@ -1,7 +1,11 @@
 import * as d3 from "d3";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ticksExact } from "./bucket-lib/utils";
-import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
+import {
+  DELIV_KEY_STRING,
+  SCENARIO_KEY_STRING,
+  objectivesData,
+} from "./data/objectivesData";
 import { percentToRatioFilled, placeDropsUsingPhysics } from "./utils";
 
 const LEVELS = 10;
@@ -10,7 +14,7 @@ const RAD_PX = 15;
 const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
 
-export default function RecursiveDropletsBasicApp() {
+export default function RecursiveDropletsBasicApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const winDim = useRef();
   const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
@@ -182,10 +186,10 @@ export default function RecursiveDropletsBasicApp() {
         checked={normalize}
         onChange={() => void setNormalize((e) => !e)}
       />
-      <label for="html">normalize</label>
-      <div className="bubbles-svg-wrapper">
+      <label htmlFor="html">normalize</label>
+      <div className={"bubbles-svg-wrapper" + (watercolor ? "-painter" : "")}>
         <svg
-          className="bubbles-svg"
+          className={"bubbles-svg" + (watercolor ? "-painter" : "")}
           ref={(e) => void (bucketSvgSelector.current = d3.select(e))}
         ></svg>
       </div>

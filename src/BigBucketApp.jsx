@@ -2,7 +2,11 @@ import React, { useMemo, useState } from "react";
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
-import { DELIV_KEY_STRING, SCENARIO_KEY_STRING, objectivesData } from "./data";
+import {
+  DELIV_KEY_STRING,
+  SCENARIO_KEY_STRING,
+  objectivesData,
+} from "./data/objectivesData";
 
 import { bucketPath } from "./bucket-lib/utils";
 

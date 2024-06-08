@@ -4,8 +4,8 @@ import {
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "./data";
-import { factorsData } from "./data";
+} from "./data/objectivesData";
+import { factorsData } from "./data/factorsData";
 
 import * as d3 from "d3";
 import { useEffect, useRef, useState } from "react";

@@ -1,4 +1,4 @@
-import { mapBy } from "./utils";
+import { mapBy } from "../utils";
 
 export const MAX_DELIVS = 1200;
 export const SCENARIO_KEY_STRING = "scens";
@@ -23,12 +23,4 @@ export const objectivesData = await (async function () {
   console.log("DATA: loading objectives data");
 
   return mapBy(objs, ({ obj }) => obj);
-})();
-
-export const factorsData = await (async function () {
-  const objs = await (await fetch("./factors.json")).json();
-
-  console.log("DATA: loading factors data");
-
-  return objs;
 })();

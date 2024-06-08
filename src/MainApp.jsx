@@ -13,7 +13,7 @@ import {
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "./data";
+} from "./data/objectivesData";
 import { ticksExact, usePrevious } from "./bucket-lib/utils";
 import BucketGlyph from "./bucket-lib/BucketGlyph";
 import DotHistogram from "./DotHistogram";

@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getQuantileBins } from "./bucket-lib/quantile-histogram";
 import { WATERDROP_ICON } from "./utils";
-import { MAX_DELIVS } from "./data";
+import { MAX_DELIVS } from "./data/objectivesData";
 
 const NUM_CIRCLES = 20;
 const MARGIN = { top: 10, right: 30, bottom: 50, left: 50 };

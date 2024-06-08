@@ -6,7 +6,7 @@ import {
   kernelDensityEstimator,
   kernelEpanechnikov,
 } from "./utils";
-import { MAX_DELIVS } from "./data";
+import { MAX_DELIVS } from "./data/objectivesData";
 
 const NUM_CIRCLES = 20;
 const MARGIN = { top: 10, right: 10, bottom: 3, left: 0 };
