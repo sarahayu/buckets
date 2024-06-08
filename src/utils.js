@@ -215,3 +215,7 @@ export function bounce(h) {
       : a * (t -= m2) * t + b2;
   };
 }
+
+export function isNullObject(obj) {
+  return Object.keys(obj).length === 0;
+}

@@ -3,14 +3,16 @@ import {
   DELIV_KEY_STRING,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
+  factorsData as _factorsData,
   objectivesData,
+  useData,
 } from "./data";
-import { factorsData } from "./data";
 
 import * as d3 from "d3";
 import { useEffect, useRef, useState } from "react";
 import BucketGlyph from "./bucket-lib/BucketGlyph";
 import { ticksExact } from "./bucket-lib/utils";
+import { isNullObject } from "./utils";
 
 const DEFAULT_SCENARIO = "expl0000";
 const DEFAULT_OBJECTIVE_IDX = 0;
@@ -27,6 +29,7 @@ const DOMAINS = {
 
 export default function SliderApp() {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
+  const factorsData = useData(_factorsData, {});
 
   const [curScenID, setCurScenID] = useState(DEFAULT_SCENARIO);
   const [objectiveIdx, setObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
@@ -44,7 +47,8 @@ export default function SliderApp() {
 
   useEffect(
     () =>
-      void setCurScenID(
+      void !isNullObject(factorsData) &&
+      setCurScenID(
         factorsData[
           getKey(
             Math.round(DOMAINS["demand"](demand)),
@@ -55,7 +59,7 @@ export default function SliderApp() {
           )
         ]
       ),
-    [demand, carryover, priority, regs, minflow]
+    [demand, carryover, priority, regs, minflow, factorsData]
   );
 
   const variables = [
@@ -91,6 +95,10 @@ export default function SliderApp() {
     },
   ];
 
+  if (isNullObject(factorsData)) {
+    return;
+  }
+
   return (
     <>
       <div className="editor">
@@ -100,19 +108,20 @@ export default function SliderApp() {
             onChange={(e) => setObjectiveIdx(parseInt(e.target.value))}
           >
             {objectiveIDs.map((objectiveID, i) => (
-              <option name={i} value={i}>
+              <option key={i} name={i} value={i}>
                 {objectiveID}
               </option>
             ))}
           </select>
           {variables.map(({ label, controlVar, val, setter }) => (
-            <div>
+            <div key={label}>
               <span>{label}</span>
               <LineSlider
                 data={getLocalProbs(
                   { demand, carryover, priority, regs, minflow },
                   controlVar,
-                  objectiveIDs[objectiveIdx]
+                  objectiveIDs[objectiveIdx],
+                  factorsData
                 )}
                 val={val}
                 setVal={setter}
@@ -221,7 +230,8 @@ function createInterps(name, curScen) {
 function getLocalProbs(
   { demand, carryover, priority, regs, minflow },
   variable,
-  objective
+  objective,
+  factorsData
 ) {
   let localProbs = [];
   for (const _demand of variable !== "demand"

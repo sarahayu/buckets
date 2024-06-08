@@ -1,10 +1,27 @@
+import { useEffect, useState } from "react";
 import { mapBy } from "./utils";
 
 export const MAX_DELIVS = 1200;
 export const SCENARIO_KEY_STRING = "scens";
 export const DELIV_KEY_STRING = "delivs";
 
-export const objectivesData = await (async function () {
+export function useData(fn, init) {
+  const [data, setData] = useState(init);
+
+  useEffect(() => {
+    fn().then((ret) => void setData(ret));
+  }, []);
+
+  return data;
+}
+
+let _objectivesData;
+
+export async function objectivesData() {
+  if (_objectivesData) return _objectivesData;
+
+  console.log("DATA: loading objectives data");
+
   const objs = await (await fetch("./all_objectives.json")).json();
 
   for (const obj of objs) {
@@ -20,15 +37,17 @@ export const objectivesData = await (async function () {
     );
   }
 
-  console.log("DATA: loading objectives data");
+  return (_objectivesData = mapBy(objs, ({ obj }) => obj));
+}
 
-  return mapBy(objs, ({ obj }) => obj);
-})();
+let _factorsData;
 
-export const factorsData = await (async function () {
-  const objs = await (await fetch("./factors.json")).json();
+export async function factorsData() {
+  if (_factorsData) return _factorsData;
 
   console.log("DATA: loading factors data");
 
-  return objs;
-})();
+  const objs = await (await fetch("./factors.json")).json();
+
+  return (_factorsData = objs);
+}
