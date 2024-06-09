@@ -31,7 +31,8 @@ def routeElem(app_name):
 # generate index.html to link to Apps
 with open(os.path.join(SRC_DIR, 'index.jsx'), 'w') as index_file:
     newline = '\n'
-    index_file.write(f"""
+    index_file.write(f"""// generated using `generate_index.py`
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {{ HashRouter, Link, Route, Routes }} from "react-router-dom";

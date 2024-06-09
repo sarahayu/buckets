@@ -19,6 +19,7 @@ import BucketGlyph from "./bucket-lib/BucketGlyph";
 import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
+import { criteriaSort } from "./utils";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_IDX = 13;
@@ -410,21 +411,4 @@ function createInterps(data, objectives, scenID) {
       .clamp(true);
   });
   return mapFunc;
-}
-
-function criteriaSort(criteria, data, objective) {
-  if (criteria === "median") {
-    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
-      (a, b) =>
-        d3.mean(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
-        d3.mean(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
-    );
-  }
-  if (criteria === "deliveries") {
-    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
-      (a, b) =>
-        d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
-        d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
-    );
-  }
 }

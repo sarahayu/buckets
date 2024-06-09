@@ -1,3 +1,4 @@
+// generated using `generate_index.py`
 
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -5,11 +6,14 @@ import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
-const RecursiveDropletsWatercolorApp = React.lazy(() => import("./RecursiveDropletsWatercolorApp"));
-const RecursiveDropletsBasicApp = React.lazy(() => import("./RecursiveDropletsBasicApp"));
+const RecursiveDropletsWatercolorApp = React.lazy(() =>
+  import("./RecursiveDropletsWatercolorApp")
+);
+const RecursiveDropletsBasicApp = React.lazy(() =>
+  import("./RecursiveDropletsBasicApp")
+);
 const MainApp = React.lazy(() => import("./MainApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
-
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -20,8 +24,12 @@ root.render(
         element={
           <main>
             <Link to="SliderApp">SliderApp</Link>
-            <Link to="RecursiveDropletsWatercolorApp">RecursiveDropletsWatercolorApp</Link>
-            <Link to="RecursiveDropletsBasicApp">RecursiveDropletsBasicApp</Link>
+            <Link to="RecursiveDropletsWatercolorApp">
+              RecursiveDropletsWatercolorApp
+            </Link>
+            <Link to="RecursiveDropletsBasicApp">
+              RecursiveDropletsBasicApp
+            </Link>
             <Link to="MainApp">MainApp</Link>
             <Link to="BigBucketApp">BigBucketApp</Link>
           </main>
@@ -70,5 +78,3 @@ root.render(
     </Routes>
   </HashRouter>
 );
-
-    

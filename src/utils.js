@@ -1,5 +1,8 @@
 import * as d3 from "d3";
 import Matter from "matter-js";
+import { useCallback, useMemo, useState } from "react";
+import { DELIV_KEY_STRING, SCENARIO_KEY_STRING } from "./data/objectivesData";
+import { ticksExact } from "./bucket-lib/utils";
 
 // when fn is `({ name }) => name`, turns
 //
@@ -214,4 +217,43 @@ export function bounce(h) {
       ? a * (t -= m1) * t + b1
       : a * (t -= m2) * t + b2;
   };
+}
+
+export function rangeInclusive(a, b) {
+  return d3.range(a, b + 1);
+}
+
+export function useStickyScale(defaultVal, scale) {
+  const [val, setVal] = useState(defaultVal);
+
+  const valActual = useMemo(() => scale(val), [val]);
+  const setValActual = useCallback((v) => void setVal(scale(v)), []);
+
+  return [valActual, setValActual];
+}
+
+export function createInterps(name, curScen, data) {
+  const delivs = data[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
+  return d3
+    .scaleLinear()
+    .domain(ticksExact(0, 1, delivs.length))
+    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
+    .clamp(true);
+}
+
+export function criteriaSort(criteria, data, objective) {
+  if (criteria === "median") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.mean(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.mean(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
+  if (criteria === "deliveries") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
+      (a, b) =>
+        d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
+        d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
+    );
+  }
 }

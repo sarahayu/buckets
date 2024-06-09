@@ -2,13 +2,10 @@ import React, { useMemo, useState } from "react";
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
-import {
-  DELIV_KEY_STRING,
-  SCENARIO_KEY_STRING,
-  objectivesData,
-} from "./data/objectivesData";
+import { objectivesData } from "./data/objectivesData";
 
 import { bucketPath } from "./bucket-lib/utils";
+import { createInterps, criteriaSort } from "./utils";
 
 const LEVELS = 10;
 const LINE_WIDTH = 3;
@@ -37,7 +34,7 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
     () =>
       ticksExact(0, 1, LEVELS + 1).map((d) =>
         curPercentileScens.map((s) =>
-          createInterps(objectiveIDs[curObjectiveIdx], s)(d)
+          createInterps(objectiveIDs[curObjectiveIdx], s, objectivesData)(d)
         )
       ),
     [curPercentileScens, curObjectiveIdx]
@@ -123,31 +120,4 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
       <svg ref={(e) => void (bucketSvgSelector.current = d3.select(e))}></svg>
     </div>
   );
-}
-
-function createInterps(name, curScen) {
-  const delivs =
-    objectivesData[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
-  return d3
-    .scaleLinear()
-    .domain(ticksExact(0, 1, delivs.length))
-    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
-    .clamp(true);
-}
-
-function criteriaSort(criteria, data, objective) {
-  if (criteria === "median") {
-    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
-      (a, b) =>
-        d3.mean(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
-        d3.mean(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
-    );
-  }
-  if (criteria === "deliveries") {
-    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort(
-      (a, b) =>
-        d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
-        d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
-    );
-  }
 }

@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { getQuantileBins } from "./bucket-lib/quantile-histogram";
 import {
   WATERDROP_ICON,
