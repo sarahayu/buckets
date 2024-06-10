@@ -21,11 +21,11 @@ root.render(
         element={
           <main>
             <div className="main-container">
-              <Link to="SliderApp" title="SliderApp" ><img src="SliderApp.png" className="linkPics" /></Link>
-              <Link to="RecursiveDropletsWatercolorApp" title="RecursiveDropletsWatercolorApp" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
-              <Link to="RecursiveDropletsBasicApp" title="RecursiveDropletsBasicApp" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
-              <Link to="MainApp" title="MainApp" ><img src="MainApp.png" className="linkPics" /></Link>
-              <Link to="BigBucketApp" title="BigBucketApp" ><img src="BigBucketApp.png" className="linkPics" /></Link>
+              <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
+              <Link to="RecursiveDropletsWatercolorApp" title="Recursive Droplets Watercolor" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
+              <Link to="RecursiveDropletsBasicApp" title="Recursive Droplets Basic" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
+              <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
+              <Link to="BigBucketApp" title="Big Bucket" ><img src="BigBucketApp.png" className="linkPics" /></Link>
             </div>
           </main>
         }
