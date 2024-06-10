@@ -6,14 +6,11 @@ import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
-const RecursiveDropletsWatercolorApp = React.lazy(() =>
-  import("./RecursiveDropletsWatercolorApp")
-);
-const RecursiveDropletsBasicApp = React.lazy(() =>
-  import("./RecursiveDropletsBasicApp")
-);
+const RecursiveDropletsWatercolorApp = React.lazy(() => import("./RecursiveDropletsWatercolorApp"));
+const RecursiveDropletsBasicApp = React.lazy(() => import("./RecursiveDropletsBasicApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
+
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -23,15 +20,13 @@ root.render(
         index
         element={
           <main>
-            <Link to="SliderApp">SliderApp</Link>
-            <Link to="RecursiveDropletsWatercolorApp">
-              RecursiveDropletsWatercolorApp
-            </Link>
-            <Link to="RecursiveDropletsBasicApp">
-              RecursiveDropletsBasicApp
-            </Link>
-            <Link to="MainApp">MainApp</Link>
-            <Link to="BigBucketApp">BigBucketApp</Link>
+            <div className="main-container">
+              <Link to="SliderApp" title="SliderApp" ><img src="SliderApp.png" className="linkPics" /></Link>
+              <Link to="RecursiveDropletsWatercolorApp" title="RecursiveDropletsWatercolorApp" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
+              <Link to="RecursiveDropletsBasicApp" title="RecursiveDropletsBasicApp" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
+              <Link to="MainApp" title="MainApp" ><img src="MainApp.png" className="linkPics" /></Link>
+              <Link to="BigBucketApp" title="BigBucketApp" ><img src="BigBucketApp.png" className="linkPics" /></Link>
+            </div>
           </main>
         }
       />
@@ -78,3 +73,5 @@ root.render(
     </Routes>
   </HashRouter>
 );
+
+    

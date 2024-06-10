@@ -1,6 +1,11 @@
 import * as d3 from "d3";
 import { useId, useLayoutEffect, useMemo, useRef } from "react";
-import { bucketPath, ticksExact, usePrevious } from "./utils";
+import {
+  bucketPath,
+  interpolateWatercolorBlue,
+  ticksExact,
+  usePrevious,
+} from "./utils";
 
 const DEGREE_SWAY = 40;
 const LEVELS = 10;
@@ -8,7 +13,7 @@ const LINE_WIDTH = 3;
 
 export default function BucketGlyph({
   levelInterp,
-  colorInterp = d3.interpolateBlues,
+  colorInterp = interpolateWatercolorBlue,
   width = 200,
   height = 400,
   resolution = LEVELS,

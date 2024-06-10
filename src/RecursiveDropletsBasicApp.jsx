@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ticksExact } from "./bucket-lib/utils";
+import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import { objectivesData } from "./data/objectivesData";
 import {
   createInterps,
@@ -116,7 +116,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
                   .attr("x", (-maxLev * RAD_PX * 2) / 2)
                   .attr("y", (-maxLev * RAD_PX * 2) / 2)
                   .attr("fill", (_, i) =>
-                    d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i / LEVELS))
+                    interpolateWatercolorBlue(i / LEVELS)
                   );
               });
           });

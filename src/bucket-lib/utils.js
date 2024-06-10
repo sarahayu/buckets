@@ -88,3 +88,6 @@ export function usePrevious(value, isEqualFunc) {
   // return the previous value only
   return ref.current.prev;
 }
+
+export const interpolateWatercolorBlue = (i) =>
+  d3.interpolateBlues(d3.scaleLinear([0.2, 1.0])(i));
