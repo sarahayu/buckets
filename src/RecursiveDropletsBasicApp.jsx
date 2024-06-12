@@ -10,8 +10,8 @@ import {
 } from "./utils";
 
 const LEVELS = 10;
-const DEFAULT_OBJECTIVE_IDX = 0;
-const RAD_PX = 15;
+const DEFAULT_OBJECTIVE_IDX = 2;
+const RAD_PX = 7;
 const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
 
@@ -37,11 +37,15 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
             s,
             objectivesData
           );
-          return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+          return ticksExact(0, 1, LEVELS + 1).map((d, j) =>
+            Math.max(i(d), j == 0 ? 0.1 : -1)
+          );
         })
         .reverse(),
     [curObjectiveIdx]
   );
+
+  console.log(orderedScenIDs.length);
 
   useLayoutEffect(() => {
     winDim.current = {
@@ -58,7 +62,11 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    const scale = 1 / (normalize ? d3.max(waterLevels.map((l) => l[0])) : 1);
+    const scale =
+      1 /
+      (normalize
+        ? d3.sum(waterLevels.map((l) => l[0])) / (waterLevels.length * 1)
+        : 1);
 
     const nodes_pos = placeDropsUsingPhysics(
       width / 2,

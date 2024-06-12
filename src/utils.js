@@ -117,13 +117,18 @@ export function generateRandoPoints(shape, count) {
 
 // inner diameter of 1
 export const WATERDROP_CAGE_COORDS = (function () {
-  const outer = generateWaterdrop(1.4);
+  const outer = generateWaterdrop(3);
   const inner = generateWaterdrop(1);
 
   const coords = [];
 
-  for (let i = 0; i < outer.length - 1; i++) {
-    coords.push([outer[i], outer[i + 1], inner[i + 1], inner[i]]);
+  for (let i = 0; i < outer.length - 2; i++) {
+    coords.push([
+      outer[i],
+      outer[i + (i < 2 ? 1 : 2)],
+      inner[i + (i < 2 ? 1 : 2)],
+      inner[i],
+    ]);
   }
 
   return coords;
@@ -137,12 +142,12 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   RANDO_CACHE =
     RANDO_CACHE || generateRandoPoints(generateWaterdrop(1), nodes.length);
 
-  const DELTA = d3.mean(nodes.map(({ r }) => r * 2));
-  const WIDTH_AREA = DELTA * Math.floor(Math.sqrt(nodes.length));
+  const AREA = d3.sum(nodes.map(({ r }) => (r * 2.5) ** 2 * 3.14));
+  const WIDTH_AREA = Math.floor((Math.sqrt(AREA / 3.14) * 2) / 2);
 
   const randoPoints = RANDO_CACHE.map(([x, y]) => [
-    (x * WIDTH_AREA) / 2,
-    (y * WIDTH_AREA) / 2,
+    x * WIDTH_AREA,
+    y * WIDTH_AREA,
   ]);
 
   // thus, we use physics engine to take care of distributing the points evenly and based on radius
@@ -156,7 +161,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
 
   const node_bodies = nodes.map(({ r, id }, i) => {
     const [nx, ny] = nodePos[i];
-    return Bodies.circle(nx + x, ny + y, r * 2, {
+    return Bodies.circle(nx, ny, r * 2.5, {
       restitution: 0,
       id: id,
     });
@@ -175,18 +180,20 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   });
 
   Matter.Body.setParts(cage, parts);
-  Matter.Body.scale(cage, WIDTH_AREA * 1.4, WIDTH_AREA * 1.4);
-  Matter.Body.translate(cage, { x, y: y + (WIDTH_AREA / 2) * 0.4 });
+
+  Matter.Body.setCentre(cage, { x: 0, y: 0 });
+  Matter.Body.scale(cage, WIDTH_AREA * 1.1, WIDTH_AREA * 1.1);
 
   Composite.add(engine.world, [...node_bodies, cage]);
 
   // run engine for 1 second at 60 fps
-  for (let i = 0, FPS = 60; i < FPS * 1; i++) Engine.update(engine, 1000 / FPS);
+  for (let i = 0, FPS = 60; i < FPS * 0.25; i++)
+    Engine.update(engine, 1000 / FPS);
 
   return node_bodies.map(({ position, id }) => ({
     id,
-    x: position.x,
-    y: position.y,
+    x: position.x + x,
+    y: position.y + y + WIDTH_AREA * 0.15,
   }));
 }
 

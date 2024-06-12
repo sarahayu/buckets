@@ -64,10 +64,12 @@ svg {
   top: 50%;
   transform: translateY(-50%);
   display: grid;
-  grid-template-columns: 50px 50px 50px;
+  grid-template-columns: 50px 50px 50px 50px 50px;
   font-size: 0.6rem;
   gap: 1rem;
   color: gray;
+  max-height: 100vh;
+  overflow-y: scroll;
 }
 
 .pdf-container {
@@ -124,7 +126,7 @@ input::-moz-focus-inner {
 
 .bucket-and-label > span {
   display: inline-block;
-  max-width: 10ch;
+  max-width: 9ch;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -214,7 +216,7 @@ input::-moz-focus-inner {
 }
 
 .ridgeline-overlay {
-  --left-space: 40rem;
+  --left-space: 50rem;
 
   background-color: rgb(200, 200, 200);
   position: fixed;

@@ -10,12 +10,12 @@ import {
   objectivesData,
 } from "./data/objectivesData";
 import { factorsData } from "./data/factorsData";
-import { ticksExact } from "./bucket-lib/utils";
+import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import { useStickyScale } from "./utils";
 
 const DEFAULT_SCENARIO = "expl0000";
 const DEFAULT_OBJECTIVE_ID = "DEL_CVP_PAG_N";
-const DEFAULT_VAL = 0.25;
+const DEFAULT_VAL = 0;
 const LEVELS = 10;
 
 const D_KEY = "demand",
@@ -25,11 +25,11 @@ const D_KEY = "demand",
   M_KEY = "minflow";
 
 const NUM_OPTS = {
-  [D_KEY]: 4,
+  [D_KEY]: 5,
   [C_KEY]: 3,
   [P_KEY]: 2,
   [R_KEY]: 4,
-  [M_KEY]: 4,
+  [M_KEY]: 5,
 };
 
 const THRESHOLDS = {};
@@ -74,13 +74,13 @@ export default function SliderApp() {
 
   const variables = [
     {
-      label: "demand [1, 0.9, 0.8, 0.7]",
+      label: "demand [1, 0.9, 0.8, 0.7, 0.6]",
       controlVar: D_KEY,
       val: demand,
       setter: setDemand,
     },
     {
-      label: "carryover [1.0, 1.1, 1.2]",
+      label: "carryover [1.0, 1.2, 1.3]",
       controlVar: C_KEY,
       val: carryover,
       setter: setCarryover,
@@ -98,7 +98,7 @@ export default function SliderApp() {
       setter: setRegs,
     },
     {
-      label: "minflow [0, 0.4, 0.6, 0.8]",
+      label: "minflow [0, 0.4, 0.6, 0.7, 0.8]",
       controlVar: M_KEY,
       val: minflow,
       setter: setMinflow,
@@ -199,7 +199,7 @@ function LineSlider({ data, val, setVal }) {
           .selectAll("path")
           .data(data)
           .join("path")
-          .attr("fill", (_, i) => d3.interpolateBlues(i / data.length))
+          .attr("fill", (_, i) => interpolateWatercolorBlue(i / data.length))
       )
       .call((s) =>
         s
@@ -247,6 +247,12 @@ function LineSlider({ data, val, setVal }) {
 
 function serialize(demand, carryover, priority, regs, minflow) {
   const interp = (v, k) => d3.scaleQuantize(d3.range(1, NUM_OPTS[k] + 1))(v);
+  console.log(
+    `${interp(demand, D_KEY)}${interp(carryover, C_KEY)}${interp(
+      priority,
+      P_KEY
+    )}${interp(regs, R_KEY)}${interp(minflow, M_KEY)}`
+  );
 
   return `${interp(demand, D_KEY)}${interp(carryover, C_KEY)}${interp(
     priority,
@@ -255,6 +261,7 @@ function serialize(demand, carryover, priority, regs, minflow) {
 }
 
 function createInterps(name, curScen) {
+  console.log(curScen);
   const delivs =
     objectivesData[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
   return d3
