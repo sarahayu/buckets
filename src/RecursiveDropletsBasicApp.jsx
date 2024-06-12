@@ -9,7 +9,7 @@ import {
   placeDropsUsingPhysics,
 } from "./utils";
 
-const LEVELS = 10;
+const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 2;
 const RAD_PX = 7;
 const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
@@ -81,11 +81,9 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       levs: waterLevels[idx].map((w) => w * scale),
       maxLev: waterLevels[idx][0] * scale,
       tilt: Math.random() * 50 - 25,
-      dur: Math.random() * 500 + 1000,
+      dur: Math.random() * 100 + 400,
       startX: x,
-      startY: d3.scaleLinear([-RAD_PX * 2 - RAD_PX, -RAD_PX * 2])(
-        Math.random()
-      ),
+      startY: y - RAD_PX * 4 * Math.random(),
       endX: x,
       endY: y,
     }));
@@ -134,7 +132,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
         d3.select(this)
           .select(".dropTranslateX")
           .attr("transform", `translate(${startX}, 0) rotate(${tilt})`)
-          .style("opacity", 0.2);
+          .style("opacity", 0);
         d3.select(this)
           .select(".dropTranslateX")
           .selectAll("rect")
@@ -161,14 +159,14 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       .call((s) => {
         s.transition("y")
           .duration(({ dur }) => dur)
-          .delay((_, i) => Math.floor(i / 1) * 5)
-          .ease(d3.easeExpOut)
+          // .delay((_, i) => Math.floor(i / 3) * 5)
+          .ease(d3.easeLinear)
           .attr("transform", ({ endY }) => `translate(0, ${endY})`);
       })
       .call((s) => {
         s.transition("trans")
-          .duration(({ dur }) => dur * 0.5)
-          .delay((_, i) => Math.floor(i / 1) * 5)
+          .duration(({ dur }) => dur)
+          // .delay((_, i) => Math.floor(i / 3) * 5)
           .ease(d3.easeLinear)
           .select(".dropTranslateX")
           .attr(

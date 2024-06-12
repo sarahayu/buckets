@@ -1,3 +1,10 @@
+"""
+Turn scenario CSV files to json format. All CSV files should be in `./scenarios/`.
+Output will be in `./output/`.
+
+Usage: python3 process.py
+""" 
+
 import os
 import csv
 import json
@@ -11,7 +18,8 @@ all_files = sorted([f for f in os.listdir(IN_FOLDER) if os.path.isfile(os.path.j
 PREC = 1e2
 
 def num_shorten(n):
-    return round(n * PREC) / PREC
+    return int(n)
+    # return round(n * PREC) / PREC
 
 if not os.path.exists(OUT_FOLDER):
     os.makedirs(OUT_FOLDER)
@@ -20,6 +28,9 @@ all_objectives = []
 
 for objective_file in all_files:
     with open(os.path.join(IN_FOLDER, objective_file), 'r') as objective_csv:
+
+        print(objective_file)
+
         csvreader = csv.reader(objective_csv)
         scenario_map = {}
 
@@ -33,7 +44,6 @@ for objective_file in all_files:
 
         for _ in range(SKIP_TRASH):
             next(csvreader)
-            pass
 
         for row_nums in csvreader:
             for idx, num in enumerate(row_nums):
