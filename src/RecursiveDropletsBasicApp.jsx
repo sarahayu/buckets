@@ -41,9 +41,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
           s,
           objectivesData
         );
-        return ticksExact(0, 1, LEVELS + 1).map((d, j) =>
-          Math.max(i(d), j == 0 ? 0.1 : -1)
-        );
+        return ticksExact(0, 1, LEVELS + 1).map((d, j) => i(d));
       }),
     [curObjectiveIdx]
   );
@@ -63,24 +61,22 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    const scale =
-      1 /
-      (normalize
-        ? d3.sum(waterLevels.map((l) => l[0])) / (waterLevels.length * 1)
-        : 1);
+    const scale = 1;
 
     const nodes_pos = placeDropsUsingPhysics(
       width / 2,
       height / 2,
       waterLevels.map((levs, idx) => ({
-        r: levs[0] * scale * RAD_PX,
+        r: (normalize ? 1 : levs[0]) * scale * RAD_PX * 2.5,
         id: idx,
       }))
     );
 
     const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
-      levs: waterLevels[idx].map((w) => w * scale),
-      maxLev: waterLevels[idx][0] * scale,
+      levs: waterLevels[idx].map(
+        (w) => w * scale * (normalize ? 1 / waterLevels[idx][0] : 1)
+      ),
+      maxLev: normalize ? 1 : Math.max(waterLevels[idx][0], 0.1) * scale,
       tilt: Math.random() * 50 - 25,
       dur: Math.random() * 100 + 400,
       startX: x,
@@ -90,52 +86,36 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     }));
 
     bucketSvgSelector.current
-      .selectAll(".dropTranslateY")
+      .selectAll(".smallDrop")
       .data(nodes, (_, i) => i)
       .join((enter) => {
         return enter
           .append("g")
-          .attr("class", "dropTranslateY")
-          .call((s) => {
-            s.append("g")
-              .attr("class", "dropTranslateX")
-              .each(function ({ levs, maxLev }, i) {
-                d3.select(this)
-                  .append("defs")
-                  .append("clipPath")
-                  .attr("id", "drop-mask-" + i)
-                  .append("path")
-                  .attr(
-                    "transform",
-                    `scale(${
-                      (maxLev * RAD_PX) / 2 / SVG_DROPLET_WIDTH_DONT_CHANGE
-                    })`
-                  )
-                  .attr("d", DROPLET_SHAPE);
-                d3.select(this)
-                  .append("g")
-                  .attr("clip-path", `url(#drop-mask-${i})`)
-                  .selectAll("rect")
-                  .data(levs, (_, i) => i)
-                  .join("rect")
-                  .attr("width", maxLev * RAD_PX * 2)
-                  .attr("height", maxLev * RAD_PX * 2)
-                  .attr("x", (-maxLev * RAD_PX * 2) / 2)
-                  .attr("y", (-maxLev * RAD_PX * 2) / 2)
-                  .attr("fill", (_, i) =>
-                    interpolateWatercolorBlue(i / LEVELS)
-                  );
-              });
+          .attr("class", "smallDrop")
+          .each(function ({ levs, maxLev }, i) {
+            d3.select(this)
+              .append("defs")
+              .append("clipPath")
+              .attr("id", "drop-mask-" + i)
+              .append("path")
+              .attr("d", DROPLET_SHAPE);
+            d3.select(this)
+              .append("g")
+              .attr("clip-path", `url(#drop-mask-${i})`)
+              .selectAll("rect")
+              .data(levs, (_, i) => i)
+              .join("rect")
+              .attr("fill", (_, i) => interpolateWatercolorBlue(i / LEVELS));
           });
       })
-      .attr("transform", ({ startY }) => `translate(0, ${startY})`)
-      .each(function ({ startX, tilt, levs, maxLev }) {
+      .attr(
+        "transform",
+        ({ startX, startY, tilt }) =>
+          `translate(${startX}, ${startY}) rotate(${tilt})`
+      )
+      .style("opacity", 0)
+      .each(function ({ levs, maxLev }) {
         d3.select(this)
-          .select(".dropTranslateX")
-          .attr("transform", `translate(${startX}, 0) rotate(${tilt})`)
-          .style("opacity", 0);
-        d3.select(this)
-          .select(".dropTranslateX")
           .selectAll("rect")
           .data(levs, (_, i) => i)
           .attr("width", maxLev * RAD_PX * 2)
@@ -148,7 +128,6 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
               percentToRatioFilled(l / maxLev) * (maxLev * RAD_PX * 2)
           );
         d3.select(this)
-          .select(".dropTranslateX")
           .select("path")
           .attr(
             "transform",
@@ -158,21 +137,13 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
           );
       })
       .call((s) => {
-        s.transition("y")
+        s.transition()
           .duration(({ dur }) => dur)
-          // .delay((_, i) => Math.floor(i / 3) * 5)
           .ease(d3.easeLinear)
-          .attr("transform", ({ endY }) => `translate(0, ${endY})`);
-      })
-      .call((s) => {
-        s.transition("trans")
-          .duration(({ dur }) => dur)
-          // .delay((_, i) => Math.floor(i / 3) * 5)
-          .ease(d3.easeLinear)
-          .select(".dropTranslateX")
           .attr(
             "transform",
-            ({ endX, tilt }) => `translate(${endX}, 0) rotate(${tilt})`
+            ({ endX, endY, tilt }) =>
+              `translate(${endX}, ${endY}) rotate(${tilt})`
           )
           .style("opacity", 1);
       });
@@ -192,10 +163,11 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       </select>
       <input
         type="checkbox"
+        value={"norm"}
         checked={normalize}
         onChange={() => void setNormalize((e) => !e)}
       />
-      <label htmlFor="html">normalize</label>
+      <label htmlFor="norm">normalize</label>
       <div className={"bubbles-svg-wrapper" + (watercolor ? "-painter" : "")}>
         <svg
           className={"bubbles-svg" + (watercolor ? "-painter" : "")}

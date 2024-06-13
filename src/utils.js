@@ -135,20 +135,25 @@ export const WATERDROP_CAGE_COORDS = (function () {
 })();
 
 let RANDO_CACHE;
+let lastNodesLen;
 
 // assuming nodes is already ordered and first nodes are going to be put on the bottom
 export function placeDropsUsingPhysics(x, y, nodes) {
   // first generate random points within water droplet. we can stop here, but points might not be the most uniformly distributed
-  RANDO_CACHE =
-    RANDO_CACHE || generateRandoPoints(generateWaterdrop(1), nodes.length);
 
-  const AREA = d3.sum(nodes.map(({ r }) => (r * 2.5) ** 2 * 3.14));
+  if (!RANDO_CACHE || nodes.length !== lastNodesLen)
+    RANDO_CACHE = d3
+      .range(4)
+      .map(() =>
+        generateRandoPoints(generateWaterdrop(1), (lastNodesLen = nodes.length))
+      );
+
+  const AREA = d3.sum(nodes.map(({ r }) => r ** 2 * 3.14));
   const WIDTH_AREA = Math.floor((Math.sqrt(AREA / 3.14) * 2) / 2);
 
-  const randoPoints = RANDO_CACHE.map(([x, y]) => [
-    x * WIDTH_AREA,
-    y * WIDTH_AREA,
-  ]);
+  const randoPoints = RANDO_CACHE[
+    Math.floor(Math.random() * RANDO_CACHE.length)
+  ].map(([x, y]) => [x * WIDTH_AREA, y * WIDTH_AREA]);
 
   // thus, we use physics engine to take care of distributing the points evenly and based on radius
   const Engine = Matter.Engine,
@@ -161,7 +166,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
 
   const node_bodies = nodes.map(({ r, id }, i) => {
     const [nx, ny] = nodePos[i];
-    return Bodies.circle(nx, ny, r * 2.5, {
+    return Bodies.circle(nx, ny, r, {
       restitution: 0,
       id: id,
     });
