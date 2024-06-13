@@ -23,7 +23,7 @@ root.render(
           <main>
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
-              <Link to="LargeDropletMosaicApp">Large Droplet Mosaic</Link>
+              <Link to="LargeDropletMosaicApp" title="Large Droplet Mosaic" ><img src="LargeDropletMosaicApp.png" className="linkPics" /></Link>
               <Link to="RecursiveDropletsWatercolorApp" title="Recursive Droplets Watercolor" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
               <Link to="RecursiveDropletsBasicApp" title="Recursive Droplets Basic" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>

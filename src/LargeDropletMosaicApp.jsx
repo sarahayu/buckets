@@ -14,7 +14,7 @@ import {
 } from "./utils";
 
 const LEVELS = 5;
-const RAD_PX = 3;
+const RAD_PX = 2.5;
 const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
 
@@ -91,37 +91,27 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       height = winDim.current.height;
 
     const nodesArr = Object.keys(objToWaterLevels).map((obj) => {
-      let emptyBias = 0;
-      let avgArea = d3.mean(objToWaterLevels[obj].map((l) => l[0]));
-      console.log(avgArea);
-      if (avgArea < 0.1) {
-        avgArea = 1;
-        if (normalize) emptyBias = 1;
-      }
+      const scale = 1;
 
-      const scale = 1 / (normalize ? avgArea : 1);
       const nodes_pos = placeDropsUsingPhysics(
         0,
         0,
         objToWaterLevels[obj].map((levs, idx) => ({
-          r:
-            Math.min(Math.max(levs[0], 0.15, emptyBias) * scale, 1) *
-            RAD_PX *
-            2.5,
+          r: Math.max(1, (normalize ? 1 : levs[0]) * scale * RAD_PX * 2.5),
           id: idx,
         }))
       );
 
       const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
-        levs: objToWaterLevels[obj][idx].map((w, i) =>
-          i != 0
-            ? Math.min(w * scale, 1)
-            : Math.min(Math.max(w, 0.15) * scale, 1)
+        levs: objToWaterLevels[obj][idx].map(
+          (w) =>
+            w *
+            scale *
+            (normalize ? 1 / Math.max(objToWaterLevels[obj][idx][0], 0.1) : 1)
         ),
-        maxLev: Math.min(
-          Math.max(objToWaterLevels[obj][idx][0], 0.15) * scale,
-          1
-        ),
+        maxLev: normalize
+          ? 1
+          : Math.max(objToWaterLevels[obj][idx][0], 0.1) * scale,
         tilt: Math.random() * 50 - 25,
         dur: Math.random() * 100 + 400,
         startX: x,
@@ -139,8 +129,8 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       .attr(
         "transform",
         (_, i) =>
-          `translate(${(i % 20) * RAD_PX * 20 + RAD_PX * 50}, ${
-            Math.floor(i / 20) * RAD_PX * 25 + RAD_PX * 50
+          `translate(${(i % 20) * RAD_PX * 25 + RAD_PX * 60}, ${
+            Math.floor(i / 20) * RAD_PX * 30 + RAD_PX * 40
           })`
       )
       .each(function (nodes, i1) {
