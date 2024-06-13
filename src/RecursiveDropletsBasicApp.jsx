@@ -24,28 +24,29 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
   const bucketSvgSelector = useRef();
 
   const orderedScenIDs = useMemo(
-    () => criteriaSort("median", objectivesData, objectiveIDs[curObjectiveIdx]),
+    () =>
+      criteriaSort(
+        "median",
+        objectivesData,
+        objectiveIDs[curObjectiveIdx]
+      ).reverse(),
     [curObjectiveIdx]
   );
 
   const waterLevels = useMemo(
     () =>
-      orderedScenIDs
-        .map((s) => {
-          const i = createInterps(
-            objectiveIDs[curObjectiveIdx],
-            s,
-            objectivesData
-          );
-          return ticksExact(0, 1, LEVELS + 1).map((d, j) =>
-            Math.max(i(d), j == 0 ? 0.1 : -1)
-          );
-        })
-        .reverse(),
+      orderedScenIDs.map((s) => {
+        const i = createInterps(
+          objectiveIDs[curObjectiveIdx],
+          s,
+          objectivesData
+        );
+        return ticksExact(0, 1, LEVELS + 1).map((d, j) =>
+          Math.max(i(d), j == 0 ? 0.1 : -1)
+        );
+      }),
     [curObjectiveIdx]
   );
-
-  console.log(orderedScenIDs.length);
 
   useLayoutEffect(() => {
     winDim.current = {
@@ -191,9 +192,6 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       </select>
       <input
         type="checkbox"
-        id="html"
-        name="fav_language"
-        value="HTML"
         checked={normalize}
         onChange={() => void setNormalize((e) => !e)}
       />
