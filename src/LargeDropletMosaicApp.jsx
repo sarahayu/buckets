@@ -3,6 +3,7 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
+  MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
 } from "./data/objectivesData";
@@ -31,7 +32,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
 
     const partialScens = Object.keys(
       objectivesData[objectiveIDs[0]][SCENARIO_KEY_STRING]
-    ).filter((_, i) => i % 8 == 0);
+    ).filter((_, i) => i % 14 == 0);
 
     objectiveIDs.forEach(
       (obj) =>
@@ -67,7 +68,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
 
     objectiveIDs.forEach((obj) => {
       retVal[obj] = orderedObjToScens[obj].map((s) => {
-        const i = createInterps(obj, s, objectivesData);
+        const i = createInterps(obj, s, objectivesData, MAX_DELIVS);
         return ticksExact(0, 1, LEVELS + 1).map((d, j) => i(d));
       });
     });
@@ -90,36 +91,57 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     const width = winDim.current.width,
       height = winDim.current.height;
 
-    const nodesArr = Object.keys(objToWaterLevels).map((obj) => {
-      const scale = 1;
+    const nodesArr = Object.keys(objToWaterLevels)
+      .map((obj) => {
+        const scale = 1;
 
-      const nodes_pos = placeDropsUsingPhysics(
-        0,
-        0,
-        objToWaterLevels[obj].map((levs, idx) => ({
-          r: Math.max(1, (normalize ? 1 : levs[0]) * scale * RAD_PX * 2.5),
-          id: idx,
-        }))
-      );
+        const nodesPos = placeDropsUsingPhysics(
+          0,
+          0,
+          objToWaterLevels[obj].map((levs, idx) => ({
+            r: Math.max(
+              2,
+              (normalize ? 1 : Math.max(levs[0], 0.1)) * scale * RAD_PX * 1.5
+            ),
+            id: idx,
+          }))
+        );
 
-      const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
-        levs: objToWaterLevels[obj][idx].map(
-          (w) =>
-            w *
-            scale *
-            (normalize ? 1 / Math.max(objToWaterLevels[obj][idx][0], 0.1) : 1)
+        const nodes = nodesPos.map(({ id: idx, x, y }) => ({
+          levs: objToWaterLevels[obj][idx].map(
+            (w, i) =>
+              Math.max(w, i == 0 ? 0.1 : 0) *
+              scale *
+              (normalize
+                ? 1 / Math.max(objToWaterLevels[obj][idx][0], 0.1)
+                : 1) *
+              RAD_PX
+          ),
+          maxLev:
+            (normalize
+              ? 1
+              : Math.max(objToWaterLevels[obj][idx][0], 0.1) * scale) * RAD_PX,
+          tilt: Math.random() * 50 - 25,
+          dur: Math.random() * 100 + 400,
+          startX: x,
+          startY: y,
+        }));
+
+        return nodes;
+      })
+      .reverse();
+
+    const largeNodesPos = placeDropsUsingPhysics(
+      0,
+      0,
+      nodesArr.map((largeDrop, idx) => ({
+        r: Math.max(
+          1,
+          Math.sqrt(d3.sum(largeDrop.map((d) => d.maxLev)) / Math.PI) * 8
         ),
-        maxLev: normalize
-          ? 1
-          : Math.max(objToWaterLevels[obj][idx][0], 0.1) * scale,
-        tilt: Math.random() * 50 - 25,
-        dur: Math.random() * 100 + 400,
-        startX: x,
-        startY: y,
-      }));
-
-      return nodes;
-    });
+        id: idx,
+      }))
+    ).map(({ x, y }) => ({ x, y, tilt: Math.random() * 50 - 25 }));
 
     bucketSvgSelector.current
       .selectAll(".largeDrop")
@@ -129,9 +151,9 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       .attr(
         "transform",
         (_, i) =>
-          `translate(${(i % 20) * RAD_PX * 25 + RAD_PX * 60}, ${
-            Math.floor(i / 20) * RAD_PX * 30 + RAD_PX * 40
-          })`
+          `translate(${largeNodesPos[i].x + width / 2}, ${
+            largeNodesPos[i].y + height / 2
+          }) rotate(${largeNodesPos[i].tilt})`
       )
       .each(function (nodes, i1) {
         d3.select(this)
@@ -168,24 +190,21 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             d3.select(this)
               .selectAll("rect")
               .data(levs, (_, i) => i)
-              .attr("width", maxLev * RAD_PX * 2)
-              .attr("height", maxLev * RAD_PX * 2)
-              .attr("x", (-maxLev * RAD_PX * 2) / 2)
+              .attr("width", maxLev * 2)
+              .attr("height", maxLev * 2)
+              .attr("x", (-maxLev * 2) / 2)
               .attr(
                 "y",
                 (l) =>
-                  (maxLev * RAD_PX * 2) / 2 -
-                  percentToRatioFilled(l / maxLev) * (maxLev * RAD_PX * 2)
+                  (maxLev * 2) / 2 -
+                  percentToRatioFilled(l / maxLev) * (maxLev * 2)
               );
             d3.select(this)
               .select("path")
               .attr(
                 "transform",
                 `scale(${
-                  (maxLev * RAD_PX) /
-                  2 /
-                  Math.SQRT2 /
-                  SVG_DROPLET_WIDTH_DONT_CHANGE
+                  maxLev / 2 / Math.SQRT2 / SVG_DROPLET_WIDTH_DONT_CHANGE
                 })`
               );
           });

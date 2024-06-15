@@ -63,7 +63,7 @@ export function kernelEpanechnikov(k) {
 
 function generateWaterdrop(width) {
   const rad = width / 2;
-  const partitions = 20;
+  const partitions = 16;
   const delta = (Math.PI * 3) / 2 / partitions;
 
   const outer = [
@@ -192,7 +192,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   Composite.add(engine.world, [...node_bodies, cage]);
 
   // run engine for SECS second at FPS fps
-  for (let i = 0, FPS = 60, SECS = 0.1; i < FPS * SECS; i++)
+  for (let i = 0, FPS = 60, SECS = 0.3; i < FPS * SECS; i++)
     Engine.update(engine, 1000 / FPS);
 
   return node_bodies.map(({ position, id }) => ({
@@ -244,12 +244,12 @@ export function useStickyScale(defaultVal, scale) {
   return [valActual, setValActual];
 }
 
-export function createInterps(name, curScen, data) {
+export function createInterps(name, curScen, data, maxDelivs) {
   const delivs = data[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
   return d3
     .scaleLinear()
     .domain(ticksExact(0, 1, delivs.length))
-    .range(delivs.map((v) => Math.min(1, v / 1200) || 0))
+    .range(delivs.map((v) => Math.min(1, v / maxDelivs) || 0))
     .clamp(true);
 }
 

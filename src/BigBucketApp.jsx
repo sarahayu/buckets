@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 import { ticksExact } from "./bucket-lib/utils";
-import { objectivesData } from "./data/objectivesData";
+import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
 
 import { bucketPath } from "./bucket-lib/utils";
 import { createInterps, criteriaSort } from "./utils";
@@ -34,7 +34,12 @@ export default function BigBucketApp({ width = 600, height = 600 }) {
     () =>
       ticksExact(0, 1, LEVELS + 1).map((d) =>
         curPercentileScens.map((s) =>
-          createInterps(objectiveIDs[curObjectiveIdx], s, objectivesData)(d)
+          createInterps(
+            objectiveIDs[curObjectiveIdx],
+            s,
+            objectivesData,
+            MAX_DELIVS
+          )(d)
         )
       ),
     [curPercentileScens, curObjectiveIdx]

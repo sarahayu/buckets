@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
-import { objectivesData } from "./data/objectivesData";
+import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
 import {
   createInterps,
   criteriaSort,
@@ -39,7 +39,8 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
         const i = createInterps(
           objectiveIDs[curObjectiveIdx],
           s,
-          objectivesData
+          objectivesData,
+          MAX_DELIVS
         );
         return ticksExact(0, 1, LEVELS + 1).map((d, j) => i(d));
       }),
