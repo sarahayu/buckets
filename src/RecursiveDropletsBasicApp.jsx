@@ -8,6 +8,7 @@ import {
   percentToRatioFilled,
   placeDropsUsingPhysics,
 } from "./utils";
+import { useSearchParams } from "react-router-dom";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 2;
@@ -20,6 +21,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
   const winDim = useRef();
   const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
   const [normalize, setNormalize] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const bucketSvgSelector = useRef();
 
@@ -56,6 +58,13 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     bucketSvgSelector.current
       .attr("width", window.innerWidth)
       .attr("height", window.innerHeight);
+
+    if (
+      searchParams.get("obj") &&
+      objectiveIDs.includes(searchParams.get("obj"))
+    ) {
+      setCurObjectiveIdx(objectiveIDs.indexOf(searchParams.get("obj")));
+    }
   }, []);
 
   useLayoutEffect(() => {

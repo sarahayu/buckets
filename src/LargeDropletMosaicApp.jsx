@@ -125,45 +125,73 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
           dur: Math.random() * 100 + 400,
           startX: x,
           startY: y,
+          obj,
         }));
 
         return nodes;
       })
       .reverse();
 
+    const largeNodesRads = {};
+
     const largeNodesPos = placeDropsUsingPhysics(
       0,
       0,
       nodesArr.map((largeDrop, idx) => ({
-        r: Math.max(
+        r: (largeNodesRads[idx] = Math.max(
           1,
           Math.sqrt(d3.sum(largeDrop.map((d) => d.maxLev)) / Math.PI) * 8
-        ),
+        )),
         id: idx,
       }))
-    ).map(({ x, y }) => ({ x, y, tilt: Math.random() * 50 - 25 }));
+    ).map(({ x, y }, i) => ({
+      x,
+      y,
+      tilt: Math.random() * 50 - 25,
+      r: largeNodesRads[i],
+    }));
 
     bucketSvgSelector.current
       .selectAll(".largeDrop")
       .data(nodesArr, (_, i) => i)
-      .join("g")
+      .join((enter) =>
+        enter.append("g").call((s) => {
+          s.append("text").attr("dominant-baseline", "middle");
+          s.append("g").attr("class", "rotateClass");
+
+          s.append("rect")
+            // .attr('class', 'click-capture')
+            .style("visibility", "hidden")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", 40)
+            .attr("height", 40);
+        })
+      )
       .attr("class", "largeDrop")
       .attr(
         "transform",
         (_, i) =>
           `translate(${largeNodesPos[i].x + width / 2}, ${
             largeNodesPos[i].y + height / 2
-          }) rotate(${largeNodesPos[i].tilt})`
+          })`
       )
       .each(function (nodes, i1) {
         d3.select(this)
+          .select("text")
+          .text(nodes[0].obj)
+          .style("opacity", 0)
+          .attr("transform", `translate(${largeNodesRads[i1] / 4 + 2}, ${0})`);
+        d3.select(this)
+          .select(".rotateClass")
+          .attr("transform", `rotate(${largeNodesPos[i1].tilt})`)
           .selectAll(".smallDrop")
           .data(nodes, (_, i) => i)
           .join((enter) => {
             return enter
               .append("g")
               .attr("class", "smallDrop")
-              .each(function ({ levs }, i2) {
+              .each(function ({ levs, obj }, i2) {
                 d3.select(this)
                   .append("defs")
                   .append("clipPath")
@@ -186,7 +214,14 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             ({ startX, startY, tilt }) =>
               `translate(${startX}, ${startY}) rotate(${tilt})`
           )
-          .each(function ({ levs, maxLev }) {
+          .on("mouseover", function () {
+            d3.select(this).select("text").style("opacity", 1);
+            console.log("asdf");
+          })
+          .on("mouseout", function () {
+            d3.select(this).select("text").style("opacity", 0);
+          })
+          .each(function ({ levs, maxLev, obj }, i) {
             d3.select(this)
               .selectAll("rect")
               .data(levs, (_, i) => i)

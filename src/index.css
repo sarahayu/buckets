@@ -542,3 +542,7 @@ main {
   display: block;
   margin: 0;
 }
+
+text {
+  font-size: 0.8rem;
+}
