@@ -13,31 +13,34 @@ import {
   percentToRatioFilled,
   placeDropsUsingPhysics,
 } from "./utils";
+import { useNavigate } from "react-router-dom";
 
 const LEVELS = 5;
-const RAD_PX = 2.5;
+const RAD_PX = 3;
 const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
 const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
 
 export default function LargeDropletMosaicApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
+  const navigate = useNavigate();
   const winDim = useRef();
   const [normalize, setNormalize] = useState(false);
 
   const bucketSvgSelector = useRef();
+  const largeDrops = useRef();
 
   const orderedObjToScens = useMemo(() => {
     const unorderedObjToScens = {};
     const mapSorted = {};
 
-    const partialScens = Object.keys(
-      objectivesData[objectiveIDs[0]][SCENARIO_KEY_STRING]
-    ).filter((_, i) => i % 14 == 0);
+    // const partialScens = Object.keys(
+    //   objectivesData[objectiveIDs[0]][SCENARIO_KEY_STRING]
+    // ).filter((_, i) => i % 20 == 0);
 
     objectiveIDs.forEach(
       (obj) =>
         (unorderedObjToScens[obj] = criteriaSort("median", objectivesData, obj)
-          .filter((s) => partialScens.includes(s))
+          .filter((s, i) => i % 20 == 0)
           .reverse())
     );
 
@@ -151,21 +154,43 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       r: largeNodesRads[i],
     }));
 
-    bucketSvgSelector.current
+    largeDrops.current = bucketSvgSelector.current
       .selectAll(".largeDrop")
-      .data(nodesArr, (_, i) => i)
+      .data(nodesArr, (n, i) => n[0].obj)
       .join((enter) =>
-        enter.append("g").call((s) => {
-          s.append("text").attr("dominant-baseline", "middle");
+        enter.append("g").each(function (d, i) {
+          const s = d3.select(this);
+
+          if (i == 0) {
+            console.log(i);
+            bucketSvgSelector.current
+              .append("rect")
+              .attr("id", "overlay")
+              .attr("pointer-events", "none")
+              .attr("width", winDim.current.width)
+              .attr("height", winDim.current.height)
+              .attr("fill", "white")
+              .attr("opacity", 0.5)
+              .attr("visibility", "hidden");
+          }
+
+          d3.select(this.parentNode)
+            .append("text")
+            .attr("text-anchor", "middle")
+            .attr("id", `drop-${i}`);
           s.append("g").attr("class", "rotateClass");
 
-          s.append("rect")
-            // .attr('class', 'click-capture')
-            .style("visibility", "hidden")
-            .attr("x", 0)
-            .attr("y", 0)
-            .attr("width", 40)
-            .attr("height", 40);
+          s.append("rect").attr("class", "bbox").style("visibility", "hidden");
+
+          s.on("mouseover", function () {
+            d3.select(`#drop-${i}`).style("opacity", 1);
+            d3.select("#overlay").style("visibility", "visible");
+            d3.select(this).raise();
+          }).on("mouseout", function () {
+            d3.select(`#drop-${i}`).style("opacity", 0);
+            d3.select(this).lower();
+            d3.select("#overlay").style("visibility", "hidden");
+          });
         })
       )
       .attr("class", "largeDrop")
@@ -177,11 +202,9 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
           })`
       )
       .each(function (nodes, i1) {
-        d3.select(this)
-          .select("text")
-          .text(nodes[0].obj)
-          .style("opacity", 0)
-          .attr("transform", `translate(${largeNodesRads[i1] / 4 + 2}, ${0})`);
+        const s = d3.select(this);
+
+        d3.select(`#drop-${i1}`).text(nodes[0].obj).style("opacity", 0);
         d3.select(this)
           .select(".rotateClass")
           .attr("transform", `rotate(${largeNodesPos[i1].tilt})`)
@@ -214,13 +237,6 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             ({ startX, startY, tilt }) =>
               `translate(${startX}, ${startY}) rotate(${tilt})`
           )
-          .on("mouseover", function () {
-            d3.select(this).select("text").style("opacity", 1);
-            console.log("asdf");
-          })
-          .on("mouseout", function () {
-            d3.select(this).select("text").style("opacity", 0);
-          })
           .each(function ({ levs, maxLev, obj }, i) {
             d3.select(this)
               .selectAll("rect")
@@ -243,17 +259,41 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
                 })`
               );
           });
+
+        const d = s.select(".rotateClass");
+
+        s.on("click", function () {
+          navigate(`/RecursiveDropletsBasicApp?obj=${nodes[0].obj}&norm=true`);
+        });
+
+        s.select(".bbox")
+          .attr("x", d.node().getBBox().x)
+          .attr("y", d.node().getBBox().y)
+          .attr("width", d.node().getBBox().width)
+          .attr("height", d.node().getBBox().height);
+
+        bucketSvgSelector.current
+          .select(`#drop-${i1}`)
+          .attr(
+            "x",
+            d.node().getBoundingClientRect().x +
+              d.node().getBoundingClientRect().width / 2
+          )
+          .attr("y", d.node().getBoundingClientRect().y);
       });
   }, [objToWaterLevels, normalize]);
 
   return (
     <div className="bubbles-wrapper">
-      <input
-        type="checkbox"
-        checked={normalize}
-        onChange={() => void setNormalize((e) => !e)}
-      />
-      <label htmlFor="html">normalize</label>
+      <div className="bubbles-input-area">
+        <input
+          type="checkbox"
+          id="norm"
+          checked={normalize}
+          onChange={() => void setNormalize((e) => !e)}
+        />
+        <label htmlFor="norm">normalize</label>
+      </div>
       <div className={"bubbles-svg-wrapper" + (watercolor ? "-painter" : "")}>
         <svg
           className={"bubbles-svg" + (watercolor ? "-painter" : "")}

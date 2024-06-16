@@ -64,6 +64,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       objectiveIDs.includes(searchParams.get("obj"))
     ) {
       setCurObjectiveIdx(objectiveIDs.indexOf(searchParams.get("obj")));
+      setNormalize(searchParams.get("norm") == "true");
     }
   }, []);
 
@@ -161,23 +162,25 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
 
   return (
     <div className="bubbles-wrapper">
-      <select
-        value={curObjectiveIdx}
-        onChange={(e) => setCurObjectiveIdx(parseInt(e.target.value))}
-      >
-        {objectiveIDs.map((objectiveID, i) => (
-          <option name={i} value={i} key={i}>
-            {objectiveID}
-          </option>
-        ))}
-      </select>
-      <input
-        type="checkbox"
-        value={"norm"}
-        checked={normalize}
-        onChange={() => void setNormalize((e) => !e)}
-      />
-      <label htmlFor="norm">normalize</label>
+      <div className="bubbles-input-area">
+        <select
+          value={curObjectiveIdx}
+          onChange={(e) => setCurObjectiveIdx(parseInt(e.target.value))}
+        >
+          {objectiveIDs.map((objectiveID, i) => (
+            <option name={i} value={i} key={i}>
+              {objectiveID}
+            </option>
+          ))}
+        </select>
+        <input
+          type="checkbox"
+          id="norm"
+          checked={normalize}
+          onChange={() => void setNormalize((e) => !e)}
+        />
+        <label htmlFor="norm">normalize</label>
+      </div>
       <div className={"bubbles-svg-wrapper" + (watercolor ? "-painter" : "")}>
         <svg
           className={"bubbles-svg" + (watercolor ? "-painter" : "")}
