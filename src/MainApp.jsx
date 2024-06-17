@@ -1,7 +1,6 @@
 import React, {
   createContext,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -14,7 +13,7 @@ import {
   SCENARIO_KEY_STRING,
   objectivesData,
 } from "./data/objectivesData";
-import { ticksExact, usePrevious } from "./bucket-lib/utils";
+import { ticksExact } from "./bucket-lib/utils";
 import BucketGlyph from "./bucket-lib/BucketGlyph";
 import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
@@ -22,72 +21,64 @@ import classNames from "classnames";
 import { criteriaSort } from "./utils";
 
 const DEFAULT_GOAL = 200;
-const DEFAULT_OBJECTIVE_IDX = 13;
+const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";
+const DEFAULT_SCEN_NAME = "expl0000";
 const DEFAULT_SORT_MODE = "median";
 
 const AppContext = createContext({});
 
 export default function MainApp({ data = objectivesData }) {
-  const { current: objectiveIDs } = useRef(Object.keys(data));
+  const { current: objectiveNames } = useRef(Object.keys(data));
 
-  const [goal, setGoal] = useState(DEFAULT_GOAL);
-  const [showScens, setShowScens] = useState(false);
-  const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
+  const {
+    goal,
+    showScens,
+    sortMode,
+    curObjectiveName,
+    curScenName,
+    curScenNamePreview,
 
-  const [curObjectiveID, setCurObjectiveID] = useState(
-    objectiveIDs[DEFAULT_OBJECTIVE_IDX]
-  );
-  const [curScenIdx, setCurScenIdx] = useState(0);
-  const [curScenPreviewIdx, setCurScenPreviewIdx] = useState(null);
+    setGoal,
+    setShowScens,
+    setSortMode,
+    setCurObjectiveName,
+    setCurScenName,
+    setCurScenNamePreview,
+  } = useInterface();
 
-  const { curDelivInterps, curPercentileScens, curOrderedScenIDs } = useCaches(
+  // calculating these often is laggy. cache.
+  const { curDelivInterps, curOrderedScenNames } = useCaches(
     data,
-    objectiveIDs,
-    curObjectiveID,
-    curScenIdx,
-    curScenPreviewIdx,
+    objectiveNames,
+    curObjectiveName,
+    curScenName,
+    curScenNamePreview,
     sortMode
   );
 
-  // TODO: fix? gotta memoize so bucket animations trigger
+  // gotta memoize so bucket animations trigger
   const curMainInterp = useMemo(
-    () => curDelivInterps[curObjectiveID],
-    [curScenIdx, curScenPreviewIdx]
+    () => curDelivInterps[curObjectiveName],
+    [curObjectiveName, curDelivInterps]
   );
 
-  const prevScenID = usePrevious(curOrderedScenIDs[curScenIdx]);
-
-  const curScenIDActual = curOrderedScenIDs[curScenIdx];
-  const curScenIDPreview =
-    curScenPreviewIdx !== null ? curOrderedScenIDs[curScenPreviewIdx] : null;
-  const curScenID = curScenIDPreview || curScenIDActual;
-
-  useEffect(() => {
-    if (prevScenID) setCurScenIdx(curOrderedScenIDs.indexOf(prevScenID));
-  }, [sortMode, curObjectiveID]);
+  const curScenNameDisplayed = curScenNamePreview || curScenName;
 
   return (
     <AppContext.Provider
       value={{
         data,
-        objectiveIDs,
-        sortMode,
-        curObjectiveID,
-        curScenIdx,
-        curScenPreviewIdx,
-        curScenID,
-        curScenIDPreview,
-        curScenIDActual,
-        curPercentileScens,
         goal,
-        showScens,
-        curOrderedScenIDs,
+        curObjectiveName,
+        curScenName,
+        curScenNamePreview,
+        curOrderedScenNames,
       }}
     >
       <div className="dashboard">
         <div className="slider-container">
           <InputArea
-            setCurScenIdx={setCurScenIdx}
+            setCurScenName={setCurScenName}
             setShowScens={setShowScens}
           />
         </div>
@@ -95,15 +86,17 @@ export default function MainApp({ data = objectivesData }) {
           <MainBucket levelInterp={curMainInterp} />
 
           <div className="other-buckets-container">
-            {objectiveIDs.map((objectiveID) => (
+            {objectiveNames.map((objectiveName) => (
               <SmallBucketTile
-                key={objectiveID}
-                label={objectiveID}
-                active={objectiveID !== curObjectiveID}
-                onClick={() => setCurObjectiveID(objectiveID)}
+                key={objectiveName}
+                label={objectiveName}
+                active={objectiveName !== curObjectiveName}
+                onClick={() => {
+                  setCurObjectiveName(objectiveName);
+                }}
               >
                 <BucketGlyph
-                  levelInterp={curDelivInterps[objectiveID]}
+                  levelInterp={curDelivInterps[objectiveName]}
                   width={50}
                   height={50}
                 />
@@ -114,7 +107,7 @@ export default function MainApp({ data = objectivesData }) {
         <div className="pdf-container">
           <DotHistogram
             data={
-              data[curObjectiveID][SCENARIO_KEY_STRING][curScenID][
+              data[curObjectiveName][SCENARIO_KEY_STRING][curScenNameDisplayed][
                 DELIV_KEY_STRING
               ]
             }
@@ -125,9 +118,10 @@ export default function MainApp({ data = objectivesData }) {
       </div>
       {showScens && (
         <Overlay
+          sortMode={sortMode}
           setSortMode={setSortMode}
-          setCurScenIdx={setCurScenIdx}
-          setCurScenPreviewIdx={setCurScenPreviewIdx}
+          setCurScenName={setCurScenName}
+          setCurScenNamePreview={setCurScenNamePreview}
         />
       )}
     </AppContext.Provider>
@@ -135,47 +129,59 @@ export default function MainApp({ data = objectivesData }) {
 }
 
 //
-// custom hook
+// custom hooks
 //
+
+function useInterface() {
+  const [goal, setGoal] = useState(DEFAULT_GOAL);
+  const [showScens, setShowScens] = useState(false);
+  const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
+
+  const [curObjectiveName, setCurObjectiveName] = useState(
+    DEFAULT_OBJECTIVE_NAME
+  );
+
+  const [curScenName, setCurScenName] = useState(DEFAULT_SCEN_NAME);
+  const [curScenNamePreview, setCurScenNamePreview] = useState(null);
+
+  return {
+    goal,
+    setGoal,
+    showScens,
+    setShowScens,
+    sortMode,
+    setSortMode,
+    curObjectiveName,
+    setCurObjectiveName,
+    curScenName,
+    setCurScenName,
+    curScenNamePreview,
+    setCurScenNamePreview,
+  };
+}
 
 function useCaches(
   data,
-  objectiveIDs,
-  curObjectiveID,
-  curScenIdx,
-  curScenPreviewIdx,
+  objectiveNames,
+  curObjectiveName,
+  curScenName,
+  curScenNamePreview,
   sortMode
 ) {
-  const curOrderedScenIDs = useMemo(
-    () => criteriaSort(sortMode, data, curObjectiveID),
-    [sortMode, curObjectiveID]
+  const curOrderedScenNames = useMemo(
+    () => criteriaSort(sortMode, data, curObjectiveName),
+    [sortMode, curObjectiveName]
   );
 
-  const curScenIDActual = curOrderedScenIDs[curScenIdx];
-  const curScenIDPreview =
-    curScenPreviewIdx !== null ? curOrderedScenIDs[curScenPreviewIdx] : null;
-  const curScenID = curScenIDPreview || curScenIDActual;
-
-  const curDelivInterps = useMemo(() => {
-    return createInterps(data, objectiveIDs, curScenID);
-  }, [curScenIdx, curScenPreviewIdx]);
-
-  const curPercentileScens = useMemo(() => {
-    return Array.from(curOrderedScenIDs)
-      .reverse()
-      .filter(
-        (scenID, i) =>
-          scenID === curScenID ||
-          ticksExact(0, 0.9, 20)
-            .map((d) => Math.floor((d + 0.05) * curOrderedScenIDs.length))
-            .includes(i)
-      );
-  }, [curScenIdx]);
+  const curDelivInterps = useMemo(
+    () =>
+      createInterps(data, objectiveNames, curScenNamePreview || curScenName),
+    [curScenName, curScenNamePreview]
+  );
 
   return {
     curDelivInterps,
-    curPercentileScens,
-    curOrderedScenIDs,
+    curOrderedScenNames,
   };
 }
 
@@ -190,6 +196,7 @@ function SmallBucketTile({ label, active, onClick, children }) {
         "cur-obj": !active,
       })}
       onClick={onClick}
+      title={label}
     >
       <span>{label}</span>
       {children}
@@ -197,26 +204,30 @@ function SmallBucketTile({ label, active, onClick, children }) {
   );
 }
 
-function InputArea({ setCurScenIdx, setShowScens }) {
-  const { curScenPreviewIdx, curScenIdx, curOrderedScenIDs, curScenID } =
+function InputArea({ setCurScenName, setShowScens }) {
+  const { curScenName, curScenNamePreview, curOrderedScenNames } =
     useContext(AppContext);
+
+  const curScenNameDisplayed = curScenNamePreview || curScenName;
   return (
     <>
       <input
         className="input-range"
         orient="vertical"
         type="range"
-        value={curScenPreviewIdx === null ? curScenIdx : curScenPreviewIdx}
+        value={curOrderedScenNames.indexOf(curScenNameDisplayed)}
         min="0"
-        max={curOrderedScenIDs.length - 1}
-        onChange={(e) => void setCurScenIdx(e.target.value)}
+        max={curOrderedScenNames.length - 1}
+        onChange={(e) =>
+          void setCurScenName(curOrderedScenNames[parseInt(e.target.value)])
+        }
       />
       <div className="scen-name">
         <span>Current Scenario</span>
-        <span>{curScenID}</span>
+        <span>{curScenNameDisplayed}</span>
         <span
           className={classNames("preview-indic", {
-            visible: curScenPreviewIdx !== null,
+            visible: curScenNamePreview !== null,
           })}
         >
           Previewing
@@ -230,11 +241,11 @@ function InputArea({ setCurScenIdx, setShowScens }) {
 }
 
 function MainBucket({ levelInterp }) {
-  const { curObjectiveID, goal } = useContext(AppContext);
+  const { curObjectiveName, goal } = useContext(AppContext);
   return (
     <div className="bucket-viz">
       <div className="bucket-viz-container">
-        <span className="main-bucket-label">{curObjectiveID}</span>
+        <span className="main-bucket-label">{curObjectiveName}</span>
         <BucketGlyph levelInterp={levelInterp} width={100} height={100} />
         <div
           className="bucket-razor"
@@ -254,18 +265,33 @@ function MainBucket({ levelInterp }) {
   );
 }
 
-function Overlay({ setSortMode, setCurScenIdx, setCurScenPreviewIdx }) {
+function Overlay({
+  sortMode,
+  setSortMode,
+  setCurScenName,
+  setCurScenNamePreview,
+}) {
   const {
     data,
-    sortMode,
-    curObjectiveID,
-    curScenPreviewIdx,
-    curScenIDPreview,
-    curScenIDActual,
-    curOrderedScenIDs,
+    curObjectiveName,
+    curScenName,
+    curScenNamePreview,
+    curOrderedScenNames,
     goal,
-    curPercentileScens,
   } = useContext(AppContext);
+
+  const curPercentileScens = useMemo(() => {
+    return Array.from(curOrderedScenNames)
+      .reverse()
+      .filter(
+        (scenID, i) =>
+          scenID === curScenName ||
+          ticksExact(0, 0.9, 20)
+            .map((d) => Math.floor((d + 0.05) * curOrderedScenNames.length))
+            .includes(i)
+      );
+  }, [curOrderedScenNames, curScenName]);
+
   return (
     <div className={"ridgeline-overlay"}>
       <div className="sort-types">
@@ -288,31 +314,39 @@ function Overlay({ setSortMode, setCurScenIdx, setCurScenPreviewIdx }) {
           onChange={() => void setSortMode("deliveries")}
         />
         <label htmlFor="deliveries">Max. Deliveries</label>
+
+        <input
+          type="radio"
+          name="sort-type"
+          value="alphabetical"
+          id="alphabetical"
+          checked={sortMode === "alphabetical"}
+          onChange={() => void setSortMode("alphabetical")}
+        />
+        <label htmlFor="alphabetical">Alphabetical</label>
       </div>
       <div
         className={classNames("overlay-container", {
-          previewing: curScenPreviewIdx !== null,
+          previewing: curScenNamePreview !== null,
         })}
-        onMouseLeave={() => setCurScenPreviewIdx(null)}
+        onMouseLeave={() => setCurScenNamePreview(null)}
       >
         <AnimateList keyList={curPercentileScens}>
           {curPercentileScens.map((scenID) => (
             <div
               key={scenID}
               className={classNames({
-                previewing: scenID === curScenIDPreview,
-                "current-scene": scenID === curScenIDActual,
+                previewing: scenID === curScenNamePreview,
+                "current-scene": scenID === curScenName,
               })}
-              onMouseEnter={() =>
-                setCurScenPreviewIdx(curOrderedScenIDs.indexOf(scenID))
-              }
+              onMouseEnter={() => setCurScenNamePreview(scenID)}
               onClick={() => {
-                setCurScenIdx(curOrderedScenIDs.indexOf(scenID));
+                setCurScenName(scenID);
               }}
             >
               <DotHistogramSmall
                 data={
-                  data[curObjectiveID][SCENARIO_KEY_STRING][scenID][
+                  data[curObjectiveName][SCENARIO_KEY_STRING][scenID][
                     DELIV_KEY_STRING
                   ]
                 }

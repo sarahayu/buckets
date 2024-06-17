@@ -3,6 +3,7 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
 import {
+  DROPLET_SHAPE,
   createInterps,
   criteriaSort,
   percentToRatioFilled,
@@ -13,15 +14,16 @@ import { useSearchParams } from "react-router-dom";
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 2;
 const RAD_PX = 7;
-const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
-const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
+const MIN_LEV_VAL = 0.1;
+const DROPLET_PAD_FACTOR = 2.5;
+const PX_BIAS = 1;
 
 export default function RecursiveDropletsBasicApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const winDim = useRef();
   const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
   const [normalize, setNormalize] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const bucketSvgSelector = useRef();
 
@@ -56,8 +58,8 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     };
 
     bucketSvgSelector.current
-      .attr("width", window.innerWidth)
-      .attr("height", window.innerHeight);
+      .attr("width", winDim.current.width)
+      .attr("height", winDim.current.height);
 
     if (
       searchParams.get("obj") &&
@@ -78,16 +80,26 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       width / 2,
       height / 2,
       waterLevels.map((levs, idx) => ({
-        r: (normalize ? 1 : levs[0]) * scale * RAD_PX * 2.5,
+        r:
+          (normalize ? 1 : Math.max(levs[0], MIN_LEV_VAL)) *
+          scale *
+          RAD_PX *
+          DROPLET_PAD_FACTOR,
         id: idx,
       }))
     );
 
     const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
       levs: waterLevels[idx].map(
-        (w) => w * scale * (normalize ? 1 / waterLevels[idx][0] : 1)
+        (w, i) =>
+          Math.max(w, i == 0 ? MIN_LEV_VAL : 0) *
+          scale *
+          (normalize ? 1 / Math.max(waterLevels[idx][0], MIN_LEV_VAL) : 1) *
+          RAD_PX
       ),
-      maxLev: normalize ? 1 : Math.max(waterLevels[idx][0], 0.1) * scale,
+      maxLev:
+        (normalize ? 1 : Math.max(waterLevels[idx][0], MIN_LEV_VAL) * scale) *
+        RAD_PX,
       tilt: Math.random() * 50 - 25,
       dur: Math.random() * 100 + 400,
       startX: x,
@@ -103,7 +115,7 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
         return enter
           .append("g")
           .attr("class", "smallDrop")
-          .each(function ({ levs, maxLev }, i) {
+          .each(function ({ levs }, i) {
             d3.select(this)
               .append("defs")
               .append("clipPath")
@@ -129,23 +141,17 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
         d3.select(this)
           .selectAll("rect")
           .data(levs, (_, i) => i)
-          .attr("width", maxLev * RAD_PX * 2)
-          .attr("height", maxLev * RAD_PX * 2)
-          .attr("x", (-maxLev * RAD_PX * 2) / 2)
+          .attr("width", maxLev * 2)
+          .attr("height", maxLev * 2)
+          .attr("x", -maxLev)
           .attr(
             "y",
             (l) =>
-              (maxLev * RAD_PX * 2) / 2 -
-              percentToRatioFilled(l / maxLev) * (maxLev * RAD_PX * 2)
+              maxLev * Math.SQRT1_2 -
+              percentToRatioFilled(l / maxLev) * (maxLev * (1 + Math.SQRT1_2)) +
+              (l === 0 ? PX_BIAS : 0)
           );
-        d3.select(this)
-          .select("path")
-          .attr(
-            "transform",
-            `scale(${
-              (maxLev * RAD_PX) / 2 / Math.SQRT2 / SVG_DROPLET_WIDTH_DONT_CHANGE
-            })`
-          );
+        d3.select(this).select("path").attr("transform", `scale(${maxLev})`);
       })
       .call((s) => {
         s.transition()

@@ -27,19 +27,30 @@ export function mapBy(objs, fn) {
   return newObjs;
 }
 
+// size is height of waterdrop plus a bit more (1/2 of size is distance from top of drop to center of circle part)
 export const WATERDROP_ICON = {
   draw: function (context, size) {
     context.moveTo(0, -size / 2);
     context.lineTo(size / 4, -size / 4);
 
-    context.arc(0, 0, size / Math.sqrt(2) / 2, -Math.PI / 4, (Math.PI * 5) / 4);
+    context.arc(0, 0, size / Math.SQRT2 / 2, -Math.PI / 4, (Math.PI * 5) / 4);
     context.lineTo(0, -size / 2);
     context.closePath();
   },
 };
 
+// path generated when WATERDROP_ICON size = 2
+export const DROPLET_SHAPE = "M0,-1L0.5,-0.5A0.707,0.707,0,1,1,-0.5,-0.5L0,-1Z";
+
 export function percentToRatioFilled(p) {
-  return (3.1304 * p ** 3 - 4.2384 * p ** 2 + 3.3471 * p + 0.0298) / 2.4;
+  p -= 0.0088;
+  return Math.min(
+    1,
+    Math.max(
+      0,
+      (3.1304 * p ** 3 - 4.2384 * p ** 2 + 3.3471 * p + 0.0298) / 2.2326
+    )
+  );
 }
 
 export function kernelDensityEstimator(kernel, X) {
@@ -267,5 +278,8 @@ export function criteriaSort(criteria, data, objective) {
         d3.max(data[objective][SCENARIO_KEY_STRING][a][DELIV_KEY_STRING]) -
         d3.max(data[objective][SCENARIO_KEY_STRING][b][DELIV_KEY_STRING])
     );
+  }
+  if (criteria === "alphabetical") {
+    return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort();
   }
 }

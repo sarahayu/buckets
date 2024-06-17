@@ -8,6 +8,7 @@ import {
   objectivesData,
 } from "./data/objectivesData";
 import {
+  DROPLET_SHAPE,
   createInterps,
   criteriaSort,
   percentToRatioFilled,
@@ -17,8 +18,10 @@ import { useNavigate } from "react-router-dom";
 
 const LEVELS = 5;
 const RAD_PX = 3;
-const DROPLET_SHAPE = "M0,-10L5,-5A7.071,7.071,0,1,1,-5,-5L0,-10Z";
-const SVG_DROPLET_WIDTH_DONT_CHANGE = 4;
+const MIN_LEV_VAL = 0.1;
+const SCEN_DIVISOR = 20;
+const LARGE_DROPLET_PAD_FACTOR = 1.5;
+const PX_BIAS = 1;
 
 export default function LargeDropletMosaicApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
@@ -33,14 +36,11 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     const unorderedObjToScens = {};
     const mapSorted = {};
 
-    // const partialScens = Object.keys(
-    //   objectivesData[objectiveIDs[0]][SCENARIO_KEY_STRING]
-    // ).filter((_, i) => i % 20 == 0);
-
+    // don't process all scenes, too many small drops causes lag
     objectiveIDs.forEach(
       (obj) =>
         (unorderedObjToScens[obj] = criteriaSort("median", objectivesData, obj)
-          .filter((s, i) => i % 20 == 0)
+          .filter((_, i) => i % SCEN_DIVISOR == 0)
           .reverse())
     );
 
@@ -72,7 +72,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     objectiveIDs.forEach((obj) => {
       retVal[obj] = orderedObjToScens[obj].map((s) => {
         const i = createInterps(obj, s, objectivesData, MAX_DELIVS);
-        return ticksExact(0, 1, LEVELS + 1).map((d, j) => i(d));
+        return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
       });
     });
 
@@ -86,8 +86,8 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     };
 
     bucketSvgSelector.current
-      .attr("width", window.innerWidth)
-      .attr("height", window.innerHeight);
+      .attr("width", winDim.current.width)
+      .attr("height", winDim.current.height);
   }, []);
 
   useLayoutEffect(() => {
@@ -104,7 +104,10 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
           objToWaterLevels[obj].map((levs, idx) => ({
             r: Math.max(
               2,
-              (normalize ? 1 : Math.max(levs[0], 0.1)) * scale * RAD_PX * 1.5
+              (normalize ? 1 : Math.max(levs[0], MIN_LEV_VAL)) *
+                scale *
+                RAD_PX *
+                LARGE_DROPLET_PAD_FACTOR
             ),
             id: idx,
           }))
@@ -113,17 +116,18 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
         const nodes = nodesPos.map(({ id: idx, x, y }) => ({
           levs: objToWaterLevels[obj][idx].map(
             (w, i) =>
-              Math.max(w, i == 0 ? 0.1 : 0) *
+              Math.max(w, i == 0 ? MIN_LEV_VAL : 0) *
               scale *
               (normalize
-                ? 1 / Math.max(objToWaterLevels[obj][idx][0], 0.1)
+                ? 1 / Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)
                 : 1) *
               RAD_PX
           ),
           maxLev:
             (normalize
               ? 1
-              : Math.max(objToWaterLevels[obj][idx][0], 0.1) * scale) * RAD_PX,
+              : Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL) * scale) *
+            RAD_PX,
           tilt: Math.random() * 50 - 25,
           dur: Math.random() * 100 + 400,
           startX: x,
@@ -162,7 +166,6 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
           const s = d3.select(this);
 
           if (i == 0) {
-            console.log(i);
             bucketSvgSelector.current
               .append("rect")
               .attr("id", "overlay")
@@ -214,7 +217,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             return enter
               .append("g")
               .attr("class", "smallDrop")
-              .each(function ({ levs, obj }, i2) {
+              .each(function ({ levs }, i2) {
                 d3.select(this)
                   .append("defs")
                   .append("clipPath")
@@ -237,33 +240,34 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             ({ startX, startY, tilt }) =>
               `translate(${startX}, ${startY}) rotate(${tilt})`
           )
-          .each(function ({ levs, maxLev, obj }, i) {
+          .each(function ({ levs, maxLev }) {
             d3.select(this)
               .selectAll("rect")
               .data(levs, (_, i) => i)
               .attr("width", maxLev * 2)
               .attr("height", maxLev * 2)
-              .attr("x", (-maxLev * 2) / 2)
+              .attr("x", -maxLev)
               .attr(
                 "y",
                 (l) =>
-                  (maxLev * 2) / 2 -
-                  percentToRatioFilled(l / maxLev) * (maxLev * 2)
+                  maxLev * Math.SQRT1_2 -
+                  percentToRatioFilled(l / maxLev) *
+                    (maxLev * (1 + Math.SQRT1_2)) +
+                  (l === 0 ? PX_BIAS : 0)
               );
             d3.select(this)
               .select("path")
-              .attr(
-                "transform",
-                `scale(${
-                  maxLev / 2 / Math.SQRT2 / SVG_DROPLET_WIDTH_DONT_CHANGE
-                })`
-              );
+              .attr("transform", `scale(${maxLev})`);
           });
 
         const d = s.select(".rotateClass");
 
         s.on("click", function () {
-          navigate(`/RecursiveDropletsBasicApp?obj=${nodes[0].obj}&norm=true`);
+          navigate(
+            `/RecursiveDropletsBasicApp?obj=${nodes[0].obj}&norm=${
+              normalize ? "true" : "false"
+            }`
+          );
         });
 
         s.select(".bbox")
