@@ -19,7 +19,6 @@ import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
 import { criteriaSort } from "./utils";
-import styles from "./index_old.module.css";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";
@@ -76,17 +75,17 @@ export default function OldMainApp({ data = objectivesData }) {
         curOrderedScenNames,
       }}
     >
-      <div className={styles["old-dashboard"]}>
-        <div className="slider-container">
+      <div className="old-dashboard">
+        <div className="old-slider-container">
           <InputArea
             setCurScenName={setCurScenName}
             setShowScens={setShowScens}
           />
         </div>
-        <div className="bucket-map-container">
+        <div className="old-bucket-map-container">
           <MainBucket levelInterp={curMainInterp} />
 
-          <div className={styles["old-other-buckets-container"]}>
+          <div className="old-other-buckets-container">
             {objectiveNames.map((objectiveName) => (
               <SmallBucketTile
                 key={objectiveName}
@@ -105,7 +104,7 @@ export default function OldMainApp({ data = objectivesData }) {
             ))}
           </div>
         </div>
-        <div className={styles["old-pdf-container"]}>
+        <div className="old-pdf-container">
           <DotHistogram
             data={
               data[curObjectiveName][SCENARIO_KEY_STRING][curScenNameDisplayed][
@@ -193,8 +192,8 @@ function useCaches(
 function SmallBucketTile({ label, active, onClick, children }) {
   return (
     <div
-      className={classNames("bucket-and-label", {
-        "cur-obj": !active,
+      className={classNames("old-bucket-and-label", {
+        "old-cur-obj": !active,
       })}
       onClick={onClick}
       title={label}
@@ -213,7 +212,7 @@ function InputArea({ setCurScenName, setShowScens }) {
   return (
     <>
       <input
-        className="input-range"
+        className="old-input-range"
         orient="vertical"
         type="range"
         value={curOrderedScenNames.indexOf(curScenNameDisplayed)}
@@ -223,12 +222,12 @@ function InputArea({ setCurScenName, setShowScens }) {
           void setCurScenName(curOrderedScenNames[parseInt(e.target.value)])
         }
       />
-      <div className="scen-name">
+      <div className="old-scen-name">
         <span>Current Scenario</span>
         <span>{curScenNameDisplayed}</span>
         <span
-          className={classNames("preview-indic", {
-            visible: curScenNamePreview !== null,
+          className={classNames("old-preview-indic", {
+            "old-visible": curScenNamePreview !== null,
           })}
         >
           Previewing
@@ -244,14 +243,12 @@ function InputArea({ setCurScenName, setShowScens }) {
 function MainBucket({ levelInterp }) {
   const { curObjectiveName, goal } = useContext(AppContext);
   return (
-    <div className={styles["old-bucket-viz"]}>
-      <div className={styles["old-bucket-viz-container"]}>
-        <span className={styles["old-main-bucket-label"]}>
-          {curObjectiveName}
-        </span>
+    <div className="old-bucket-viz">
+      <div className="old-bucket-viz-container">
+        <span className="old-main-bucket-label">{curObjectiveName}</span>
         <BucketGlyph levelInterp={levelInterp} width={100} height={100} />
         <div
-          className="bucket-razor"
+          className="old-bucket-razor"
           style={{
             top:
               d3.scaleLinear().domain([0, MAX_DELIVS]).range([100, 0])(goal) +
@@ -296,8 +293,8 @@ function Overlay({
   }, [curOrderedScenNames, curScenName]);
 
   return (
-    <div className={styles["old-ridgeline-overlay"]}>
-      <div className="sort-types">
+    <div className="old-ridgeline-overlay">
+      <div className="old-sort-types">
         <input
           type="radio"
           name="sort-type"
@@ -329,8 +326,8 @@ function Overlay({
         <label htmlFor="alphabetical">Alphabetical</label>
       </div>
       <div
-        className={classNames(styles["old-overlay-container"], {
-          previewing: curScenNamePreview !== null,
+        className={classNames("old-overlay-container", {
+          "old-previewing": curScenNamePreview !== null,
         })}
         onMouseLeave={() => setCurScenNamePreview(null)}
       >
@@ -339,8 +336,8 @@ function Overlay({
             <div
               key={scenID}
               className={classNames({
-                previewing: scenID === curScenNamePreview,
-                "current-scene": scenID === curScenName,
+                "old-previewing": scenID === curScenNamePreview,
+                "old-current-scene": scenID === curScenName,
               })}
               onMouseEnter={() => setCurScenNamePreview(scenID)}
               onClick={() => {
@@ -362,7 +359,7 @@ function Overlay({
           ))}
         </AnimateList>
         <div
-          className="dot-overlay-razor"
+          className="old-dot-overlay-razor"
           style={{
             left:
               d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(goal) +
