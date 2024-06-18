@@ -31,31 +31,13 @@ svg {
 
 .scen-input {
   grid-area: scen-input;
-  width: max-content;
-  margin-inline: auto;
+
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  margin: 0.5rem auto;
   color: gray;
   font-size: 0.8rem;
-  line-height: 1;
-  gap: 0.5rem;
-  padding-block: 1rem;
-}
-
-.scen-input > * {
-  display: block;
-  width: max-content;
-}
-
-.scen-picker {
-  font-size: 2rem;
-  display: flex;
-  align-items: center;
-}
-
-.scen-picker span {
-  color: black;
 }
 
 .scen-input button {
@@ -64,8 +46,37 @@ svg {
   background-color: transparent;
   color: inherit;
   cursor: pointer;
-  font-size: 0.8rem;
-  padding-inline: 2em;
+}
+
+.scen-input button:first-child,
+.scen-input button:last-child {
+  padding-inline: 1rem;
+  border-radius: 1rem;
+}
+
+.scen-input button:first-child:hover,
+.scen-input button:last-child:hover {
+  background-color: lightgray;
+  color: white;
+}
+
+.scen-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid transparent !important;
+  border-radius: 0.5rem;
+}
+
+.scen-picker:hover {
+  border: 1px solid gray !important;
+}
+
+.scen-picker span:nth-child(2) {
+  font-size: 2rem;
+  color: black;
 }
 
 .bucket-viz {
@@ -89,7 +100,7 @@ svg {
 .pdf-container > * {
   max-height: 100%;
   display: flex;
-  position: absolute;
+  position: absolute !important;
   align-items: flex-end;
 }
 
@@ -237,7 +248,7 @@ input::-moz-focus-inner {
 
 .dot-pdf-wrapper {
   place-self: center;
-  /* position: relative; */
+  position: relative;
   isolation: isolate;
 }
 
@@ -282,13 +293,11 @@ input::-moz-focus-inner {
   background-color: rgb(200, 200, 200);
   position: fixed;
   height: 100vh;
-  width: calc(100% - var(--left-space));
+  width: 30rem;
+  left: 0;
   top: 0;
-  left: var(--left-space);
-  overflow-y: scroll;
   padding: 2rem;
   isolation: isolate;
-  /* display: grid; */
 
   background-color: rgba(251, 251, 255, 0.6);
   box-shadow: -1px 0px 8px rgba(200, 200, 200, 1);
@@ -301,17 +310,26 @@ input::-moz-focus-inner {
   margin: 0 auto;
   width: min-content;
   position: relative;
-  /* border: 1px solid blue; */
-  /* mix-blend-mode: darken; */
+  overflow-y: auto;
+  height: 80%;
 }
 
-.overlay-container.previewing > * {
+.overlay-container-2 {
+  /* place-self: center; */
+  margin: 0 auto;
+  width: min-content;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-container-2.previewing > * {
   filter: contrast(30%) brightness(150%);
 
   /* opacity: 0.5; */
 }
 
-.overlay-container > * {
+.overlay-container-2 > * {
   position: relative;
   display: flex;
   align-items: end;
@@ -326,36 +344,37 @@ input::-moz-focus-inner {
   width: min-content;
 }
 
-.overlay-container .icons {
+.overlay-container-2 .icons {
   visibility: hidden;
 }
 
-.overlay-container .previewing .icons {
+.overlay-container-2 .previewing .icons {
   visibility: visible;
 }
 
-.overlay-container > *.previewing {
+.overlay-container-2 > *.previewing {
   filter: none;
   z-index: 1000;
 }
 
-.overlay-container > *.current-scene {
+.overlay-container-2 > *.current-scene {
   box-shadow: 0px 0px 10px 1px yellow;
   /* outline-offset: 1rem; */
 }
 
-.overlay-container > * + * {
+.overlay-container-2 > * + * {
   /* border: 1px solid red; */
   /* margin-top: -40px; */
 }
 
 .dot-overlay-razor {
-  position: absolute;
+  position: absolute !important;
   width: 5px;
   top: 0px;
-  height: 100%;
+  min-height: 100% !important;
   border: none;
   border-left: 1px dashed black;
+  overflow: hidden;
 }
 
 .dot-pdf-shadowed {

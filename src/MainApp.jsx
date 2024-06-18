@@ -77,36 +77,41 @@ export default function MainApp({ data = objectivesData }) {
     >
       <div className="dashboard">
         <div className="scen-input">
-          <span>Scenario</span>
-          <div className="scen-picker">
-            <button
-              onClick={() => {
-                setCurScenName(
-                  curOrderedScenNames[
-                    Math.max(curOrderedScenNames.indexOf(curScenName) - 1, 0)
-                  ]
-                );
-              }}
-            >
-              ⟨
-            </button>
+          <button
+            onClick={() => {
+              setCurScenName(
+                curOrderedScenNames[
+                  Math.max(curOrderedScenNames.indexOf(curScenName) - 1, 0)
+                ]
+              );
+            }}
+          >
+            ⟨
+          </button>
+          <button
+            className="scen-picker"
+            onClick={() => {
+              setShowScens((s) => !s);
+            }}
+          >
+            <span>Scenario</span>
             <span>{curScenNameDisplayed}</span>
-            <button
-              onClick={() => {
-                setCurScenName(
-                  curOrderedScenNames[
-                    Math.min(
-                      curOrderedScenNames.indexOf(curScenName) + 1,
-                      curOrderedScenNames.length - 1
-                    )
-                  ]
-                );
-              }}
-            >
-              ⟩
-            </button>
-          </div>
-          <button>{sortMode} →</button>
+            <span>{sortMode} →</span>
+          </button>
+          <button
+            onClick={() => {
+              setCurScenName(
+                curOrderedScenNames[
+                  Math.min(
+                    curOrderedScenNames.indexOf(curScenName) + 1,
+                    curOrderedScenNames.length - 1
+                  )
+                ]
+              );
+            }}
+          >
+            ⟩
+          </button>
         </div>
         <MainBucket levelInterp={curMainInterp} />
         <div className="pdf-container">
@@ -304,16 +309,19 @@ function Overlay({
   } = useContext(AppContext);
 
   const curPercentileScens = useMemo(() => {
-    return Array.from(curOrderedScenNames)
-      .reverse()
-      .filter(
-        (scenID, i) =>
-          scenID === curScenName ||
-          ticksExact(0, 0.9, 20)
-            .map((d) => Math.floor((d + 0.05) * curOrderedScenNames.length))
-            .includes(i)
-      );
+    return Array.from(curOrderedScenNames).reverse();
   }, [curOrderedScenNames, curScenName]);
+
+  const asdf = useRef();
+
+  useLayoutEffect(() => {
+    // console.log(asdf.current);
+    asdf.current.scrollTo(
+      0,
+      asdf.current.querySelector(`#${curScenName}`).getBoundingClientRect()
+        .top - 100
+    );
+  }, []);
 
   return (
     <div className={"ridgeline-overlay"}>
@@ -353,42 +361,46 @@ function Overlay({
           previewing: curScenNamePreview !== null,
         })}
         onMouseLeave={() => setCurScenNamePreview(null)}
+        ref={asdf}
       >
-        <AnimateList keyList={curPercentileScens}>
-          {curPercentileScens.map((scenID) => (
-            <div
-              key={scenID}
-              className={classNames({
-                previewing: scenID === curScenNamePreview,
-                "current-scene": scenID === curScenName,
-              })}
-              onMouseEnter={() => setCurScenNamePreview(scenID)}
-              onClick={() => {
-                setCurScenName(scenID);
-              }}
-            >
-              <DotHistogramSmall
-                data={
-                  data[curObjectiveName][SCENARIO_KEY_STRING][scenID][
-                    DELIV_KEY_STRING
-                  ]
-                }
-                goal={goal}
-                width={300}
-                height={200}
-              />
-              <span>{scenID}</span>
-            </div>
-          ))}
-        </AnimateList>
-        <div
-          className="dot-overlay-razor"
-          style={{
-            left:
-              d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(goal) +
-              "px",
-          }}
-        ></div>
+        <div className="overlay-container-2">
+          <AnimateList keyList={curPercentileScens}>
+            {curPercentileScens.map((scenID) => (
+              <div
+                key={scenID}
+                className={classNames({
+                  previewing: scenID === curScenNamePreview,
+                  "current-scene": scenID === curScenName,
+                })}
+                id={scenID}
+                onMouseEnter={() => setCurScenNamePreview(scenID)}
+                onClick={() => {
+                  setCurScenName(scenID);
+                }}
+              >
+                <DotHistogramSmall
+                  data={
+                    data[curObjectiveName][SCENARIO_KEY_STRING][scenID][
+                      DELIV_KEY_STRING
+                    ]
+                  }
+                  goal={goal}
+                  width={300}
+                  height={200}
+                />
+                <span>{scenID}</span>
+              </div>
+            ))}
+          </AnimateList>
+          <div
+            className="dot-overlay-razor"
+            style={{
+              left:
+                d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(goal) +
+                "px",
+            }}
+          ></div>
+        </div>
       </div>
     </div>
   );
@@ -410,7 +422,9 @@ function AnimateList({ keyList, children }) {
     currBBoxes.current = {};
 
     for (const k in domRefs.current) {
-      currBBoxes.current[k] = domRefs.current[k].getBoundingClientRect();
+      currBBoxes.current[k] =
+        domRefs.current[k].getBoundingClientRect().top +
+        domRefs.current[k].parentNode.scrollTop;
     }
 
     const hasPrevBoundingBox = Object.keys(prevBBoxes.current).length;
@@ -421,7 +435,7 @@ function AnimateList({ keyList, children }) {
         const lastBox = prevBBoxes.current[child.key];
 
         if (lastBox === undefined || firstBox === undefined) return;
-        const changeInX = firstBox.top - lastBox.top;
+        const changeInX = firstBox - lastBox;
 
         if (changeInX) {
           requestAnimationFrame(() => {

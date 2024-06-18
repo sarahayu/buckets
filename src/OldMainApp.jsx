@@ -19,7 +19,7 @@ import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
 import { criteriaSort } from "./utils";
-import "./index_old.css";
+import styles from "./index_old.module.css";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";
@@ -76,7 +76,7 @@ export default function OldMainApp({ data = objectivesData }) {
         curOrderedScenNames,
       }}
     >
-      <div className="old-dashboard">
+      <div className={styles["old-dashboard"]}>
         <div className="slider-container">
           <InputArea
             setCurScenName={setCurScenName}
@@ -86,7 +86,7 @@ export default function OldMainApp({ data = objectivesData }) {
         <div className="bucket-map-container">
           <MainBucket levelInterp={curMainInterp} />
 
-          <div className="old-other-buckets-container">
+          <div className={styles["old-other-buckets-container"]}>
             {objectiveNames.map((objectiveName) => (
               <SmallBucketTile
                 key={objectiveName}
@@ -105,7 +105,7 @@ export default function OldMainApp({ data = objectivesData }) {
             ))}
           </div>
         </div>
-        <div className="old-pdf-container">
+        <div className={styles["old-pdf-container"]}>
           <DotHistogram
             data={
               data[curObjectiveName][SCENARIO_KEY_STRING][curScenNameDisplayed][
@@ -244,9 +244,11 @@ function InputArea({ setCurScenName, setShowScens }) {
 function MainBucket({ levelInterp }) {
   const { curObjectiveName, goal } = useContext(AppContext);
   return (
-    <div className="old-bucket-viz">
-      <div className="old-bucket-viz-container">
-        <span className="old-main-bucket-label">{curObjectiveName}</span>
+    <div className={styles["old-bucket-viz"]}>
+      <div className={styles["old-bucket-viz-container"]}>
+        <span className={styles["old-main-bucket-label"]}>
+          {curObjectiveName}
+        </span>
         <BucketGlyph levelInterp={levelInterp} width={100} height={100} />
         <div
           className="bucket-razor"
@@ -294,7 +296,7 @@ function Overlay({
   }, [curOrderedScenNames, curScenName]);
 
   return (
-    <div className={"ridgeline-overlay"}>
+    <div className={styles["old-ridgeline-overlay"]}>
       <div className="sort-types">
         <input
           type="radio"
@@ -327,7 +329,7 @@ function Overlay({
         <label htmlFor="alphabetical">Alphabetical</label>
       </div>
       <div
-        className={classNames("overlay-container", {
+        className={classNames(styles["old-overlay-container"], {
           previewing: curScenNamePreview !== null,
         })}
         onMouseLeave={() => setCurScenNamePreview(null)}
