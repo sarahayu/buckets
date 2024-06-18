@@ -7,6 +7,7 @@ import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
 const LargeDropletMosaicApp = React.lazy(() => import("./LargeDropletMosaicApp"));
+const OldMainApp = React.lazy(() => import("./OldMainApp"));
 const RecursiveDropletsWatercolorApp = React.lazy(() => import("./RecursiveDropletsWatercolorApp"));
 const RecursiveDropletsBasicApp = React.lazy(() => import("./RecursiveDropletsBasicApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
@@ -24,6 +25,7 @@ root.render(
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
               <Link to="LargeDropletMosaicApp" title="Large Droplet Mosaic" ><img src="LargeDropletMosaicApp.png" className="linkPics" /></Link>
+              <Link to="OldMainApp" title="Old Main" ><img src="OldMainApp.png" className="linkPics" /></Link>
               <Link to="RecursiveDropletsWatercolorApp" title="Recursive Droplets Watercolor" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
               <Link to="RecursiveDropletsBasicApp" title="Recursive Droplets Basic" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
@@ -45,6 +47,14 @@ root.render(
         element={
           <React.Suspense fallback={<>...</>}>
             <LargeDropletMosaicApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="OldMainApp"
+        element={
+          <React.Suspense fallback={<>...</>}>
+            <OldMainApp />
           </React.Suspense>
         }
       />

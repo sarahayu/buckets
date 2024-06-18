@@ -19,6 +19,7 @@ import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
 import { criteriaSort } from "./utils";
+import "./index_old.css";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";
@@ -27,7 +28,7 @@ const DEFAULT_SORT_MODE = "median";
 
 const AppContext = createContext({});
 
-export default function MainApp({ data = objectivesData }) {
+export default function OldMainApp({ data = objectivesData }) {
   const { current: objectiveNames } = useRef(Object.keys(data));
 
   const {
@@ -75,41 +76,36 @@ export default function MainApp({ data = objectivesData }) {
         curOrderedScenNames,
       }}
     >
-      <div className="dashboard">
-        <div className="scen-input">
-          <span>Scenario</span>
-          <div className="scen-picker">
-            <button
-              onClick={() => {
-                setCurScenName(
-                  curOrderedScenNames[
-                    Math.max(curOrderedScenNames.indexOf(curScenName) - 1, 0)
-                  ]
-                );
-              }}
-            >
-              ⟨
-            </button>
-            <span>{curScenNameDisplayed}</span>
-            <button
-              onClick={() => {
-                setCurScenName(
-                  curOrderedScenNames[
-                    Math.min(
-                      curOrderedScenNames.indexOf(curScenName) + 1,
-                      curOrderedScenNames.length - 1
-                    )
-                  ]
-                );
-              }}
-            >
-              ⟩
-            </button>
-          </div>
-          <button>{sortMode} →</button>
+      <div className="old-dashboard">
+        <div className="slider-container">
+          <InputArea
+            setCurScenName={setCurScenName}
+            setShowScens={setShowScens}
+          />
         </div>
-        <MainBucket levelInterp={curMainInterp} />
-        <div className="pdf-container">
+        <div className="bucket-map-container">
+          <MainBucket levelInterp={curMainInterp} />
+
+          <div className="old-other-buckets-container">
+            {objectiveNames.map((objectiveName) => (
+              <SmallBucketTile
+                key={objectiveName}
+                label={objectiveName}
+                active={objectiveName !== curObjectiveName}
+                onClick={() => {
+                  setCurObjectiveName(objectiveName);
+                }}
+              >
+                <BucketGlyph
+                  levelInterp={curDelivInterps[objectiveName]}
+                  width={50}
+                  height={50}
+                />
+              </SmallBucketTile>
+            ))}
+          </div>
+        </div>
+        <div className="old-pdf-container">
           <DotHistogram
             data={
               data[curObjectiveName][SCENARIO_KEY_STRING][curScenNameDisplayed][
@@ -119,24 +115,6 @@ export default function MainApp({ data = objectivesData }) {
             goal={goal}
             setGoal={setGoal}
           />
-        </div>
-        <div className="other-buckets-container">
-          {objectiveNames.map((objectiveName) => (
-            <SmallBucketTile
-              key={objectiveName}
-              label={objectiveName}
-              active={objectiveName !== curObjectiveName}
-              onClick={() => {
-                setCurObjectiveName(objectiveName);
-              }}
-            >
-              <BucketGlyph
-                levelInterp={curDelivInterps[objectiveName]}
-                width={50}
-                height={50}
-              />
-            </SmallBucketTile>
-          ))}
         </div>
       </div>
       {showScens && (
@@ -266,15 +244,15 @@ function InputArea({ setCurScenName, setShowScens }) {
 function MainBucket({ levelInterp }) {
   const { curObjectiveName, goal } = useContext(AppContext);
   return (
-    <div className="bucket-viz">
-      <div className="bucket-viz-container">
-        <span className="main-bucket-label">{curObjectiveName}</span>
-        <BucketGlyph levelInterp={levelInterp} width={200} height={200} />
+    <div className="old-bucket-viz">
+      <div className="old-bucket-viz-container">
+        <span className="old-main-bucket-label">{curObjectiveName}</span>
+        <BucketGlyph levelInterp={levelInterp} width={100} height={100} />
         <div
           className="bucket-razor"
           style={{
             top:
-              d3.scaleLinear().domain([0, MAX_DELIVS]).range([200, 0])(goal) +
+              d3.scaleLinear().domain([0, MAX_DELIVS]).range([100, 0])(goal) +
               "px",
           }}
         >
