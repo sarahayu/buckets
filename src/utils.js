@@ -203,7 +203,7 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   Composite.add(engine.world, [...node_bodies, cage]);
 
   // run engine for SECS second at FPS fps
-  for (let i = 0, FPS = 60, SECS = 0.3; i < FPS * SECS; i++)
+  for (let i = 0, FPS = 60, SECS = 0.1; i < FPS * SECS; i++)
     Engine.update(engine, 1000 / FPS);
 
   return node_bodies.map(({ position, id }) => ({

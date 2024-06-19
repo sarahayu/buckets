@@ -1,5 +1,11 @@
 import * as d3 from "d3";
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
@@ -9,6 +15,7 @@ import {
 } from "./data/objectivesData";
 import {
   DROPLET_SHAPE,
+  WATERDROP_ICON,
   createInterps,
   criteriaSort,
   percentToRatioFilled,
@@ -16,7 +23,7 @@ import {
 } from "./utils";
 import { useNavigate } from "react-router-dom";
 
-const LEVELS = 5;
+const LEVELS = 3;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
 const SCEN_DIVISOR = 20;
@@ -28,9 +35,6 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
   const navigate = useNavigate();
   const winDim = useRef();
   const [normalize, setNormalize] = useState(false);
-
-  const bucketSvgSelector = useRef();
-  const largeDrops = useRef();
 
   const orderedObjToScens = useMemo(() => {
     const unorderedObjToScens = {};
@@ -79,18 +83,35 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     return retVal;
   }, []);
 
-  useLayoutEffect(() => {
+  const canvasRef = useRef();
+  const contextRef = useRef();
+  const docRef = useRef();
+
+  useEffect(() => {
     winDim.current = {
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: 1536,
+      height: 703,
     };
 
-    bucketSvgSelector.current
-      .attr("width", winDim.current.width)
-      .attr("height", winDim.current.height);
+    const width = winDim.current.width,
+      height = winDim.current.height;
+
+    canvasRef.current = d3
+      .select("#mosaic-area")
+      .append("canvas")
+      .attr("id", "canvas")
+      .attr("width", width)
+      .attr("height", height);
+    contextRef.current = canvasRef.current.node().getContext("2d");
+
+    canvasRef.current = canvasRef.current.node();
+
+    docRef.current = d3.select(document.createElement("custom"));
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    const context = contextRef.current;
+
     const width = winDim.current.width,
       height = winDim.current.height;
 
@@ -158,134 +179,198 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       r: largeNodesRads[i],
     }));
 
-    largeDrops.current = bucketSvgSelector.current
-      .selectAll(".largeDrop")
-      .data(nodesArr, (n, i) => n[0].obj)
-      .join((enter) =>
-        enter.append("g").each(function (d, i) {
-          const s = d3.select(this);
+    const zoomInfo = {
+      centerX: width / 2,
+      lastCenterX: width / 2,
+      centerY: height / 2,
+      lastCenterY: height / 2,
+      scale: 1,
+      lastScale: 1,
+    };
 
-          if (i == 0) {
-            bucketSvgSelector.current
-              .append("rect")
-              .attr("id", "overlay")
-              .attr("pointer-events", "none")
-              .attr("width", winDim.current.width)
-              .attr("height", winDim.current.height)
-              .attr("fill", "white")
-              .attr("opacity", 0.5)
-              .attr("visibility", "hidden");
-          }
+    function drawCanvas() {
+      context.setTransform(1, 0, 0, 1, 0, 0);
 
-          d3.select(this.parentNode)
-            .append("text")
-            .attr("text-anchor", "middle")
-            .attr("id", `drop-${i}`);
-          s.append("g").attr("class", "rotateClass");
+      context.translate(zoomInfo.centerX, zoomInfo.centerY);
+      context.scale(zoomInfo.scale, zoomInfo.scale);
+      context.translate(-width / 2, -height / 2);
 
-          s.append("rect").attr("class", "bbox").style("visibility", "hidden");
+      context.clearRect(-width, -height, width * 3, height * 3);
 
-          s.on("mouseover", function () {
-            d3.select(`#drop-${i}`).style("opacity", 1);
-            d3.select("#overlay").style("visibility", "visible");
-            d3.select(this).raise();
-          }).on("mouseout", function () {
-            d3.select(`#drop-${i}`).style("opacity", 0);
-            d3.select(this).lower();
-            d3.select("#overlay").style("visibility", "hidden");
-          });
-        })
-      )
-      .attr("class", "largeDrop")
-      .attr(
-        "transform",
-        (_, i) =>
-          `translate(${largeNodesPos[i].x + width / 2}, ${
-            largeNodesPos[i].y + height / 2
-          })`
-      )
-      .each(function (nodes, i1) {
-        const s = d3.select(this);
+      zoomInfo.lastScale = zoomInfo.scale;
+      zoomInfo.lastCenterX = zoomInfo.centerX;
+      zoomInfo.lastCenterY = zoomInfo.centerY;
 
-        d3.select(`#drop-${i1}`).text(nodes[0].obj).style("opacity", 0);
-        d3.select(this)
-          .select(".rotateClass")
-          .attr("transform", `rotate(${largeNodesPos[i1].tilt})`)
-          .selectAll(".smallDrop")
-          .data(nodes, (_, i) => i)
-          .join((enter) => {
-            return enter
-              .append("g")
-              .attr("class", "smallDrop")
-              .each(function ({ levs }, i2) {
-                d3.select(this)
-                  .append("defs")
-                  .append("clipPath")
-                  .attr("id", `drop-mask-${i1}-${i2}`)
-                  .append("path")
-                  .attr("d", DROPLET_SHAPE);
-                d3.select(this)
-                  .append("g")
-                  .attr("clip-path", `url(#drop-mask-${i1}-${i2})`)
-                  .selectAll("rect")
-                  .data(levs, (_, i) => i)
-                  .join("rect")
-                  .attr("fill", (_, i) =>
-                    interpolateWatercolorBlue(i / LEVELS)
-                  );
-              });
-          })
-          .attr(
-            "transform",
-            ({ startX, startY, tilt }) =>
-              `translate(${startX}, ${startY}) rotate(${tilt})`
-          )
-          .each(function ({ levs, maxLev }) {
-            d3.select(this)
-              .selectAll("rect")
-              .data(levs, (_, i) => i)
-              .attr("width", maxLev * 2)
-              .attr("height", maxLev * 2)
-              .attr("x", -maxLev)
-              .attr(
-                "y",
-                (l) =>
-                  maxLev * Math.SQRT1_2 -
-                  percentToRatioFilled(l / maxLev) *
-                    (maxLev * (1 + Math.SQRT1_2)) +
-                  (l === 0 ? PX_BIAS : 0)
-              );
-            d3.select(this)
-              .select("path")
-              .attr("transform", `scale(${maxLev})`);
+      nodesArr.forEach(function (smallDrops, i) {
+        const largeDrop = largeNodesPos[i];
+
+        context.save();
+        context.translate(largeDrop.x + width / 2, largeDrop.y + height / 2);
+        context.rotate((largeDrop.tilt * Math.PI) / 180);
+
+        smallDrops.forEach(function ({ levs, maxLev, startX, startY, tilt }) {
+          context.save();
+          context.translate(startX, startY);
+          context.rotate((tilt * Math.PI) / 180);
+          context.scale(maxLev, maxLev);
+
+          context.beginPath();
+          WATERDROP_ICON.draw(context, 2);
+          context.clip();
+
+          levs.forEach((l, i) => {
+            context.fillStyle = interpolateWatercolorBlue(i / LEVELS);
+            context.beginPath();
+            context.rect(
+              -1,
+              Math.SQRT1_2 -
+                percentToRatioFilled(l / maxLev) * (1 + Math.SQRT1_2) +
+                (l === 0 ? PX_BIAS / maxLev : 0),
+              2,
+              2
+            );
+            context.fill();
+            context.closePath();
           });
 
-        const d = s.select(".rotateClass");
-
-        s.on("click", function () {
-          navigate(
-            `/RecursiveDropletsBasicApp?obj=${nodes[0].obj}&norm=${
-              normalize ? "true" : "false"
-            }`
-          );
+          context.restore();
         });
 
-        s.select(".bbox")
-          .attr("x", d.node().getBBox().x)
-          .attr("y", d.node().getBBox().y)
-          .attr("width", d.node().getBBox().width)
-          .attr("height", d.node().getBBox().height);
-
-        bucketSvgSelector.current
-          .select(`#drop-${i1}`)
-          .attr(
-            "x",
-            d.node().getBoundingClientRect().x +
-              d.node().getBoundingClientRect().width / 2
-          )
-          .attr("y", d.node().getBoundingClientRect().y);
+        context.restore();
       });
-  }, [objToWaterLevels, normalize]);
+    }
+
+    let ease = d3.easeCubicInOut,
+      duration = 1,
+      timeElapsed = 0,
+      interpolator = null,
+      vOld = [width / 2, height / 2, width];
+
+    function zoomToCanvas() {
+      const v = [width / 2, height / 2, width / 4];
+
+      interpolator = d3.interpolateZoom(vOld, v);
+
+      duration = Math.max(1000, Math.min(3000, interpolator.duration));
+      timeElapsed = 0;
+      vOld = v;
+    }
+
+    function interpolateZoom(dt) {
+      if (interpolator) {
+        timeElapsed += dt;
+        const t = ease(timeElapsed / duration);
+
+        zoomInfo.centerX = interpolator(t)[0];
+        zoomInfo.centerY = interpolator(t)[1];
+        zoomInfo.scale = width / interpolator(t)[2];
+
+        if (timeElapsed >= duration) {
+          interpolator = null;
+        }
+      }
+    }
+
+    // zoomToCanvas();
+
+    let dt = 0;
+    const t = d3.timer(function (elapsed) {
+      interpolateZoom(elapsed - dt);
+      dt = elapsed;
+      drawCanvas();
+    });
+
+    const MAX_ZOOM = 5;
+    const MIN_ZOOM = 0.1;
+    const SCROLL_SENSITIVITY = 0.001;
+    const canvas = canvasRef.current;
+
+    // Gets the relevant location from a mouse or single touch event
+    function getEventLocation(e) {
+      if (e.touches && e.touches.length == 1) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.clientX && e.clientY) {
+        return { x: e.clientX, y: e.clientY };
+      }
+    }
+
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+
+    function onPointerDown(e) {
+      isDragging = true;
+      dragStart.x = getEventLocation(e).x - zoomInfo.centerX;
+      dragStart.y = getEventLocation(e).y - zoomInfo.centerY;
+    }
+
+    function onPointerUp(e) {
+      isDragging = false;
+      initialPinchDistance = null;
+      zoomInfo.lastScale = zoomInfo.scale;
+    }
+
+    function onPointerMove(e) {
+      if (isDragging) {
+        zoomInfo.centerX = getEventLocation(e).x - dragStart.x;
+        zoomInfo.centerY = getEventLocation(e).y - dragStart.y;
+      }
+    }
+
+    function handleTouch(e, singleTouchHandler) {
+      if (e.touches.length == 1) {
+        singleTouchHandler(e);
+      } else if (e.type == "touchmove" && e.touches.length == 2) {
+        isDragging = false;
+        handlePinch(e);
+      }
+    }
+
+    let initialPinchDistance = null;
+
+    function handlePinch(e) {
+      e.preventDefault();
+
+      let touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      let touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY };
+
+      let currentDistance =
+        (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2;
+
+      if (initialPinchDistance == null) {
+        initialPinchDistance = currentDistance;
+      } else {
+        adjustZoom(null, currentDistance / initialPinchDistance);
+      }
+    }
+
+    function adjustZoom(zoomAmount, zoomFactor) {
+      if (!isDragging) {
+        if (zoomAmount) {
+          zoomInfo.scale += zoomAmount;
+        } else if (zoomFactor) {
+          console.log(zoomFactor);
+          zoomInfo.scale = zoomFactor * zoomInfo.lastScale;
+        }
+
+        zoomInfo.scale = Math.min(zoomInfo.scale, MAX_ZOOM);
+        zoomInfo.scale = Math.max(zoomInfo.scale, MIN_ZOOM);
+      }
+    }
+
+    canvas.addEventListener("mousedown", onPointerDown);
+    canvas.addEventListener("touchstart", (e) => handleTouch(e, onPointerDown));
+    canvas.addEventListener("mouseup", onPointerUp);
+    canvas.addEventListener("touchend", (e) => handleTouch(e, onPointerUp));
+    canvas.addEventListener("mousemove", onPointerMove);
+    canvas.addEventListener("touchmove", (e) => handleTouch(e, onPointerMove));
+    canvas.addEventListener("wheel", (e) =>
+      adjustZoom(e.deltaY * SCROLL_SENSITIVITY)
+    );
+
+    return function stopTimer() {
+      t.stop();
+    };
+  }, [normalize]);
 
   return (
     <div className="bubbles-wrapper">
@@ -298,12 +383,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
         />
         <label htmlFor="norm">normalize</label>
       </div>
-      <div className={"bubbles-svg-wrapper" + (watercolor ? "-painter" : "")}>
-        <svg
-          className={"bubbles-svg" + (watercolor ? "-painter" : "")}
-          ref={(e) => void (bucketSvgSelector.current = d3.select(e))}
-        ></svg>
-      </div>
+      <div id="mosaic-area"></div>
     </div>
   );
 }
