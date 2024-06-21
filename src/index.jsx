@@ -14,6 +14,14 @@ const MainApp = React.lazy(() => import("./MainApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
 
 
+const Loader = () => {
+  return (
+    <section class="sec-loading">
+      <div class="one"></div>
+    </section>
+  );
+};
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <HashRouter>
@@ -37,7 +45,7 @@ root.render(
       <Route
         path="SliderApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <SliderApp />
           </React.Suspense>
         }
@@ -45,7 +53,7 @@ root.render(
       <Route
         path="LargeDropletMosaicApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <LargeDropletMosaicApp />
           </React.Suspense>
         }
@@ -53,7 +61,7 @@ root.render(
       <Route
         path="OldMainApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <OldMainApp />
           </React.Suspense>
         }
@@ -61,7 +69,7 @@ root.render(
       <Route
         path="RecursiveDropletsWatercolorApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <RecursiveDropletsWatercolorApp />
           </React.Suspense>
         }
@@ -69,7 +77,7 @@ root.render(
       <Route
         path="RecursiveDropletsBasicApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <RecursiveDropletsBasicApp />
           </React.Suspense>
         }
@@ -77,7 +85,7 @@ root.render(
       <Route
         path="MainApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <MainApp />
           </React.Suspense>
         }
@@ -85,7 +93,7 @@ root.render(
       <Route
         path="BigBucketApp"
         element={
-          <React.Suspense fallback={<>...</>}>
+          <React.Suspense fallback={<Loader />}>
             <BigBucketApp />
           </React.Suspense>
         }

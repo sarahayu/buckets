@@ -36,7 +36,7 @@ def routeElem(app_name):
     return f"""<Route
         path="{ app_name }"
         element={{
-          <React.Suspense fallback={{<>...</>}}>
+          <React.Suspense fallback={{<Loader />}}>
             <{ app_name } />
           </React.Suspense>
         }}
@@ -54,6 +54,14 @@ import "./index.css";
 
 { f'{newline}'.join(list(map(lazyDefn, apps))) }
 
+
+const Loader = () => {{
+  return (
+    <section class="sec-loading">
+      <div class="one"></div>
+    </section>
+  );
+}};
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

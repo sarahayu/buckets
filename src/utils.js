@@ -53,6 +53,45 @@ export function percentToRatioFilled(p) {
   );
 }
 
+export function waterdrop(yFill) {
+  return {
+    draw: function (context, size) {
+      const realHeight = (size * (1 + Math.SQRT1_2)) / 2;
+      const yFromTop = realHeight * (1 - yFill);
+
+      if (yFill > 0.75) {
+        const topRightLine = d3.interpolateArray(
+          [0, -size / 2],
+          [size / 4, -size / 4]
+        );
+        const topLeftLine = d3.interpolateArray(
+          [0, -size / 2],
+          [-size / 4, -size / 4]
+        );
+
+        const start = topRightLine(1 - yFill),
+          end1 = topRightLine(1),
+          end2 = topLeftLine(1 - yFill);
+
+        context.moveTo(...start);
+        context.lineTo(...end1);
+
+        context.arc(
+          0,
+          0,
+          size / Math.SQRT2 / 2,
+          -Math.PI / 4,
+          (Math.PI * 5) / 4
+        );
+
+        context.lineTo(...end2);
+        context.closePath();
+      } else {
+      }
+    },
+  };
+}
+
 export function kernelDensityEstimator(kernel, X) {
   return function (V) {
     return X.map(function (x) {

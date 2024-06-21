@@ -150,6 +150,7 @@ export default function MainApp({ data = objectivesData }) {
           setSortMode={setSortMode}
           setCurScenName={setCurScenName}
           setCurScenNamePreview={setCurScenNamePreview}
+          exitFn={() => void setShowScens(false)}
         />
       )}
     </AppContext.Provider>
@@ -232,42 +233,6 @@ function SmallBucketTile({ label, active, onClick, children }) {
   );
 }
 
-function InputArea({ setCurScenName, setShowScens }) {
-  const { curScenName, curScenNamePreview, curOrderedScenNames } =
-    useContext(AppContext);
-
-  const curScenNameDisplayed = curScenNamePreview || curScenName;
-  return (
-    <>
-      <input
-        className="input-range"
-        orient="vertical"
-        type="range"
-        value={curOrderedScenNames.indexOf(curScenNameDisplayed)}
-        min="0"
-        max={curOrderedScenNames.length - 1}
-        onChange={(e) =>
-          void setCurScenName(curOrderedScenNames[parseInt(e.target.value)])
-        }
-      />
-      <div className="scen-name">
-        <span>Current Scenario</span>
-        <span>{curScenNameDisplayed}</span>
-        <span
-          className={classNames("preview-indic", {
-            visible: curScenNamePreview !== null,
-          })}
-        >
-          Previewing
-        </span>
-        <button onClick={() => void setShowScens((d) => !d)}>
-          See Overview
-        </button>
-      </div>
-    </>
-  );
-}
-
 function MainBucket({ levelInterp }) {
   const { curObjectiveName, goal } = useContext(AppContext);
   return (
@@ -298,6 +263,7 @@ function Overlay({
   setSortMode,
   setCurScenName,
   setCurScenNamePreview,
+  exitFn,
 }) {
   const {
     data,
@@ -310,7 +276,7 @@ function Overlay({
 
   const curPercentileScens = useMemo(() => {
     return Array.from(curOrderedScenNames).reverse();
-  }, [curOrderedScenNames, curScenName]);
+  }, [curOrderedScenNames]);
 
   const asdf = useRef();
 
@@ -325,81 +291,87 @@ function Overlay({
 
   return (
     <div className={"ridgeline-overlay"}>
-      <div className="sort-types">
-        <input
-          type="radio"
-          name="sort-type"
-          value="median"
-          id="median"
-          checked={sortMode === "median"}
-          onChange={() => void setSortMode("median")}
-        />
-        <label htmlFor="median">Median</label>
-
-        <input
-          type="radio"
-          name="sort-type"
-          value="deliveries"
-          id="deliveries"
-          checked={sortMode === "deliveries"}
-          onChange={() => void setSortMode("deliveries")}
-        />
-        <label htmlFor="deliveries">Max. Deliveries</label>
-
-        <input
-          type="radio"
-          name="sort-type"
-          value="alphabetical"
-          id="alphabetical"
-          checked={sortMode === "alphabetical"}
-          onChange={() => void setSortMode("alphabetical")}
-        />
-        <label htmlFor="alphabetical">Alphabetical</label>
-      </div>
-      <div
-        className={classNames("overlay-container", {
-          previewing: curScenNamePreview !== null,
-        })}
-        onMouseLeave={() => setCurScenNamePreview(null)}
-        ref={asdf}
-      >
-        <div className="overlay-container-2">
-          <AnimateList keyList={curPercentileScens}>
-            {curPercentileScens.map((scenID) => (
-              <div
-                key={scenID}
-                className={classNames({
-                  previewing: scenID === curScenNamePreview,
-                  "current-scene": scenID === curScenName,
-                })}
-                id={scenID}
-                onMouseEnter={() => setCurScenNamePreview(scenID)}
-                onClick={() => {
-                  setCurScenName(scenID);
-                }}
-              >
-                <DotHistogramSmall
-                  data={
-                    data[curObjectiveName][SCENARIO_KEY_STRING][scenID][
-                      DELIV_KEY_STRING
-                    ]
-                  }
-                  goal={goal}
-                  width={300}
-                  height={200}
-                />
-                <span>{scenID}</span>
-              </div>
-            ))}
-          </AnimateList>
+      <div className="ridgeline-overlay-container">
+        <button className="overlay-exit-btn" onClick={exitFn}>
+          ×
+        </button>
+        <div className="sort-types">
+          <input
+            type="radio"
+            name="sort-type"
+            value="median"
+            id="median"
+            checked={sortMode === "median"}
+            onChange={() => void setSortMode("median")}
+          />
+          <label htmlFor="median">Median</label>
+          <input
+            type="radio"
+            name="sort-type"
+            value="deliveries"
+            id="deliveries"
+            checked={sortMode === "deliveries"}
+            onChange={() => void setSortMode("deliveries")}
+          />
+          <label htmlFor="deliveries">Max. Deliveries</label>
+          <input
+            type="radio"
+            name="sort-type"
+            value="alphabetical"
+            id="alphabetical"
+            checked={sortMode === "alphabetical"}
+            onChange={() => void setSortMode("alphabetical")}
+          />
+          <label htmlFor="alphabetical">Alphabetical</label>
+        </div>
+        <div
+          className="overlay-container"
+          onMouseLeave={() => setCurScenNamePreview(null)}
+          ref={asdf}
+        >
           <div
-            className="dot-overlay-razor"
-            style={{
-              left:
-                d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(goal) +
-                "px",
-            }}
-          ></div>
+            className={classNames("overlay-container-2", {
+              previewing: curScenNamePreview !== null,
+            })}
+          >
+            <AnimateList keyList={curPercentileScens}>
+              {curPercentileScens.map((scenID) => (
+                <div
+                  key={scenID}
+                  className={classNames({
+                    previewing: scenID === curScenNamePreview,
+                    "current-scene": scenID === curScenName,
+                  })}
+                  id={scenID}
+                  onMouseEnter={() => setCurScenNamePreview(scenID)}
+                  onClick={() => {
+                    setCurScenName(scenID);
+                  }}
+                >
+                  <DotHistogramSmall
+                    data={
+                      data[curObjectiveName][SCENARIO_KEY_STRING][scenID][
+                        DELIV_KEY_STRING
+                      ]
+                    }
+                    goal={goal}
+                    width={300}
+                    height={200}
+                  />
+                  <span>{scenID}</span>
+                </div>
+              ))}
+            </AnimateList>
+            <div
+              className="dot-overlay-razor"
+              style={{
+                left:
+                  d3.scaleLinear().domain([0, MAX_DELIVS]).range([0, 300])(
+                    goal
+                  ) + "px",
+              }}
+            ></div>
+          </div>
         </div>
       </div>
     </div>

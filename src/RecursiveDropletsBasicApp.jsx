@@ -51,15 +51,44 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
     [curObjectiveIdx]
   );
 
+  const zoomRef = useRef();
+
   useLayoutEffect(() => {
     winDim.current = {
       width: window.innerWidth,
       height: window.innerHeight,
     };
 
+    zoomRef.current = d3
+      .zoom()
+      .scaleExtent([1, 10])
+      .translateExtent([
+        [-winDim.current.width / 2, -winDim.current.height / 2],
+        [winDim.current.width * 1.5, winDim.current.height * 1.5],
+      ])
+      .on("zoom", function (e) {
+        bucketSvgSelector.current
+          .select(".svg-trans")
+          .attr("transform", e.transform);
+
+        bucketSvgSelector.current
+          .selectAll(".text-scale")
+          .attr("transform", `scale(${1 / e.transform.k})`);
+      })
+      .on(
+        "start",
+        (e) =>
+          (e.sourceEvent || {}).type !== "wheel" &&
+          bucketSvgSelector.current.style("cursor", "grabbing")
+      )
+      .on("end", () => bucketSvgSelector.current.style("cursor", "grab"));
+
     bucketSvgSelector.current
       .attr("width", winDim.current.width)
-      .attr("height", winDim.current.height);
+      .attr("height", winDim.current.height)
+      .style("cursor", "grab")
+      .call((s) => s.append("g").attr("class", "svg-trans"))
+      .call(zoomRef.current);
 
     if (
       searchParams.get("obj") &&
@@ -73,6 +102,8 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
   useLayoutEffect(() => {
     const width = winDim.current.width,
       height = winDim.current.height;
+
+    bucketSvgSelector.current.call(zoomRef.current.transform, d3.zoomIdentity);
 
     const scale = 1;
 
@@ -106,9 +137,11 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
       startY: y - RAD_PX * 4 * Math.random(),
       endX: x,
       endY: y,
+      scen: orderedScenIDs[idx],
     }));
 
     bucketSvgSelector.current
+      .select(".svg-trans")
       .selectAll(".smallDrop")
       .data(nodes, (_, i) => i)
       .join((enter) => {
@@ -116,19 +149,60 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
           .append("g")
           .attr("class", "smallDrop")
           .each(function ({ levs }, i) {
-            d3.select(this)
-              .append("defs")
-              .append("clipPath")
-              .attr("id", "drop-mask-" + i)
-              .append("path")
-              .attr("d", DROPLET_SHAPE);
-            d3.select(this)
+            d3.select(this.parentNode)
               .append("g")
-              .attr("clip-path", `url(#drop-mask-${i})`)
-              .selectAll("rect")
-              .data(levs, (_, i) => i)
-              .join("rect")
-              .attr("fill", (_, i) => interpolateWatercolorBlue(i / LEVELS));
+              .attr("id", `drop-${i}`)
+              .append("g")
+              .attr("class", "text-scale")
+              .append("text")
+              .style("font-size", 16)
+              .attr("text-anchor", "middle");
+
+            const s = d3.select(this);
+            s.append("rect")
+              .attr("class", "bbox")
+              .style("visibility", "hidden");
+
+            s.on("mouseover", function () {
+              bucketSvgSelector.current
+                .selectAll(".smallDrop")
+                .style("opacity", 0.5);
+              s.style("opacity", 1);
+              bucketSvgSelector.current
+                .select(`#drop-${i}`)
+                .style("opacity", 1);
+            }).on("mouseout", function () {
+              bucketSvgSelector.current
+                .selectAll(".smallDrop")
+                .style("opacity", 1);
+              bucketSvgSelector.current
+                .select(`#drop-${i}`)
+                .style("opacity", 0);
+            });
+
+            const stops = d3
+              .select(this)
+              .append("defs")
+              .append("linearGradient")
+              .attr("id", `drop-fill-${i}`)
+              .attr("x1", "0%")
+              .attr("x2", "0%")
+              .attr("y1", "0%")
+              .attr("y2", "100%");
+
+            levs.forEach((_, i) => {
+              stops
+                .append("stop")
+                .attr("stop-color", interpolateWatercolorBlue(i / LEVELS));
+              stops
+                .append("stop")
+                .attr("stop-color", interpolateWatercolorBlue(i / LEVELS));
+            });
+
+            d3.select(this)
+              .append("path")
+              .attr("d", DROPLET_SHAPE)
+              .attr("fill", `url(#drop-fill-${i})`);
           });
       })
       .attr(
@@ -137,23 +211,29 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
           `translate(${startX}, ${startY}) rotate(${tilt})`
       )
       .style("opacity", 0)
-      .each(function ({ levs, maxLev }) {
-        d3.select(this)
-          .selectAll("rect")
-          .data(levs, (_, i) => i)
-          .attr("width", maxLev * 2)
-          .attr("height", maxLev * 2)
-          .attr("x", -maxLev)
-          .attr(
-            "y",
-            (l) =>
-              maxLev * Math.SQRT1_2 -
-              percentToRatioFilled(l / maxLev) * (maxLev * (1 + Math.SQRT1_2)) +
-              (l === 0 ? PX_BIAS : 0)
-          );
-        d3.select(this).select("path").attr("transform", `scale(${maxLev})`);
-      })
-      .call((s) => {
+      .each(function ({ levs, maxLev, scen }, i) {
+        const s = d3.select(this);
+
+        d3.select(`#drop-${i}`).style("opacity", 0).select("text").text(scen);
+
+        s.selectAll("path").attr("transform", `scale(${maxLev})`);
+
+        s.selectAll("stop").each(function (_, i) {
+          let actI = Math.floor(i / 2);
+          const isEnd = i % 2;
+
+          if (isEnd === 0) actI -= 1;
+
+          if (actI === -1) {
+            d3.select(this).attr("offset", `${0}%`);
+          } else {
+            d3.select(this).attr(
+              "offset",
+              `${(1 - levs[actI] / maxLev) * 100}%`
+            );
+          }
+        });
+
         s.transition()
           .duration(({ dur }) => dur)
           .ease(d3.easeLinear)
@@ -162,8 +242,29 @@ export default function RecursiveDropletsBasicApp({ watercolor = false }) {
             ({ endX, endY, tilt }) =>
               `translate(${endX}, ${endY}) rotate(${tilt})`
           )
-          .style("opacity", 1);
-      });
+          .style("opacity", 1)
+          .on("end", () => {
+            const d = s.select("path");
+
+            s.select(".bbox")
+              .attr("x", d.node().getBBox().x)
+              .attr("y", d.node().getBBox().y)
+              .attr("width", d.node().getBBox().width)
+              .attr("height", d.node().getBBox().height);
+
+            bucketSvgSelector.current
+              .select(`#drop-${i}`)
+              .attr(
+                "transform",
+                `translate(${
+                  d.node().getBoundingClientRect().x +
+                  d.node().getBoundingClientRect().width / 2
+                }, ${d.node().getBoundingClientRect().y})`
+              );
+          })
+          .call((s) => {});
+      })
+      .call((s) => {});
   }, [waterLevels, normalize]);
 
   return (

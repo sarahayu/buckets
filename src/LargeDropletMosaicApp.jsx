@@ -13,6 +13,7 @@ import {
   criteriaSort,
   percentToRatioFilled,
   placeDropsUsingPhysics,
+  waterdrop,
 } from "./utils";
 import { useNavigate } from "react-router-dom";
 
@@ -30,7 +31,6 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
   const [normalize, setNormalize] = useState(false);
 
   const bucketSvgSelector = useRef();
-  const largeDrops = useRef();
 
   const orderedObjToScens = useMemo(() => {
     const unorderedObjToScens = {};
@@ -79,20 +79,50 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
     return retVal;
   }, []);
 
+  const zoomRef = useRef();
+
   useLayoutEffect(() => {
     winDim.current = {
       width: window.innerWidth,
       height: window.innerHeight,
     };
 
+    zoomRef.current = d3
+      .zoom()
+      .scaleExtent([1, 10])
+      .translateExtent([
+        [-winDim.current.width / 2, -winDim.current.height / 2],
+        [winDim.current.width * 1.5, winDim.current.height * 1.5],
+      ])
+      .on("zoom", function (e) {
+        bucketSvgSelector.current
+          .select(".svg-trans")
+          .attr("transform", e.transform);
+
+        bucketSvgSelector.current
+          .selectAll(".text-scale")
+          .attr("transform", `scale(${1 / e.transform.k})`);
+      })
+      .on(
+        "start",
+        (e) =>
+          (e.sourceEvent || {}).type !== "wheel" &&
+          bucketSvgSelector.current.style("cursor", "grabbing")
+      )
+      .on("end", () => bucketSvgSelector.current.style("cursor", "grab"));
+
     bucketSvgSelector.current
       .attr("width", winDim.current.width)
-      .attr("height", winDim.current.height);
+      .attr("height", winDim.current.height)
+      .style("cursor", "grab")
+      .call((s) => s.append("g").attr("class", "svg-trans"))
+      .call(zoomRef.current);
   }, []);
 
   useLayoutEffect(() => {
     const width = winDim.current.width,
       height = winDim.current.height;
+    bucketSvgSelector.current.call(zoomRef.current.transform, d3.zoomIdentity);
 
     const nodesArr = Object.keys(objToWaterLevels)
       .map((obj) => {
@@ -158,41 +188,37 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       r: largeNodesRads[i],
     }));
 
-    largeDrops.current = bucketSvgSelector.current
+    bucketSvgSelector.current
+      .select(".svg-trans")
       .selectAll(".largeDrop")
       .data(nodesArr, (n, i) => n[0].obj)
       .join((enter) =>
         enter.append("g").each(function (d, i) {
           const s = d3.select(this);
 
-          if (i == 0) {
-            bucketSvgSelector.current
-              .append("rect")
-              .attr("id", "overlay")
-              .attr("pointer-events", "none")
-              .attr("width", winDim.current.width)
-              .attr("height", winDim.current.height)
-              .attr("fill", "white")
-              .attr("opacity", 0.5)
-              .attr("visibility", "hidden");
-          }
-
           d3.select(this.parentNode)
+            .append("g")
+            .attr("id", `drop-${i}`)
+            .append("g")
+            .attr("class", "text-scale")
             .append("text")
-            .attr("text-anchor", "middle")
-            .attr("id", `drop-${i}`);
+            .style("font-size", 16)
+            .attr("text-anchor", "middle");
           s.append("g").attr("class", "rotateClass");
 
           s.append("rect").attr("class", "bbox").style("visibility", "hidden");
 
           s.on("mouseover", function () {
-            d3.select(`#drop-${i}`).style("opacity", 1);
-            d3.select("#overlay").style("visibility", "visible");
-            d3.select(this).raise();
+            bucketSvgSelector.current
+              .selectAll(".largeDrop")
+              .style("opacity", 0.5);
+            s.style("opacity", 1);
+            bucketSvgSelector.current.select(`#drop-${i}`).style("opacity", 1);
           }).on("mouseout", function () {
-            d3.select(`#drop-${i}`).style("opacity", 0);
-            d3.select(this).lower();
-            d3.select("#overlay").style("visibility", "hidden");
+            bucketSvgSelector.current
+              .selectAll(".largeDrop")
+              .style("opacity", 1);
+            bucketSvgSelector.current.select(`#drop-${i}`).style("opacity", 0);
           });
         })
       )
@@ -207,7 +233,10 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
       .each(function (nodes, i1) {
         const s = d3.select(this);
 
-        d3.select(`#drop-${i1}`).text(nodes[0].obj).style("opacity", 0);
+        d3.select(`#drop-${i1}`)
+          .style("opacity", 0)
+          .select("text")
+          .text(nodes[0].obj);
         d3.select(this)
           .select(".rotateClass")
           .attr("transform", `rotate(${largeNodesPos[i1].tilt})`)
@@ -218,21 +247,29 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
               .append("g")
               .attr("class", "smallDrop")
               .each(function ({ levs }, i2) {
-                d3.select(this)
+                const stops = d3
+                  .select(this)
                   .append("defs")
-                  .append("clipPath")
-                  .attr("id", `drop-mask-${i1}-${i2}`)
-                  .append("path")
-                  .attr("d", DROPLET_SHAPE);
+                  .append("linearGradient")
+                  .attr("id", `drop-fill-${i1}-${i2}`)
+                  .attr("x1", "0%")
+                  .attr("x2", "0%")
+                  .attr("y1", "0%")
+                  .attr("y2", "100%");
+
+                levs.forEach((_, i) => {
+                  stops
+                    .append("stop")
+                    .attr("stop-color", interpolateWatercolorBlue(i / LEVELS));
+                  stops
+                    .append("stop")
+                    .attr("stop-color", interpolateWatercolorBlue(i / LEVELS));
+                });
+
                 d3.select(this)
-                  .append("g")
-                  .attr("clip-path", `url(#drop-mask-${i1}-${i2})`)
-                  .selectAll("rect")
-                  .data(levs, (_, i) => i)
-                  .join("rect")
-                  .attr("fill", (_, i) =>
-                    interpolateWatercolorBlue(i / LEVELS)
-                  );
+                  .append("path")
+                  .attr("d", DROPLET_SHAPE)
+                  .attr("fill", `url(#drop-fill-${i1}-${i2})`);
               });
           })
           .attr(
@@ -242,22 +279,26 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
           )
           .each(function ({ levs, maxLev }) {
             d3.select(this)
-              .selectAll("rect")
-              .data(levs, (_, i) => i)
-              .attr("width", maxLev * 2)
-              .attr("height", maxLev * 2)
-              .attr("x", -maxLev)
-              .attr(
-                "y",
-                (l) =>
-                  maxLev * Math.SQRT1_2 -
-                  percentToRatioFilled(l / maxLev) *
-                    (maxLev * (1 + Math.SQRT1_2)) +
-                  (l === 0 ? PX_BIAS : 0)
-              );
-            d3.select(this)
-              .select("path")
+              .selectAll("path")
               .attr("transform", `scale(${maxLev})`);
+
+            d3.select(this)
+              .selectAll("stop")
+              .each(function (_, i) {
+                let actI = Math.floor(i / 2);
+                const isEnd = i % 2;
+
+                if (isEnd === 0) actI -= 1;
+
+                if (actI === -1) {
+                  d3.select(this).attr("offset", `${0}%`);
+                } else {
+                  d3.select(this).attr(
+                    "offset",
+                    `${(1 - levs[actI] / maxLev) * 100}%`
+                  );
+                }
+              });
           });
 
         const d = s.select(".rotateClass");
@@ -279,11 +320,12 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
         bucketSvgSelector.current
           .select(`#drop-${i1}`)
           .attr(
-            "x",
-            d.node().getBoundingClientRect().x +
+            "transform",
+            `translate(${
+              d.node().getBoundingClientRect().x +
               d.node().getBoundingClientRect().width / 2
-          )
-          .attr("y", d.node().getBoundingClientRect().y);
+            }, ${d.node().getBoundingClientRect().y})`
+          );
       });
   }, [objToWaterLevels, normalize]);
 
