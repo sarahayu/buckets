@@ -12,6 +12,7 @@ const RecursiveDropletsWatercolorApp = React.lazy(() => import("./RecursiveDropl
 const RecursiveDropletsBasicApp = React.lazy(() => import("./RecursiveDropletsBasicApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
+const AlignedMosaicApp = React.lazy(() => import("./AlignedMosaicApp"));
 
 
 const Loader = () => {
@@ -38,6 +39,7 @@ root.render(
               <Link to="RecursiveDropletsBasicApp" title="Recursive Droplets Basic" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
               <Link to="BigBucketApp" title="Big Bucket" ><img src="BigBucketApp.png" className="linkPics" /></Link>
+              <Link to="AlignedMosaicApp">Aligned Mosaic</Link>
             </div>
           </main>
         }
@@ -95,6 +97,14 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <BigBucketApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="AlignedMosaicApp"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <AlignedMosaicApp />
           </React.Suspense>
         }
       />

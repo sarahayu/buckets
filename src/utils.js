@@ -4,6 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING } from "./data/objectivesData";
 import { ticksExact } from "./bucket-lib/utils";
 
+export function clamp(x, a, b) {
+  return Math.max(a, Math.min(b, x));
+}
+
 // when fn is `({ name }) => name`, turns
 //
 //  [
@@ -187,8 +191,13 @@ export const WATERDROP_CAGE_COORDS = (function () {
 let RANDO_CACHE;
 let lastNodesLen;
 
+let DET_CACHE;
+let lastDetNodesLen;
+
 // assuming nodes is already ordered and first nodes are going to be put on the bottom
-export function placeDropsUsingPhysics(x, y, nodes) {
+export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
+  if (reuse && DET_CACHE && nodes.length === lastDetNodesLen) return DET_CACHE;
+
   // first generate random points within water droplet. we can stop here, but points might not be the most uniformly distributed
 
   if (!RANDO_CACHE || nodes.length !== lastNodesLen)
@@ -245,11 +254,18 @@ export function placeDropsUsingPhysics(x, y, nodes) {
   for (let i = 0, FPS = 60, SECS = 0.3; i < FPS * SECS; i++)
     Engine.update(engine, 1000 / FPS);
 
-  return node_bodies.map(({ position, id }) => ({
+  const retVal = node_bodies.map(({ position, id }) => ({
     id,
     x: position.x + x,
     y: position.y + y + WIDTH_AREA * 0.1,
   }));
+
+  if (reuse && (!DET_CACHE || retVal.length !== lastDetNodesLen)) {
+    DET_CACHE = retVal;
+    lastDetNodesLen = retVal.length;
+  }
+
+  return retVal;
 }
 
 // https://gist.github.com/mbostock/5743979
@@ -299,7 +315,7 @@ export function createInterps(name, curScen, data, maxDelivs) {
   return d3
     .scaleLinear()
     .domain(ticksExact(0, 1, delivs.length))
-    .range(delivs.map((v) => Math.min(1, v / maxDelivs) || 0))
+    .range(delivs.map((v) => Math.min(1, v / maxDelivs)))
     .clamp(true);
 }
 

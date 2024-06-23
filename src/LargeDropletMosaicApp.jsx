@@ -246,7 +246,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
             return enter
               .append("g")
               .attr("class", "smallDrop")
-              .each(function ({ levs }, i2) {
+              .each(function ({ levs, maxLev }, i2) {
                 const stops = d3
                   .select(this)
                   .append("defs")
@@ -256,6 +256,8 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
                   .attr("x2", "0%")
                   .attr("y1", "0%")
                   .attr("y2", "100%");
+
+                console.log(...levs.map((l) => l / maxLev));
 
                 levs.forEach((_, i) => {
                   stops
