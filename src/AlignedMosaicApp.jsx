@@ -1,4 +1,6 @@
 import * as d3 from "d3";
+import * as THREE from "three";
+
 import React, {
   useEffect,
   useLayoutEffect,
@@ -21,14 +23,19 @@ import {
   criteriaSort,
   percentToRatioFilled,
   placeDropsUsingPhysics,
+  waterdrop,
 } from "./utils";
 import { useNavigate } from "react-router-dom";
 
+function toRadians(a) {
+  return (a * Math.PI) / 180;
+}
+
 const LEVELS = 5;
-const RAD_PX = 2;
+const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 20;
-const LARGE_DROPLET_PAD_FACTOR = 1;
+const SCEN_DIVISOR = 2;
+const LARGE_DROPLET_PAD_FACTOR = 0.5;
 const PX_BIAS = 1;
 
 export default function LargeDropletMosaicApp() {
@@ -67,48 +74,11 @@ export default function LargeDropletMosaicApp() {
     return retVal;
   }, []);
 
-  const canvasRef = useRef();
-  const bufferCanvasRef = useRef();
-  const contextRef = useRef();
-  const bufferContextRef = useRef();
-  const docRef = useRef();
-
   useEffect(() => {
     winDim.current = {
-      width: 1536,
-      height: 703,
+      width: window.innerWidth,
+      height: window.innerHeight,
     };
-
-    const width = winDim.current.width,
-      height = winDim.current.height;
-
-    canvasRef.current = d3
-      .select("#mosaic-area")
-      .append("canvas")
-      .attr("id", "canvas")
-      .style("display", "block")
-      .attr("width", width)
-      .attr("height", height);
-    contextRef.current = canvasRef.current.node().getContext("2d");
-
-    canvasRef.current = canvasRef.current.node();
-
-    docRef.current = d3.select(document.createElement("custom"));
-
-    bufferCanvasRef.current = d3
-      .select("#mosaic-area")
-      .append("canvas")
-      .attr("id", "canvas")
-      // .style("display", "block")
-      .style("display", "none")
-      .attr("width", width)
-      .attr("height", height);
-
-    bufferContextRef.current = bufferCanvasRef.current.node().getContext("2d");
-  }, []);
-
-  useEffect(() => {
-    const context = bufferContextRef.current;
 
     const width = winDim.current.width,
       height = winDim.current.height;
@@ -121,7 +91,11 @@ export default function LargeDropletMosaicApp() {
           0,
           0,
           objToWaterLevels[obj].map((levs, idx) => ({
-            r: Math.max(2, scale * RAD_PX * LARGE_DROPLET_PAD_FACTOR),
+            r: Math.max(
+              2,
+
+              scale * RAD_PX * LARGE_DROPLET_PAD_FACTOR
+            ),
             id: idx,
           })),
           true
@@ -130,9 +104,8 @@ export default function LargeDropletMosaicApp() {
         const nodes = nodesPos.map(({ id: idx, x, y }) => ({
           levs: objToWaterLevels[obj][idx].map(
             (w, i) =>
-              Math.max(w, i == 0 ? MIN_LEV_VAL : 0) *
-              scale *
-              (1 / Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)) *
+              ((Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * scale * 1) /
+                Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)) *
               RAD_PX
           ),
           maxLev: RAD_PX,
@@ -166,222 +139,112 @@ export default function LargeDropletMosaicApp() {
       r: largeNodesRads[i],
     }));
 
-    const zoomInfo = {
-      centerX: width / 2,
-      lastCenterX: width / 2,
-      centerY: height / 2,
-      lastCenterY: height / 2,
-      scale: 1,
-      lastScale: 1,
-    };
-
-    const gradMap = {};
-
-    nodesArr.forEach(function (smallDrops, i) {
-      gradMap[i] = {};
-
-      smallDrops.forEach(function ({ levs, maxLev, startX, startY, tilt }, i3) {
-        const gradient = context.createLinearGradient(0, -1, 0, 1);
-
-        let b = [];
-
-        levs.forEach((_, i2) => {
-          const start = i2 === 0 ? 0 : clamp(1 - levs[i2 - 1] / maxLev, 0, 1);
-          const end = clamp(1 - levs[i2] / maxLev, 0, 1);
-
-          gradient.addColorStop(start, interpolateWatercolorBlue(i2 / LEVELS));
-          gradient.addColorStop(end, interpolateWatercolorBlue(i2 / LEVELS));
-        });
-
-        gradMap[i][i3] = gradient;
-      });
-    });
-
-    function drawCanvas() {
-      context.setTransform(1, 0, 0, 1, 0, 0);
-
-      context.translate(zoomInfo.centerX, zoomInfo.centerY);
-      context.scale(zoomInfo.scale, zoomInfo.scale);
-      context.translate(-width / 2, -height / 2);
-
-      context.clearRect(-width, -height, width * 3, height * 3);
-
-      zoomInfo.lastScale = zoomInfo.scale;
-      zoomInfo.lastCenterX = zoomInfo.centerX;
-      zoomInfo.lastCenterY = zoomInfo.centerY;
-
-      nodesArr.forEach(function (smallDrops, i) {
-        const largeDrop = largeNodesPos[i];
-
-        context.save();
-        context.translate(largeDrop.x + width / 2, largeDrop.y + height / 2);
-        context.rotate((largeDrop.tilt * Math.PI) / 180);
-
-        for (let i2 = 0; i2 < smallDrops.length; i2++) {
-          const { levs, maxLev, startX, startY, tilt } = smallDrops[i2];
-
-          context.save();
-          context.translate(startX, startY);
-          context.rotate((tilt * Math.PI) / 180);
-          context.scale(maxLev, maxLev);
-
-          context.fillStyle = gradMap[i][i2];
-          context.beginPath();
-
-          // context.arc(0, 0, 1, 0, 2 * Math.PI, false);
-          context.moveTo(0, -2 / 2);
-          context.lineTo(2 / 4, -2 / 4);
-
-          context.arc(
-            0,
-            0,
-            2 / Math.SQRT2 / 2,
-            -Math.PI / 4,
-            (Math.PI * 5) / 4
-          );
-          context.lineTo(0, -2 / 2);
-          context.fill();
-          context.closePath();
-
-          context.restore();
-        }
-
-        context.restore();
-      });
-
-      contextRef.current.clearRect(-width, -height, width * 3, height * 3);
-      contextRef.current.drawImage(bufferCanvasRef.current.node(), 0, 0);
-    }
-
-    let ease = d3.easeCubicInOut,
-      duration = 1,
-      timeElapsed = 0,
-      interpolator = null,
-      vOld = [width / 2, height / 2, width];
-
-    function zoomToCanvas() {
-      const v = [width / 2, height / 2, width / 4];
-
-      interpolator = d3.interpolateZoom(vOld, v);
-
-      duration = Math.max(1000, Math.min(3000, interpolator.duration));
-      timeElapsed = 0;
-      vOld = v;
-    }
-
-    function interpolateZoom(dt) {
-      if (interpolator) {
-        timeElapsed += dt;
-        const t = ease(timeElapsed / duration);
-
-        zoomInfo.centerX = interpolator(t)[0];
-        zoomInfo.centerY = interpolator(t)[1];
-        zoomInfo.scale = width / interpolator(t)[2];
-
-        if (timeElapsed >= duration) {
-          interpolator = null;
-        }
-      }
-    }
-
-    // zoomToCanvas();
-
-    let dt = 0;
-    const t = d3.timer(function (elapsed) {
-      interpolateZoom(elapsed - dt);
-      dt = elapsed;
-      drawCanvas();
-    });
-
-    const MAX_ZOOM = 5;
-    const MIN_ZOOM = 0.1;
-    const SCROLL_SENSITIVITY = 0.001;
-    const canvas = canvasRef.current;
-
-    // Gets the relevant location from a mouse or single touch event
-    function getEventLocation(e) {
-      if (e.touches && e.touches.length == 1) {
-        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      } else if (e.clientX && e.clientY) {
-        return { x: e.clientX, y: e.clientY };
-      }
-    }
-
-    let isDragging = false;
-    let dragStart = { x: 0, y: 0 };
-
-    function onPointerDown(e) {
-      isDragging = true;
-      dragStart.x = getEventLocation(e).x - zoomInfo.centerX;
-      dragStart.y = getEventLocation(e).y - zoomInfo.centerY;
-    }
-
-    function onPointerUp(e) {
-      isDragging = false;
-      initialPinchDistance = null;
-      zoomInfo.lastScale = zoomInfo.scale;
-    }
-
-    function onPointerMove(e) {
-      if (isDragging) {
-        zoomInfo.centerX = getEventLocation(e).x - dragStart.x;
-        zoomInfo.centerY = getEventLocation(e).y - dragStart.y;
-      }
-    }
-
-    function handleTouch(e, singleTouchHandler) {
-      if (e.touches.length == 1) {
-        singleTouchHandler(e);
-      } else if (e.type == "touchmove" && e.touches.length == 2) {
-        isDragging = false;
-        handlePinch(e);
-      }
-    }
-
-    let initialPinchDistance = null;
-
-    function handlePinch(e) {
-      e.preventDefault();
-
-      let touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      let touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY };
-
-      let currentDistance =
-        (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2;
-
-      if (initialPinchDistance == null) {
-        initialPinchDistance = currentDistance;
-      } else {
-        adjustZoom(null, currentDistance / initialPinchDistance);
-      }
-    }
-
-    function adjustZoom(zoomAmount, zoomFactor) {
-      if (!isDragging) {
-        if (zoomAmount) {
-          zoomInfo.scale += zoomAmount;
-        } else if (zoomFactor) {
-          zoomInfo.scale = zoomFactor * zoomInfo.lastScale;
-        }
-
-        zoomInfo.scale = Math.min(zoomInfo.scale, MAX_ZOOM);
-        zoomInfo.scale = Math.max(zoomInfo.scale, MIN_ZOOM);
-      }
-    }
-
-    canvas.addEventListener("mousedown", onPointerDown);
-    canvas.addEventListener("touchstart", (e) => handleTouch(e, onPointerDown));
-    canvas.addEventListener("mouseup", onPointerUp);
-    canvas.addEventListener("touchend", (e) => handleTouch(e, onPointerUp));
-    canvas.addEventListener("mousemove", onPointerMove);
-    canvas.addEventListener("touchmove", (e) => handleTouch(e, onPointerMove));
-    canvas.addEventListener("wheel", (e) =>
-      adjustZoom(e.deltaY * SCROLL_SENSITIVITY)
+    const fov = 160;
+    const near = 1;
+    const far = 100;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      fov,
+      width / height,
+      near,
+      far + 1
     );
 
-    return function stopTimer() {
-      t.stop();
-    };
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(width, height);
+    renderer.setAnimationLoop(animate);
+    document.querySelector("#mosaic-area").appendChild(renderer.domElement);
+    const view = d3.select(renderer.domElement);
+
+    function getScaleFromZ(camera_z_position) {
+      let half_fov = fov / 2;
+      let half_fov_radians = toRadians(half_fov);
+      let half_fov_height = Math.tan(half_fov_radians) * camera_z_position;
+      let fov_height = half_fov_height * 2;
+      let scale = height / fov_height; // Divide visualization height by height derived from field of view
+      return scale;
+    }
+
+    function getZFromScale(scale) {
+      let half_fov = fov / 2;
+      let half_fov_radians = toRadians(half_fov);
+      let scale_height = height / scale;
+      let camera_z_position = scale_height / (2 * Math.tan(half_fov_radians));
+      return camera_z_position;
+    }
+
+    function zoomHandler(e) {
+      let scale = e.transform.k;
+      let x = -(e.transform.x - width / 2) / scale;
+      let y = (e.transform.y - height / 2) / scale;
+      let z = getZFromScale(scale);
+      camera.position.set(x, y, z);
+    }
+
+    const zoom = d3
+      .zoom()
+      .scaleExtent([getScaleFromZ(far), getScaleFromZ(near)])
+      .on("zoom", zoomHandler);
+
+    function setUpZoom() {
+      view.call(zoom);
+      let initial_scale = getScaleFromZ(far);
+      var initial_transform = d3.zoomIdentity
+        .translate(width / 2, height / 2)
+        .scale(initial_scale);
+      zoom.transform(view, initial_transform);
+      camera.position.set(0, 0, far);
+    }
+    setUpZoom();
+
+    scene.background = new THREE.Color(0xefefef);
+
+    let pointsGeometry = new THREE.Geometry();
+
+    let idx = 0;
+    for (let i = 0; i < nodesArr.length; i++) {
+      const nodes = nodesArr[i];
+      let x = largeNodesPos[i].x;
+      let y = largeNodesPos[i].y;
+      for (let j = 0; j < nodes.length; j++) {
+        const { startX, startY, levs, maxLev } = nodes[j];
+        let xx = x + startX;
+        let yy = -(y + startY);
+
+        for (let l = 0; l < levs.length; l++) {
+          const ll = levs[l];
+
+          const coords = waterdrop(ll / maxLev);
+
+          const col = new THREE.Color(interpolateWatercolorBlue(l / LEVELS));
+
+          for (let k = 0; k < coords.length; k++) {
+            const [v1, v2, v3] = coords[k];
+
+            let a = new THREE.Vector3(xx + v1[0], yy - v1[1], 0);
+            let b = new THREE.Vector3(xx + v2[0], yy - v2[1], 0);
+            let c = new THREE.Vector3(xx + v3[0], yy - v3[1], 0);
+            pointsGeometry.vertices.push(a, b, c);
+
+            let face = new THREE.Face3(idx * 3 + 0, idx * 3 + 1, idx * 3 + 2);
+            face.vertexColors.push(col);
+            face.vertexColors.push(col);
+            face.vertexColors.push(col);
+            pointsGeometry.faces.push(face);
+            idx++;
+          }
+        }
+      }
+    }
+
+    let mat = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
+    const points = new THREE.Mesh(pointsGeometry, mat);
+
+    scene.add(points);
+
+    function animate() {
+      renderer.render(scene, camera);
+    }
   }, []);
 
   return (

@@ -57,43 +57,99 @@ export function percentToRatioFilled(p) {
   );
 }
 
-export function waterdrop(yFill) {
-  return {
-    draw: function (context, size) {
-      const realHeight = (size * (1 + Math.SQRT1_2)) / 2;
-      const yFromTop = realHeight * (1 - yFill);
+export function waterdrop(yFill, size = 2) {
+  const rad = (size / 2) * Math.SQRT1_2;
+  let coords = [];
+  const realHeight = (size * (1 + Math.SQRT1_2)) / 2;
 
-      if (yFill > 0.75) {
-        const topRightLine = d3.interpolateArray(
-          [0, -size / 2],
-          [size / 4, -size / 4]
-        );
-        const topLeftLine = d3.interpolateArray(
-          [0, -size / 2],
-          [-size / 4, -size / 4]
-        );
+  if (yFill === 0) return coords;
 
-        const start = topRightLine(1 - yFill),
-          end1 = topRightLine(1),
-          end2 = topLeftLine(1 - yFill);
+  const SUBDIVS = 6;
 
-        context.moveTo(...start);
-        context.lineTo(...end1);
+  if (yFill > 0.75) {
+    const topRightLine = d3.interpolateArray(
+      [0, -size / 2, 0],
+      [size / 4, -size / 4, 0]
+    );
+    const topLeftLine = d3.interpolateArray(
+      [0, -size / 2, 0],
+      [-size / 4, -size / 4, 0]
+    );
 
-        context.arc(
-          0,
-          0,
-          size / Math.SQRT2 / 2,
-          -Math.PI / 4,
-          (Math.PI * 5) / 4
-        );
+    const topRightCone = Array.from(topRightLine((1 - yFill) / 0.25)),
+      botRightCone = Array.from(topRightLine(1)),
+      topLeftCone = Array.from(topLeftLine((1 - yFill) / 0.25)),
+      botLeftCone = Array.from(topLeftLine(1));
 
-        context.lineTo(...end2);
-        context.closePath();
-      } else {
-      }
-    },
-  };
+    for (let i = 0; i < SUBDIVS; i++) {
+      const dx1 =
+        Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
+      const dy1 =
+        Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
+      const dx2 =
+        Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+      const dy2 =
+        Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+
+      // CC !
+      const v1 = [-dx1, dy1],
+        v2 = [dx1, dy1],
+        v3 = [dx2, dy2],
+        v4 = [-dx2, dy2];
+
+      coords.push([v1, v2, v3]);
+
+      coords.push([v1, v3, v4]);
+    }
+
+    // CC !
+    coords.push([botLeftCone, botRightCone, topRightCone]);
+    coords.push([botLeftCone, topRightCone, topLeftCone]);
+  } else {
+    let dx1 = undefined,
+      dy1 = undefined,
+      dx2,
+      dy2;
+
+    for (let i = 0; i < SUBDIVS; i++) {
+      dx1 = Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
+      dy1 = Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
+      dx2 = Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+      dy2 = Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+
+      if ((-dy2 / rad + 1) / (1 + Math.SQRT2) >= yFill) break;
+
+      // CC !
+      const v1 = [-dx1, dy1],
+        v2 = [dx1, dy1],
+        v3 = [dx2, dy2],
+        v4 = [-dx2, dy2];
+
+      coords.push([v1, v2, v3]);
+
+      coords.push([v1, v3, v4]);
+    }
+
+    if (dx1 === undefined) return coords;
+
+    const phi = Math.acos(
+      (yFill / ((2 * Math.SQRT1_2) / (1 + Math.SQRT1_2))) * -2 - 1
+    );
+
+    dx2 = Math.sin(phi) * rad;
+    dy2 = Math.cos(phi) * rad;
+
+    // CC !
+    const v1 = [-dx1, dy1],
+      v2 = [dx1, dy1],
+      v3 = [dx2, dy2],
+      v4 = [-dx2, dy2];
+
+    coords.push([v1, v2, v3]);
+
+    coords.push([v1, v3, v4]);
+  }
+  return coords;
 }
 
 export function kernelDensityEstimator(kernel, X) {

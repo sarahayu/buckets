@@ -13,7 +13,6 @@ import {
   criteriaSort,
   percentToRatioFilled,
   placeDropsUsingPhysics,
-  waterdrop,
 } from "./utils";
 import { useNavigate } from "react-router-dom";
 
