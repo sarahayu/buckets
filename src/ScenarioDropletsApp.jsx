@@ -1,22 +1,20 @@
 import * as d3 from "d3";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
 import {
   DROPLET_SHAPE,
   createInterps,
   criteriaSort,
-  percentToRatioFilled,
   placeDropsUsingPhysics,
 } from "./utils";
-import { useSearchParams } from "react-router-dom";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 2;
-const RAD_PX = 7;
+const RAD_PX = 8;
 const MIN_LEV_VAL = 0.1;
 const DROPLET_PAD_FACTOR = 2.5;
-const PX_BIAS = 1;
 
 export default function ScenarioDropletsApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
@@ -58,13 +56,15 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
       width: window.innerWidth,
       height: window.innerHeight,
     };
+    const width = winDim.current.width,
+      height = winDim.current.height;
 
     zoomRef.current = d3
       .zoom()
       .scaleExtent([1, 10])
       .translateExtent([
-        [-winDim.current.width / 2, -winDim.current.height / 2],
-        [winDim.current.width * 1.5, winDim.current.height * 1.5],
+        [-width / 2, -height / 2],
+        [width * 1.5, height * 1.5],
       ])
       .on("zoom", function (e) {
         bucketSvgSelector.current
@@ -84,8 +84,8 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
       .on("end", () => bucketSvgSelector.current.style("cursor", "grab"));
 
     bucketSvgSelector.current
-      .attr("width", winDim.current.width)
-      .attr("height", winDim.current.height)
+      .attr("width", width)
+      .attr("height", height)
       .style("cursor", "grab")
       .call((s) => s.append("g").attr("class", "svg-trans"))
       .call(zoomRef.current);
@@ -105,15 +105,12 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
 
     bucketSvgSelector.current.call(zoomRef.current.transform, d3.zoomIdentity);
 
-    const scale = 1;
-
     const nodes_pos = placeDropsUsingPhysics(
       width / 2,
-      height / 2,
+      (height / 2) * 1.1,
       waterLevels.map((levs, idx) => ({
         r:
           (normalize ? 1 : Math.max(levs[0], MIN_LEV_VAL)) *
-          scale *
           RAD_PX *
           DROPLET_PAD_FACTOR,
         id: idx,
@@ -122,15 +119,10 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
 
     const nodes = nodes_pos.map(({ id: idx, x, y }) => ({
       levs: waterLevels[idx].map(
-        (w, i) =>
-          Math.max(w, i == 0 ? MIN_LEV_VAL : 0) *
-          scale *
-          (normalize ? 1 / Math.max(waterLevels[idx][0], MIN_LEV_VAL) : 1) *
-          RAD_PX
+        (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
       ),
       maxLev:
-        (normalize ? 1 : Math.max(waterLevels[idx][0], MIN_LEV_VAL) * scale) *
-        RAD_PX,
+        (normalize ? 1 : Math.max(waterLevels[idx][0], MIN_LEV_VAL)) * RAD_PX,
       tilt: Math.random() * 50 - 25,
       dur: Math.random() * 100 + 400,
       startX: x,
@@ -189,6 +181,8 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
               .attr("x2", "0%")
               .attr("y1", "0%")
               .attr("y2", "100%");
+            stops.append("stop").attr("stop-color", "transparent");
+            stops.append("stop").attr("stop-color", "transparent");
 
             levs.forEach((_, i) => {
               stops
@@ -201,6 +195,15 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
 
             d3.select(this)
               .append("path")
+              .attr("d", DROPLET_SHAPE)
+              .attr("class", "outline")
+              .attr("fill", "none")
+              .attr("stroke", "lightgray")
+              .attr("stroke-width", 0.05);
+
+            d3.select(this)
+              .append("path")
+              .attr("class", "fill")
               .attr("d", DROPLET_SHAPE)
               .attr("fill", `url(#drop-fill-${i})`);
           });
@@ -216,7 +219,11 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
 
         d3.select(`#drop-${i}`).style("opacity", 0).select("text").text(scen);
 
-        s.selectAll("path").attr("transform", `scale(${maxLev})`);
+        s.select(".outline").attr("transform", `scale(${maxLev * 0.95})`);
+        s.select(".fill").attr("transform", `scale(${maxLev})`);
+
+        if (normalize) s.select(".outline").style("display", "initial");
+        else s.select(".outline").style("display", "none");
 
         s.selectAll("stop").each(function (_, i) {
           let actI = Math.floor(i / 2);
@@ -244,7 +251,7 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
           )
           .style("opacity", 1)
           .on("end", () => {
-            const d = s.select("path");
+            const d = s.select(".fill");
 
             s.select(".bbox")
               .attr("x", d.node().getBBox().x)
@@ -261,10 +268,8 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
                   d.node().getBoundingClientRect().width / 2
                 }, ${d.node().getBoundingClientRect().y})`
               );
-          })
-          .call((s) => {});
-      })
-      .call((s) => {});
+          });
+      });
   }, [waterLevels, normalize]);
 
   return (

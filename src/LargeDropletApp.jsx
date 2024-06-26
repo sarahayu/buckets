@@ -5,6 +5,7 @@ import {
   DELIV_KEY_STRING,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
+  objectiveIDs,
   objectivesData,
 } from "./data/objectivesData";
 import {
@@ -19,19 +20,21 @@ const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
 const SCEN_DIVISOR = 20;
-const LARGE_DROPLET_PAD_FACTOR = 1.5;
+const SMALL_DROP_PAD_FACTOR = 1.5;
 
 export default function LargeDropletApp({ watercolor = false }) {
-  const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const navigate = useNavigate();
   const winDim = useRef();
   const [normalize, setNormalize] = useState(false);
 
   const bucketSvgSelector = useRef();
+  const zoomRef = useRef();
 
-  const orderedObjToScens = useMemo(() => {
+  const objToWaterLevels = useMemo(() => {
+    const objToLevels = {};
+    const orderedObjToScens = {};
+
     const unorderedObjToScens = {};
-    const mapSorted = {};
 
     // don't process all scenes, too many small drops causes lag
     objectiveIDs.forEach(
@@ -58,25 +61,18 @@ export default function LargeDropletApp({ watercolor = false }) {
     });
 
     sortedObjs.forEach(
-      (obj) => void (mapSorted[obj] = unorderedObjToScens[obj])
+      (obj) => void (orderedObjToScens[obj] = unorderedObjToScens[obj])
     );
-    return mapSorted;
-  }, []);
-
-  const objToWaterLevels = useMemo(() => {
-    const retVal = {};
 
     objectiveIDs.forEach((obj) => {
-      retVal[obj] = orderedObjToScens[obj].map((s) => {
+      objToLevels[obj] = orderedObjToScens[obj].map((s) => {
         const i = createInterps(obj, s, objectivesData, MAX_DELIVS);
         return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
       });
     });
 
-    return retVal;
+    return objToLevels;
   }, []);
-
-  const zoomRef = useRef();
 
   useLayoutEffect(() => {
     winDim.current = {
@@ -84,12 +80,15 @@ export default function LargeDropletApp({ watercolor = false }) {
       height: window.innerHeight,
     };
 
+    const width = winDim.current.width,
+      height = winDim.current.height;
+
     zoomRef.current = d3
       .zoom()
       .scaleExtent([1, 10])
       .translateExtent([
-        [-winDim.current.width / 2, -winDim.current.height / 2],
-        [winDim.current.width * 1.5, winDim.current.height * 1.5],
+        [-width / 2, -height / 2],
+        [width * 1.5, height * 1.5],
       ])
       .on("zoom", function (e) {
         bucketSvgSelector.current
@@ -109,8 +108,8 @@ export default function LargeDropletApp({ watercolor = false }) {
       .on("end", () => bucketSvgSelector.current.style("cursor", "grab"));
 
     bucketSvgSelector.current
-      .attr("width", winDim.current.width)
-      .attr("height", winDim.current.height)
+      .attr("width", width)
+      .attr("height", height)
       .style("cursor", "grab")
       .call((s) => s.append("g").attr("class", "svg-trans"))
       .call(zoomRef.current);
@@ -119,78 +118,17 @@ export default function LargeDropletApp({ watercolor = false }) {
   useLayoutEffect(() => {
     const width = winDim.current.width,
       height = winDim.current.height;
+
     bucketSvgSelector.current.call(zoomRef.current.transform, d3.zoomIdentity);
 
-    const nodesArr = Object.keys(objToWaterLevels)
-      .map((obj) => {
-        const scale = 1;
-
-        const nodesPos = placeDropsUsingPhysics(
-          0,
-          0,
-          objToWaterLevels[obj].map((levs, idx) => ({
-            r: Math.max(
-              2,
-              (normalize ? 1 : Math.max(levs[0], MIN_LEV_VAL)) *
-                scale *
-                RAD_PX *
-                LARGE_DROPLET_PAD_FACTOR
-            ),
-            id: idx,
-          }))
-        );
-
-        const nodes = nodesPos.map(({ id: idx, x, y }) => ({
-          levs: objToWaterLevels[obj][idx].map(
-            (w, i) =>
-              Math.max(w, i == 0 ? MIN_LEV_VAL : 0) *
-              scale *
-              (normalize
-                ? 1 / Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)
-                : 1) *
-              RAD_PX
-          ),
-          maxLev:
-            (normalize
-              ? 1
-              : Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL) * scale) *
-            RAD_PX,
-          tilt: Math.random() * 50 - 25,
-          dur: Math.random() * 100 + 400,
-          startX: x,
-          startY: y,
-          obj,
-        }));
-
-        return nodes;
-      })
-      .reverse();
-
-    const largeNodesRads = {};
-
-    const largeNodesPos = placeDropsUsingPhysics(
-      0,
-      0,
-      nodesArr.map((largeDrop, idx) => ({
-        r: (largeNodesRads[idx] = Math.max(
-          1,
-          Math.sqrt(d3.sum(largeDrop.map((d) => d.maxLev)) / Math.PI) * 8
-        )),
-        id: idx,
-      }))
-    ).map(({ x, y }, i) => ({
-      x,
-      y,
-      tilt: Math.random() * 50 - 25,
-      r: largeNodesRads[i],
-    }));
+    const largeNodes = initNodes(objToWaterLevels, normalize);
 
     bucketSvgSelector.current
       .select(".svg-trans")
       .selectAll(".largeDrop")
-      .data(nodesArr, (n, i) => n[0].obj)
+      .data(largeNodes, (n) => n.obj)
       .join((enter) =>
-        enter.append("g").each(function (d, i) {
+        enter.append("g").each(function (_, i) {
           const s = d3.select(this);
 
           d3.select(this.parentNode)
@@ -222,10 +160,7 @@ export default function LargeDropletApp({ watercolor = false }) {
       .attr("class", "largeDrop")
       .attr(
         "transform",
-        (_, i) =>
-          `translate(${largeNodesPos[i].x + width / 2}, ${
-            largeNodesPos[i].y + height / 2
-          })`
+        ({ x, y }) => `translate(${x + width / 2}, ${y + height / 2})`
       )
       .each(function (nodes, i1) {
         const s = d3.select(this);
@@ -233,17 +168,17 @@ export default function LargeDropletApp({ watercolor = false }) {
         d3.select(`#drop-${i1}`)
           .style("opacity", 0)
           .select("text")
-          .text(nodes[0].obj);
+          .text(nodes.obj);
         d3.select(this)
           .select(".rotateClass")
-          .attr("transform", `rotate(${largeNodesPos[i1].tilt})`)
+          .attr("transform", `rotate(${nodes.tilt})`)
           .selectAll(".smallDrop")
           .data(nodes, (_, i) => i)
           .join((enter) => {
             return enter
               .append("g")
               .attr("class", "smallDrop")
-              .each(function ({ levs, maxLev }, i2) {
+              .each(function ({ levs }, i2) {
                 const stops = d3
                   .select(this)
                   .append("defs")
@@ -253,6 +188,8 @@ export default function LargeDropletApp({ watercolor = false }) {
                   .attr("x2", "0%")
                   .attr("y1", "0%")
                   .attr("y2", "100%");
+                stops.append("stop").attr("stop-color", "transparent");
+                stops.append("stop").attr("stop-color", "transparent");
 
                 levs.forEach((_, i) => {
                   stops
@@ -266,18 +203,33 @@ export default function LargeDropletApp({ watercolor = false }) {
                 d3.select(this)
                   .append("path")
                   .attr("d", DROPLET_SHAPE)
+                  .attr("class", "outline")
+                  .attr("fill", "none")
+                  .attr("stroke", "lightgray")
+                  .attr("stroke-width", 0.05);
+
+                d3.select(this)
+                  .append("path")
+                  .attr("class", "fill")
+                  .attr("d", DROPLET_SHAPE)
                   .attr("fill", `url(#drop-fill-${i1}-${i2})`);
               });
           })
           .attr(
             "transform",
-            ({ startX, startY, tilt }) =>
-              `translate(${startX}, ${startY}) rotate(${tilt})`
+            ({ x, y, tilt }) => `translate(${x}, ${y}) rotate(${tilt})`
           )
           .each(function ({ levs, maxLev }) {
             d3.select(this)
-              .selectAll("path")
+              .select(".outline")
+              .attr("transform", `scale(${maxLev * 0.95})`);
+            d3.select(this)
+              .select(".fill")
               .attr("transform", `scale(${maxLev})`);
+
+            if (normalize)
+              d3.select(this).select(".outline").style("display", "block");
+            else d3.select(this).select(".outline").style("display", "none");
 
             d3.select(this)
               .selectAll("stop")
@@ -302,7 +254,7 @@ export default function LargeDropletApp({ watercolor = false }) {
 
         s.on("click", function () {
           navigate(
-            `/ScenarioDropletsApp?obj=${nodes[0].obj}&norm=${
+            `/ScenarioDropletsApp?obj=${nodes.obj}&norm=${
               normalize ? "true" : "false"
             }`
           );
@@ -345,4 +297,62 @@ export default function LargeDropletApp({ watercolor = false }) {
       </div>
     </div>
   );
+}
+
+function initNodes(objToWaterLevels, normalize) {
+  const largeNodes = Object.keys(objToWaterLevels)
+    .map((obj) => {
+      const smallNodesPos = placeDropsUsingPhysics(
+        0,
+        0,
+        objToWaterLevels[obj].map((levs, id) => ({
+          r: Math.max(
+            2,
+            (normalize ? 1 : Math.max(levs[0], MIN_LEV_VAL)) *
+              RAD_PX *
+              SMALL_DROP_PAD_FACTOR
+          ),
+          id,
+        }))
+      );
+
+      const smallNodes = smallNodesPos.map(({ id: idx, x, y }) => ({
+        levs: objToWaterLevels[obj][idx].map(
+          (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
+        ),
+        maxLev:
+          (normalize
+            ? 1
+            : Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)) * RAD_PX,
+        tilt: Math.random() * 50 - 25,
+        dur: Math.random() * 100 + 400,
+        x,
+        y,
+      }));
+
+      smallNodes.height = smallNodesPos.height;
+      smallNodes.obj = obj;
+
+      return smallNodes;
+    })
+    .reverse();
+
+  placeDropsUsingPhysics(
+    0,
+    0,
+    largeNodes.map((innerNodes, id) => ({
+      r: Math.max(
+        1,
+        Math.sqrt(d3.sum(innerNodes.map((d) => d.maxLev)) / Math.PI) * 8
+      ),
+      id,
+    }))
+  ).forEach(({ x, y }, i) => {
+    largeNodes[i].x = x;
+    largeNodes[i].y = y;
+    largeNodes[i].tilt = Math.random() * 50 - 25;
+    largeNodes[i].r =
+      (largeNodes[i].height / (1 + Math.SQRT1_2)) * Math.SQRT1_2;
+  });
+  return largeNodes;
 }
