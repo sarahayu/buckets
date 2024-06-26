@@ -6,13 +6,13 @@ import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
-const LargeDropletMosaicApp = React.lazy(() => import("./LargeDropletMosaicApp"));
 const OldMainApp = React.lazy(() => import("./OldMainApp"));
-const RecursiveDropletsWatercolorApp = React.lazy(() => import("./RecursiveDropletsWatercolorApp"));
-const RecursiveDropletsBasicApp = React.lazy(() => import("./RecursiveDropletsBasicApp"));
+const LargeDropletV2App = React.lazy(() => import("./LargeDropletV2App"));
+const ScenarioDropletsApp = React.lazy(() => import("./ScenarioDropletsApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
+const LargeDropletApp = React.lazy(() => import("./LargeDropletApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
-const AlignedMosaicApp = React.lazy(() => import("./AlignedMosaicApp"));
+const ScenarioDropletsWatercolorApp = React.lazy(() => import("./ScenarioDropletsWatercolorApp"));
 
 
 const Loader = () => {
@@ -33,13 +33,13 @@ root.render(
           <main>
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
-              <Link to="LargeDropletMosaicApp" title="Large Droplet Mosaic" ><img src="LargeDropletMosaicApp.png" className="linkPics" /></Link>
               <Link to="OldMainApp" title="Old Main" ><img src="OldMainApp.png" className="linkPics" /></Link>
-              <Link to="RecursiveDropletsWatercolorApp" title="Recursive Droplets Watercolor" ><img src="RecursiveDropletsWatercolorApp.png" className="linkPics" /></Link>
-              <Link to="RecursiveDropletsBasicApp" title="Recursive Droplets Basic" ><img src="RecursiveDropletsBasicApp.png" className="linkPics" /></Link>
+              <Link to="LargeDropletV2App" title="Large Droplet V2" ><img src="LargeDropletV2App.png" className="linkPics" /></Link>
+              <Link to="ScenarioDropletsApp" title="Scenario Droplets" ><img src="ScenarioDropletsApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
+              <Link to="LargeDropletApp" title="Large Droplet" ><img src="LargeDropletApp.png" className="linkPics" /></Link>
               <Link to="BigBucketApp" title="Big Bucket" ><img src="BigBucketApp.png" className="linkPics" /></Link>
-              <Link to="AlignedMosaicApp">Aligned Mosaic</Link>
+              <Link to="ScenarioDropletsWatercolorApp" title="Scenario Droplets Watercolor" ><img src="ScenarioDropletsWatercolorApp.png" className="linkPics" /></Link>
             </div>
           </main>
         }
@@ -53,14 +53,6 @@ root.render(
         }
       />
       <Route
-        path="LargeDropletMosaicApp"
-        element={
-          <React.Suspense fallback={<Loader />}>
-            <LargeDropletMosaicApp />
-          </React.Suspense>
-        }
-      />
-      <Route
         path="OldMainApp"
         element={
           <React.Suspense fallback={<Loader />}>
@@ -69,18 +61,18 @@ root.render(
         }
       />
       <Route
-        path="RecursiveDropletsWatercolorApp"
+        path="LargeDropletV2App"
         element={
           <React.Suspense fallback={<Loader />}>
-            <RecursiveDropletsWatercolorApp />
+            <LargeDropletV2App />
           </React.Suspense>
         }
       />
       <Route
-        path="RecursiveDropletsBasicApp"
+        path="ScenarioDropletsApp"
         element={
           <React.Suspense fallback={<Loader />}>
-            <RecursiveDropletsBasicApp />
+            <ScenarioDropletsApp />
           </React.Suspense>
         }
       />
@@ -93,6 +85,14 @@ root.render(
         }
       />
       <Route
+        path="LargeDropletApp"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <LargeDropletApp />
+          </React.Suspense>
+        }
+      />
+      <Route
         path="BigBucketApp"
         element={
           <React.Suspense fallback={<Loader />}>
@@ -101,10 +101,10 @@ root.render(
         }
       />
       <Route
-        path="AlignedMosaicApp"
+        path="ScenarioDropletsWatercolorApp"
         element={
           <React.Suspense fallback={<Loader />}>
-            <AlignedMosaicApp />
+            <ScenarioDropletsWatercolorApp />
           </React.Suspense>
         }
       />

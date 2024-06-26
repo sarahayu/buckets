@@ -11,7 +11,6 @@ import {
   DROPLET_SHAPE,
   createInterps,
   criteriaSort,
-  percentToRatioFilled,
   placeDropsUsingPhysics,
 } from "./utils";
 import { useNavigate } from "react-router-dom";
@@ -21,9 +20,8 @@ const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
 const SCEN_DIVISOR = 20;
 const LARGE_DROPLET_PAD_FACTOR = 1.5;
-const PX_BIAS = 1;
 
-export default function LargeDropletMosaicApp({ watercolor = false }) {
+export default function LargeDropletApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const navigate = useNavigate();
   const winDim = useRef();
@@ -304,7 +302,7 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
 
         s.on("click", function () {
           navigate(
-            `/RecursiveDropletsBasicApp?obj=${nodes[0].obj}&norm=${
+            `/ScenarioDropletsApp?obj=${nodes[0].obj}&norm=${
               normalize ? "true" : "false"
             }`
           );

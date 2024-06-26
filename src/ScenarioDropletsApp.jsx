@@ -18,7 +18,7 @@ const MIN_LEV_VAL = 0.1;
 const DROPLET_PAD_FACTOR = 2.5;
 const PX_BIAS = 1;
 
-export default function RecursiveDropletsBasicApp({ watercolor = false }) {
+export default function ScenarioDropletsApp({ watercolor = false }) {
   const { current: objectiveIDs } = useRef(Object.keys(objectivesData));
   const winDim = useRef();
   const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);

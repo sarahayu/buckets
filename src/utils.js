@@ -391,3 +391,31 @@ export function criteriaSort(criteria, data, objective) {
     return Object.keys(data[objective][SCENARIO_KEY_STRING]).sort();
   }
 }
+
+function get(object, path, defaultValue) {
+  const parts = path.split(".");
+  for (let part of parts) {
+    if (!object) return defaultValue;
+    object = object[part];
+  }
+  return object ?? defaultValue;
+}
+
+function pick(fn) {
+  return typeof fn === "string" ? (v) => get(v, fn) : fn;
+}
+
+export function sortBy(array, fn) {
+  fn = pick(fn);
+  return array.sort((a, b) => {
+    const va = fn(a);
+    const vb = fn(b);
+    if (va < vb) return -1;
+    if (va > vb) return 1;
+    return 0;
+  });
+}
+
+export function toRadians(a) {
+  return (a * Math.PI) / 180;
+}
