@@ -24,3 +24,8 @@ export const objectivesData = await (async function () {
 
   return mapBy(objs, ({ obj }) => obj);
 })();
+
+export const objectiveIDs = Object.keys(objectivesData);
+export const scenarioIDs = Object.keys(
+  Object.values(objectivesData)[0][SCENARIO_KEY_STRING]
+);

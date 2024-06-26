@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import * as d3 from "d3";
 import Matter from "matter-js";
 import { useCallback, useMemo, useState } from "react";
@@ -313,6 +314,8 @@ export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
     y: position.y + y,
   }));
 
+  retVal.height = (WIDTH_AREA / 2 / CIRC_RAD) * DROP_HEIGHT;
+
   if (reuse && (!DET_CACHE || retVal.length !== lastDetNodesLen)) {
     DET_CACHE = retVal;
     lastDetNodesLen = retVal.length;
@@ -418,4 +421,114 @@ export function sortBy(array, fn) {
 
 export function toRadians(a) {
   return (a * Math.PI) / 180;
+}
+
+export class Camera {
+  fov;
+  near;
+  far;
+  width;
+  height;
+  camera;
+  zoom;
+  view;
+
+  constructor({ fov, near, far, width, height, domElement }) {
+    this.fov = fov;
+    this.near = near;
+    this.far = far;
+    this.width = width;
+    this.height = height;
+
+    this.camera = new THREE.PerspectiveCamera(
+      fov,
+      width / height,
+      near,
+      far + 1
+    );
+
+    this.camera.position.set(0, 0, this.far);
+
+    this.zoom = d3
+      .zoom()
+      .scaleExtent([
+        this.getScaleFromZ(this.far),
+        this.getScaleFromZ(this.near),
+      ])
+      .on("zoom", this.d3ZoomHandler.bind(this));
+
+    this.view = d3.select(domElement);
+    this.view.call(this.zoom);
+    this.zoom.transform(
+      this.view,
+      d3.zoomIdentity
+        .translate(this.width / 2, this.height / 2)
+        .scale(this.getScaleFromZ(this.far))
+    );
+  }
+
+  d3ZoomHandler(e) {
+    const scale = e.transform.k;
+    const x = -(e.transform.x - this.width / 2) / scale;
+    const y = (e.transform.y - this.height / 2) / scale;
+    const z = this.getZFromScale(scale);
+    this.camera.position.set(x, y, z);
+  }
+
+  getScaleFromZ(camera_z_position) {
+    const half_fov = this.fov / 2;
+    const half_fov_radians = toRadians(half_fov);
+    const half_fov_height = Math.tan(half_fov_radians) * camera_z_position;
+    const fov_height = half_fov_height * 2;
+    const scale = this.height / fov_height;
+    return scale;
+  }
+
+  getZFromScale(scale) {
+    const half_fov = this.fov / 2;
+    const half_fov_radians = toRadians(half_fov);
+    const scale_height = this.height / scale;
+    const camera_z_position = scale_height / (2 * Math.tan(half_fov_radians));
+    return camera_z_position;
+  }
+}
+
+export class MeshGeometry {
+  threeGeom = new THREE.Geometry();
+  idx = 0;
+
+  addMeshCoords(meshCoords, transform, color) {
+    const indices = [];
+
+    for (let j = 0; j < meshCoords.length; j++) {
+      const [v1, v2, v3] = meshCoords[j];
+
+      const a = new THREE.Vector3(transform.x + v1[0], transform.y - v1[1], 0);
+      const b = new THREE.Vector3(transform.x + v2[0], transform.y - v2[1], 0);
+      const c = new THREE.Vector3(transform.x + v3[0], transform.y - v3[1], 0);
+      this.threeGeom.vertices.push(a, b, c);
+
+      const face = new THREE.Face3(
+        this.idx * 3 + 0,
+        this.idx * 3 + 1,
+        this.idx * 3 + 2
+      );
+      face.vertexColors.push(color);
+      face.vertexColors.push(color);
+      face.vertexColors.push(color);
+      this.threeGeom.faces.push(face);
+
+      indices.push(this.idx++);
+    }
+
+    return indices;
+  }
+}
+
+export function mouseToThree(mouseX, mouseY, width, height) {
+  return new THREE.Vector3(
+    (mouseX / width) * 2 - 1,
+    -(mouseY / height) * 2 + 1,
+    1
+  );
 }

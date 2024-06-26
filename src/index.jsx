@@ -17,8 +17,8 @@ const ScenarioDropletsWatercolorApp = React.lazy(() => import("./ScenarioDroplet
 
 const Loader = () => {
   return (
-    <section class="sec-loading">
-      <div class="one"></div>
+    <section className="sec-loading">
+      <div className="one"></div>
     </section>
   );
 };
