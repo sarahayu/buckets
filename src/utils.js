@@ -57,99 +57,92 @@ export function percentToRatioFilled(p) {
   );
 }
 
-export function waterdrop(yFill, size = 2) {
-  const rad = (size / 2) * Math.SQRT1_2;
-  let coords = [];
-  const realHeight = (size * (1 + Math.SQRT1_2)) / 2;
+const CIRC_RAD = Math.SQRT1_2;
+const DROP_RAD = 1;
+const CIRC_HEIGHT = CIRC_RAD + CIRC_RAD;
+const DROP_HEIGHT = DROP_RAD + CIRC_RAD;
+const HAT_START = 0.75;
 
-  if (yFill === 0) return coords;
+function yToHalfWidth(y) {
+  if (y >= HAT_START) {
+    const hatHalfWidth = DROP_RAD / 2;
 
-  const SUBDIVS = 6;
+    return (hatHalfWidth * (1 - y)) / (1 - HAT_START);
+  }
 
-  if (yFill > 0.75) {
-    const topRightLine = d3.interpolateArray(
-      [0, -size / 2, 0],
-      [size / 4, -size / 4, 0]
-    );
-    const topLeftLine = d3.interpolateArray(
-      [0, -size / 2, 0],
-      [-size / 4, -size / 4, 0]
-    );
+  const circFrac = fracDropToCirc(y);
+  const trigX = (1 - circFrac) * 2 - 1;
 
-    const topRightCone = Array.from(topRightLine((1 - yFill) / 0.25)),
-      botRightCone = Array.from(topRightLine(1)),
-      topLeftCone = Array.from(topLeftLine((1 - yFill) / 0.25)),
-      botLeftCone = Array.from(topLeftLine(1));
+  const angle = Math.acos(trigX);
+  const trigY = Math.sin(angle);
 
-    for (let i = 0; i < SUBDIVS; i++) {
-      const dx1 =
-        Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
-      const dy1 =
-        Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
-      const dx2 =
-        Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
-      const dy2 =
-        Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+  return trigY * CIRC_RAD;
+}
 
-      // CC !
-      const v1 = [-dx1, dy1],
-        v2 = [dx1, dy1],
-        v3 = [dx2, dy2],
-        v4 = [-dx2, dy2];
+function yToSpriteY(y) {
+  return (y - CIRC_RAD / DROP_HEIGHT) / (DROP_RAD / DROP_HEIGHT);
+}
 
-      coords.push([v1, v2, v3]);
+function spriteYToY(sy) {
+  return sy * (DROP_RAD / DROP_HEIGHT) + CIRC_RAD / DROP_HEIGHT;
+}
 
-      coords.push([v1, v3, v4]);
-    }
+function fracCircToDrop(v) {
+  return v / CIRC_HEIGHT / DROP_HEIGHT;
+}
 
-    // CC !
-    coords.push([botLeftCone, botRightCone, topRightCone]);
-    coords.push([botLeftCone, topRightCone, topLeftCone]);
-  } else {
-    let dx1 = undefined,
-      dy1 = undefined,
-      dx2,
-      dy2;
+function fracDropToCirc(v) {
+  return v / (CIRC_HEIGHT / DROP_HEIGHT);
+}
 
-    for (let i = 0; i < SUBDIVS; i++) {
-      dx1 = Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
-      dy1 = Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 0.5)) * rad;
-      dx2 = Math.sin(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
-      dy2 = Math.cos(((Math.PI * 3) / 2 / (SUBDIVS * 2 + 1)) * (i + 1.5)) * rad;
+export function waterdropDelta(yStart, yEnd, size = 2) {
+  if (Math.abs(yStart - yEnd) < 0.01) return [];
 
-      if ((-dy2 / rad + 1) / (1 + Math.SQRT2) >= yFill) break;
+  const rad = (size / 2 / DROP_RAD) * CIRC_RAD;
 
-      // CC !
-      const v1 = [-dx1, dy1],
-        v2 = [dx1, dy1],
-        v3 = [dx2, dy2],
-        v4 = [-dx2, dy2];
+  const Y_DELTA = 0.1;
 
-      coords.push([v1, v2, v3]);
+  const coords = [];
 
-      coords.push([v1, v3, v4]);
-    }
+  let dx1, dy1, dx2, dy2;
 
-    if (dx1 === undefined) return coords;
+  for (let i = 1; i < Math.ceil(1 / Y_DELTA); i++) {
+    dx1 = yToHalfWidth(yStart + (i - 1) * Y_DELTA);
+    dy1 = yToSpriteY(yStart + (i - 1) * Y_DELTA);
+    dx2 = yToHalfWidth(yStart + i * Y_DELTA);
+    dy2 = yToSpriteY(yStart + i * Y_DELTA);
 
-    const phi = Math.acos(
-      (yFill / ((2 * Math.SQRT1_2) / (1 + Math.SQRT1_2))) * -2 - 1
-    );
-
-    dx2 = Math.sin(phi) * rad;
-    dy2 = Math.cos(phi) * rad;
+    if (spriteYToY(dy2) >= yEnd) break;
 
     // CC !
-    const v1 = [-dx1, dy1],
-      v2 = [dx1, dy1],
-      v3 = [dx2, dy2],
-      v4 = [-dx2, dy2];
+    const v1 = [-dx1 * rad, -dy1 * rad],
+      v2 = [dx1 * rad, -dy1 * rad],
+      v3 = [dx2 * rad, -dy2 * rad],
+      v4 = [-dx2 * rad, -dy2 * rad];
 
     coords.push([v1, v2, v3]);
-
     coords.push([v1, v3, v4]);
   }
+
+  dx2 = yToHalfWidth(yEnd);
+  dy2 = yToSpriteY(yEnd);
+
+  // CC !
+  const v1 = [-dx1 * rad, -dy1 * rad],
+    v2 = [dx1 * rad, -dy1 * rad],
+    v3 = [dx2 * rad, -dy2 * rad],
+    v4 = [-dx2 * rad, -dy2 * rad];
+
+  coords.push([v1, v2, v3]);
+  coords.push([v1, v3, v4]);
+
   return coords;
+}
+
+export function waterdrop(yFill, size = 2) {
+  if (yFill === 0) return [];
+
+  return waterdropDelta(0, yFill, size);
 }
 
 export function kernelDensityEstimator(kernel, X) {
@@ -250,6 +243,11 @@ let lastNodesLen;
 let DET_CACHE;
 let lastDetNodesLen;
 
+export function radsToDropWidth(nodes) {
+  const AREA = d3.sum(nodes.map((r) => r ** 2 * 3.14));
+  return Math.floor((Math.sqrt(AREA / 3.14) * 2) / 2);
+}
+
 // assuming nodes is already ordered and first nodes are going to be put on the bottom
 export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
   if (reuse && DET_CACHE && nodes.length === lastDetNodesLen) return DET_CACHE;
@@ -263,8 +261,7 @@ export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
         generateRandoPoints(generateWaterdrop(1), (lastNodesLen = nodes.length))
       );
 
-  const AREA = d3.sum(nodes.map(({ r }) => r ** 2 * 3.14));
-  const WIDTH_AREA = Math.floor((Math.sqrt(AREA / 3.14) * 2) / 2);
+  const WIDTH_AREA = radsToDropWidth(nodes.map(({ r }) => r));
 
   const randoPoints = RANDO_CACHE[
     Math.floor(Math.random() * RANDO_CACHE.length)
@@ -302,7 +299,7 @@ export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
   Matter.Body.setParts(cage, parts);
 
   Matter.Body.setCentre(cage, { x: 0, y: 0 });
-  Matter.Body.scale(cage, WIDTH_AREA * 1.1, WIDTH_AREA * 1.1);
+  Matter.Body.scale(cage, WIDTH_AREA, WIDTH_AREA);
 
   Composite.add(engine.world, [...node_bodies, cage]);
 
@@ -313,7 +310,7 @@ export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
   const retVal = node_bodies.map(({ position, id }) => ({
     id,
     x: position.x + x,
-    y: position.y + y + WIDTH_AREA * 0.1,
+    y: position.y + y,
   }));
 
   if (reuse && (!DET_CACHE || retVal.length !== lastDetNodesLen)) {

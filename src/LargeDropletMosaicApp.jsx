@@ -256,8 +256,6 @@ export default function LargeDropletMosaicApp({ watercolor = false }) {
                   .attr("y1", "0%")
                   .attr("y2", "100%");
 
-                console.log(...levs.map((l) => l / maxLev));
-
                 levs.forEach((_, i) => {
                   stops
                     .append("stop")
