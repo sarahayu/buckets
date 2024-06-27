@@ -234,13 +234,12 @@ export default function LargeDropletApp({ watercolor = false }) {
             d3.select(this)
               .selectAll("stop")
               .each(function (_, i) {
-                let actI = Math.floor(i / 2);
-                const isEnd = i % 2;
-
-                if (isEnd === 0) actI -= 1;
+                let actI = Math.floor((i - 1) / 2);
 
                 if (actI === -1) {
                   d3.select(this).attr("offset", `${0}%`);
+                } else if (actI === levs.length) {
+                  d3.select(this).attr("offset", `${100}%`);
                 } else {
                   d3.select(this).attr(
                     "offset",

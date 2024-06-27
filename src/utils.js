@@ -96,6 +96,53 @@ function fracDropToCirc(v) {
   return v / (CIRC_HEIGHT / DROP_HEIGHT);
 }
 
+export function waterdropDeltaOutline(yStart, yEnd, size = 2) {
+  if (Math.abs(yStart - yEnd) < 0.01) return [];
+
+  const rad = (size / 2 / DROP_RAD) * CIRC_RAD;
+
+  const Y_DELTA = 0.2;
+
+  const rightCoords = [];
+  const leftCoords = [];
+
+  let dx1, dy1, dx2, dy2;
+
+  for (let i = 1; i <= Math.ceil(1 / Y_DELTA); i++) {
+    dx1 = yToHalfWidth(yStart + (i - 1) * Y_DELTA);
+    dy1 = yToSpriteY(yStart + (i - 1) * Y_DELTA);
+    dx2 = yToHalfWidth(yStart + i * Y_DELTA);
+    dy2 = yToSpriteY(yStart + i * Y_DELTA);
+
+    if (spriteYToY(dy2) >= yEnd) break;
+
+    // CC !
+    const v1 = [-dx1 * rad, -dy1 * rad],
+      v2 = [dx1 * rad, -dy1 * rad],
+      v3 = [dx2 * rad, -dy2 * rad],
+      v4 = [-dx2 * rad, -dy2 * rad];
+
+    rightCoords.push(v2, v3);
+    leftCoords.push(v1, v4);
+  }
+
+  dx2 = yToHalfWidth(yEnd);
+  dy2 = yToSpriteY(yEnd);
+
+  // CC !
+  const v1 = [-dx1 * rad, -dy1 * rad],
+    v2 = [dx1 * rad, -dy1 * rad],
+    v3 = [dx2 * rad, -dy2 * rad],
+    v4 = [-dx2 * rad, -dy2 * rad];
+
+  rightCoords.push(v2, v3);
+  leftCoords.push(v1, v4);
+
+  rightCoords.push(...leftCoords.reverse());
+
+  return rightCoords;
+}
+
 export function waterdropDelta(yStart, yEnd, size = 2) {
   if (Math.abs(yStart - yEnd) < 0.01) return [];
 
@@ -107,7 +154,7 @@ export function waterdropDelta(yStart, yEnd, size = 2) {
 
   let dx1, dy1, dx2, dy2;
 
-  for (let i = 1; i < Math.ceil(1 / Y_DELTA); i++) {
+  for (let i = 1; i <= Math.ceil(1 / Y_DELTA); i++) {
     dx1 = yToHalfWidth(yStart + (i - 1) * Y_DELTA);
     dy1 = yToSpriteY(yStart + (i - 1) * Y_DELTA);
     dx2 = yToHalfWidth(yStart + i * Y_DELTA);
@@ -433,7 +480,7 @@ export class Camera {
   zoom;
   view;
 
-  constructor({ fov, near, far, width, height, domElement }) {
+  constructor({ fov, near, far, width, height, domElement, zoomFn }) {
     this.fov = fov;
     this.near = near;
     this.far = far;
@@ -455,7 +502,11 @@ export class Camera {
         this.getScaleFromZ(this.far),
         this.getScaleFromZ(this.near),
       ])
-      .on("zoom", this.d3ZoomHandler.bind(this));
+      .on("zoom", (e) => {
+        this.d3ZoomHandler(e);
+
+        zoomFn && zoomFn(e);
+      });
 
     this.view = d3.select(domElement);
     this.view.call(this.zoom);
@@ -497,15 +548,15 @@ export class MeshGeometry {
   threeGeom = new THREE.Geometry();
   idx = 0;
 
-  addMeshCoords(meshCoords, transform, color) {
+  addMeshCoords(meshCoords, transform, color, z = 0) {
     const indices = [];
 
     for (let j = 0; j < meshCoords.length; j++) {
       const [v1, v2, v3] = meshCoords[j];
 
-      const a = new THREE.Vector3(transform.x + v1[0], transform.y - v1[1], 0);
-      const b = new THREE.Vector3(transform.x + v2[0], transform.y - v2[1], 0);
-      const c = new THREE.Vector3(transform.x + v3[0], transform.y - v3[1], 0);
+      const a = new THREE.Vector3(transform.x + v1[0], transform.y - v1[1], z);
+      const b = new THREE.Vector3(transform.x + v2[0], transform.y - v2[1], z);
+      const c = new THREE.Vector3(transform.x + v3[0], transform.y - v3[1], z);
       this.threeGeom.vertices.push(a, b, c);
 
       const face = new THREE.Face3(
@@ -513,9 +564,13 @@ export class MeshGeometry {
         this.idx * 3 + 1,
         this.idx * 3 + 2
       );
-      face.vertexColors.push(color);
-      face.vertexColors.push(color);
-      face.vertexColors.push(color);
+
+      if (color) {
+        face.vertexColors.push(color);
+        face.vertexColors.push(color);
+        face.vertexColors.push(color);
+      }
+
       this.threeGeom.faces.push(face);
 
       indices.push(this.idx++);

@@ -21,10 +21,10 @@ import {
 } from "./utils";
 
 const LEVELS = 5;
-const RAD_PX = 3;
+const RAD_PX = 10;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 1;
-const SMALL_DROP_PAD_FACTOR = 0.1;
+const SCEN_DIVISOR = 5;
+const SMALL_DROP_PAD_FACTOR = 0.6;
 
 export default function LargeDropletV2App() {
   const winDim = useRef();
@@ -35,6 +35,7 @@ export default function LargeDropletV2App() {
       pointerEvents: "none",
     },
   });
+  const outlineMat = useRef();
 
   const objToWaterLevels = useMemo(() => {
     const objToLevels = {};
@@ -72,12 +73,21 @@ export default function LargeDropletV2App() {
     scene.background = new THREE.Color(0xefefef);
     const raycaster = new THREE.Raycaster();
     const camera = new Camera({
-      fov: 150,
+      fov: 160,
       near: 1,
       far: 100,
       width,
       height,
       domElement: renderer.domElement,
+      zoomFn: (e) => {
+        if (!outlineMat.current) return;
+        outlineMat.current.opacity = d3
+          .scaleLinear()
+          .domain([1, 5])
+          .range([0.1, 1])
+          .clamp(true)(e.transform.k);
+        outlineMat.current.needsUpdate = true;
+      },
     });
 
     renderer.setAnimationLoop(() => void renderer.render(scene, camera.camera));
@@ -86,11 +96,13 @@ export default function LargeDropletV2App() {
 
     const dropsGeometry = new MeshGeometry();
     const hovererGeometry = new MeshGeometry();
+    const outlineGeometry = new MeshGeometry();
 
     const hovererMeshCoords = waterdrop(
       1,
-      largeNodes.innerNodesHeight / Math.SQRT1_2 // TODO fix
+      (largeNodes.innerNodesHeight / (1 + Math.SQRT1_2)) * 2 // TODO fix
     );
+    const outlineMeshCoords = waterdrop(1, RAD_PX * 0.99);
     const idxToDrop = {};
 
     for (let i = 0; i < largeNodes.length; i++) {
@@ -107,15 +119,27 @@ export default function LargeDropletV2App() {
         const xx = lx + x;
         const yy = ly - y;
 
-        for (let j = levs.length - 1; j >= 0; j--) {
-          const l1 = j !== levs.length - 1 ? levs[j + 1] : 0;
-          const l2 = levs[j];
+        for (let k = levs.length - 1; k >= 0; k--) {
+          const l1 = k !== levs.length - 1 ? levs[k + 1] : 0;
+          const l2 = levs[k];
 
           const meshCoords = waterdropDelta(l1 / maxLev, l2 / maxLev, RAD_PX);
-          const color = new THREE.Color(interpolateWatercolorBlue(j / LEVELS));
+          const color = new THREE.Color(interpolateWatercolorBlue(k / LEVELS));
 
-          dropsGeometry.addMeshCoords(meshCoords, { x: xx, y: yy }, color);
+          dropsGeometry.addMeshCoords(
+            meshCoords,
+            { x: xx, y: yy },
+            color,
+            (j % 5) / 20
+          );
         }
+
+        outlineGeometry.addMeshCoords(
+          outlineMeshCoords,
+          { x: xx, y: yy },
+          null,
+          (j % 5) / 20 - 0.001
+        );
       }
     }
 
@@ -123,20 +147,27 @@ export default function LargeDropletV2App() {
       dropsGeometry.threeGeom,
       new THREE.MeshBasicMaterial({
         vertexColors: THREE.VertexColors,
-        depthTest: false,
       })
     );
     const hovererMesh = new THREE.Mesh(
       hovererGeometry.threeGeom,
       new THREE.MeshBasicMaterial({
         vertexColors: THREE.VertexColors,
-        depthTest: false,
         transparent: true,
         opacity: 0,
       })
     );
+    const lineMesh = new THREE.LineSegments(
+      new THREE.EdgesGeometry(outlineGeometry.threeGeom),
+      (outlineMat.current = new THREE.LineBasicMaterial({
+        color: 0xcccccc,
+        transparent: true,
+        opacity: 0,
+      }))
+    );
 
-    scene.add(dropsMesh, hovererMesh);
+    // lineMesh.renderOrder = -1;
+    scene.add(lineMesh, dropsMesh, hovererMesh);
 
     camera.view.on("mousemove", function checkIntersects(e) {
       raycaster.setFromCamera(
@@ -188,7 +219,7 @@ function initNodes(objToWaterLevels) {
   const smallDropRad = Math.max(2, RAD_PX * SMALL_DROP_PAD_FACTOR);
   const largeDropRad = Math.max(
     1,
-    Math.sqrt((RAD_PX * amtScenarios) / Math.PI) * 2
+    Math.sqrt((RAD_PX * amtScenarios) / Math.PI) * 4
   );
 
   const smallNodesPos = placeDropsUsingPhysics(
@@ -211,10 +242,7 @@ function initNodes(objToWaterLevels) {
   const largeNodes = Object.keys(objToWaterLevels).map((obj, objId) => {
     const innerNodes = smallNodesPos.map(({ id: idx, x, y }) => ({
       levs: objToWaterLevels[obj][idx].map(
-        (w, i) =>
-          (Math.max(w, i == 0 ? MIN_LEV_VAL : 0) /
-            Math.max(objToWaterLevels[obj][idx][0], MIN_LEV_VAL)) *
-          RAD_PX
+        (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
       ),
       maxLev: RAD_PX,
       tilt: Math.random() * 50 - 25,
