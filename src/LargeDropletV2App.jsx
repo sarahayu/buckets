@@ -17,6 +17,7 @@ import {
   mouseToThree,
   placeDropsUsingPhysics,
   sortBy,
+  useStateRef,
   waterdrop,
   waterdropDelta,
   waterdropDeltaOutline,
@@ -42,11 +43,18 @@ export default function LargeDropletV2App() {
   });
   const outlineMat = useRef();
   const svgSelector = useRef();
+  const [grouping, setGrouping, groupingRef] = useStateRef("objective");
+  const groupingFn = useRef();
 
   const { current: primaryKeys } = useRef(objectiveIDs);
   const { current: secondaryKeys } = useRef(
     scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0)
   );
+
+  useEffect(() => {
+    groupingRef.current = grouping;
+    if (groupingFn.current) groupingFn.current();
+  }, [grouping]);
 
   const waterdropMatrixObjScen = useMemo(() => {
     const mat = {};
@@ -140,7 +148,13 @@ export default function LargeDropletV2App() {
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera.camera);
 
-      if (clock.getElapsedTime() > ANIM_TIME) return;
+      if (
+        !(
+          groupingRef.current === "scenario" &&
+          clock.getElapsedTime() <= ANIM_TIME
+        )
+      )
+        return;
 
       const g = pointsMesh.geometry;
 
@@ -154,7 +168,7 @@ export default function LargeDropletV2App() {
       g.verticesNeedUpdate = true;
     });
 
-    scene.add(lineMesh, dropsMesh, hovererMesh, pointsMesh);
+    scene.add(pointsMesh);
 
     const raycaster = new THREE.Raycaster();
     camera.view.on("mousemove", function checkIntersects(e) {
@@ -240,7 +254,27 @@ export default function LargeDropletV2App() {
 
   return (
     <div className="bubbles-wrapper">
-      <div className="bubbles-input-area"></div>
+      <div
+        className="bubbles-input-area"
+        onChange={(e) => void setGrouping(e.target.value)}
+      >
+        <input
+          type="radio"
+          name="grouping"
+          value="objective"
+          id="objective"
+          checked={grouping === "objective"}
+        />
+        <label htmlFor="objective">objective</label>
+        <input
+          type="radio"
+          name="grouping"
+          value="scenario"
+          id="scenario"
+          checked={grouping === "scenario"}
+        />
+        <label htmlFor="scenario">scenario</label>
+      </div>
       <div className="bubbles-tooltip" style={tooltip.style}>
         {tooltip.text}
       </div>
@@ -470,7 +504,7 @@ function initWaterdropsSimplified(configDrops) {
     for (let j = 0; j < nodes.length; j++) {
       const { globalX: x, globalY: y, levs } = nodes[j];
 
-      pointsGeometry.vertices.push(new THREE.Vector3(x, y, 0.002));
+      pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0.002));
       pointsGeometry.colors.push(
         new THREE.Color(interpolateWatercolorBlue(levs[Math.floor(LEVELS / 2)]))
       );

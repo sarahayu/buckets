@@ -1,7 +1,14 @@
 import * as THREE from "three";
 import * as d3 from "d3";
 import Matter from "matter-js";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { DELIV_KEY_STRING, SCENARIO_KEY_STRING } from "./data/objectivesData";
 import { ticksExact } from "./bucket-lib/utils";
 
@@ -588,4 +595,13 @@ export function mouseToThree(mouseX, mouseY, width, height) {
     -(mouseY / height) * 2 + 1,
     1
   );
+}
+
+export function useStateRef(val) {
+  const [state, setState] = useState(val);
+  const stateRef = useRef(val);
+
+  useEffect(() => void (stateRef.current = state), [state]);
+
+  return [state, setState, stateRef];
 }
