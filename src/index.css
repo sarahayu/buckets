@@ -1011,3 +1011,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     transform: translateY(15px) rotate(45deg);
   }
 }
+
+.mosaic-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: all;
+}

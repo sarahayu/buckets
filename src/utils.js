@@ -64,9 +64,10 @@ const CIRC_HEIGHT = CIRC_RAD + CIRC_RAD;
 const DROP_HEIGHT = DROP_RAD + CIRC_RAD;
 const HAT_START = 0.75;
 
+// half width at widest is 1
 function yToHalfWidth(y) {
   if (y >= HAT_START) {
-    const hatHalfWidth = DROP_RAD / 2;
+    const hatHalfWidth = Math.SQRT1_2;
 
     return (hatHalfWidth * (1 - y)) / (1 - HAT_START);
   }
@@ -77,15 +78,16 @@ function yToHalfWidth(y) {
   const angle = Math.acos(trigX);
   const trigY = Math.sin(angle);
 
-  return trigY * CIRC_RAD;
+  return trigY;
 }
 
+// fml, here sprite width is 2 (i.e. circ rad is 1) thus drop real height is 1 + sqrt2
 function yToSpriteY(y) {
-  return (y - CIRC_RAD / DROP_HEIGHT) / (DROP_RAD / DROP_HEIGHT);
+  return (y - CIRC_RAD / DROP_HEIGHT) * (1 + Math.SQRT2);
 }
 
 function spriteYToY(sy) {
-  return sy * (DROP_RAD / DROP_HEIGHT) + CIRC_RAD / DROP_HEIGHT;
+  return sy / (1 + Math.SQRT2) + CIRC_RAD / DROP_HEIGHT;
 }
 
 function fracCircToDrop(v) {
@@ -101,7 +103,7 @@ export function waterdropDeltaOutline(yStart, yEnd, size = 2) {
 
   const rad = (size / 2 / DROP_RAD) * CIRC_RAD;
 
-  const Y_DELTA = 0.2;
+  const Y_DELTA = 0.1;
 
   const rightCoords = [];
   const leftCoords = [];
@@ -139,6 +141,8 @@ export function waterdropDeltaOutline(yStart, yEnd, size = 2) {
   leftCoords.push(v1, v4);
 
   rightCoords.push(...leftCoords.reverse());
+
+  console.log(rightCoords);
 
   return rightCoords;
 }
@@ -352,7 +356,7 @@ export function placeDropsUsingPhysics(x, y, nodes, reuse = false) {
   Composite.add(engine.world, [...node_bodies, cage]);
 
   // run engine for SECS second at FPS fps
-  for (let i = 0, FPS = 60, SECS = 0.3; i < FPS * SECS; i++)
+  for (let i = 0, FPS = 60, SECS = 0.1; i < FPS * SECS; i++)
     Engine.update(engine, 1000 / FPS);
 
   const retVal = node_bodies.map(({ position, id }) => ({

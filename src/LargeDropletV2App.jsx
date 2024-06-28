@@ -7,24 +7,27 @@ import {
   MAX_DELIVS,
   objectiveIDs,
   objectivesData,
+  scenarioIDs,
 } from "./data/objectivesData";
 import {
   Camera,
+  DROPLET_SHAPE,
   MeshGeometry,
   createInterps,
-  criteriaSort,
   mouseToThree,
   placeDropsUsingPhysics,
   sortBy,
   waterdrop,
   waterdropDelta,
+  waterdropDeltaOutline,
 } from "./utils";
 
 const LEVELS = 5;
-const RAD_PX = 10;
+const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 5;
-const SMALL_DROP_PAD_FACTOR = 0.6;
+const SCEN_DIVISOR = 10;
+const SMALL_DROP_PAD_FACTOR = 1;
+const LARGE_DROP_PAD_FACTOR = 1.5;
 
 export default function LargeDropletV2App() {
   const winDim = useRef();
@@ -36,25 +39,49 @@ export default function LargeDropletV2App() {
     },
   });
   const outlineMat = useRef();
+  const svgSelector = useRef();
 
-  const objToWaterLevels = useMemo(() => {
-    const objToLevels = {};
+  const { current: primaryKeys } = useRef(objectiveIDs);
+  const { current: secondaryKeys } = useRef(
+    scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0)
+  );
 
-    for (let i = 0; i < objectiveIDs.length; i++) {
-      const obj = objectiveIDs[i];
-      const filteredSortedScens = criteriaSort(
-        "alphabetical",
-        objectivesData,
-        obj
-      ).filter((_, i) => i % SCEN_DIVISOR == 0);
+  const waterdropMatrix = useMemo(() => {
+    const mat = {};
 
-      objToLevels[obj] = filteredSortedScens.map((s) => {
-        const i = createInterps(obj, s, objectivesData, MAX_DELIVS);
-        return ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-      });
+    for (let i = 0; i < primaryKeys.length; i++) {
+      const obj = primaryKeys[i];
+      const row = {};
+
+      for (let j = 0; j < secondaryKeys.length; j++) {
+        const scen = secondaryKeys[j];
+        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
+        row[scen] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+      }
+
+      mat[obj] = row;
     }
 
-    return objToLevels;
+    return mat;
+  }, []);
+
+  const waterdropMatrix2 = useMemo(() => {
+    const mat = {};
+
+    for (let i = 0; i < secondaryKeys.length; i++) {
+      const scen = secondaryKeys[i];
+      const row = {};
+
+      for (let j = 0; j < primaryKeys.length; j++) {
+        const obj = primaryKeys[j];
+        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
+        row[obj] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+      }
+
+      mat[scen] = row;
+    }
+
+    return mat;
   }, []);
 
   useEffect(() => {
@@ -65,6 +92,10 @@ export default function LargeDropletV2App() {
 
     const width = winDim.current.width,
       height = winDim.current.height;
+
+    const animationsObjects = [];
+    let pointsMesh;
+    const clock = new THREE.Clock();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
@@ -78,7 +109,7 @@ export default function LargeDropletV2App() {
       far: 100,
       width,
       height,
-      domElement: renderer.domElement,
+      domElement: d3.select(".bubbles-wrapper").node(),
       zoomFn: (e) => {
         if (!outlineMat.current) return;
         outlineMat.current.opacity = d3
@@ -87,32 +118,48 @@ export default function LargeDropletV2App() {
           .range([0.1, 1])
           .clamp(true)(e.transform.k);
         outlineMat.current.needsUpdate = true;
+        svgSelector.current.select(".svg-trans").attr("transform", e.transform);
       },
     });
 
-    renderer.setAnimationLoop(() => void renderer.render(scene, camera.camera));
+    const waterdrops = initWaterdrops(waterdropMatrix);
+    const waterdrops2 = initWaterdrops(waterdropMatrix2);
 
-    const largeNodes = initNodes(objToWaterLevels);
+    const translation = [];
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera.camera);
+
+      const g = pointsMesh.geometry;
+
+      const delta = clock.getDelta();
+
+      for (let i = 0; i < g.vertices.length; i++) {
+        g.vertices[i].setX(g.vertices[i].x + delta * i);
+      }
+
+      g.verticesNeedUpdate = true;
+    });
 
     const dropsGeometry = new MeshGeometry();
     const hovererGeometry = new MeshGeometry();
-    const outlineGeometry = new MeshGeometry();
+    const outlinePoints = [];
 
     const hovererMeshCoords = waterdrop(
       1,
-      (largeNodes.innerNodesHeight / (1 + Math.SQRT1_2)) * 2 // TODO fix
+      (waterdrops.innerNodesHeight / (1 + Math.SQRT1_2)) * 2 * 1.3
     );
-    const outlineMeshCoords = waterdrop(1, RAD_PX * 0.99);
-    const idxToDrop = {};
+    const outlineMeshCoords = waterdropDeltaOutline(0, 1, RAD_PX * 0.975);
+    const meshIdxToLargeDropIdx = {};
 
-    for (let i = 0; i < largeNodes.length; i++) {
-      const nodes = largeNodes[i].innerNodes;
-      const lx = largeNodes[i].x;
-      const ly = -largeNodes[i].y;
+    for (let i = 0; i < waterdrops.length; i++) {
+      const nodes = waterdrops[i].innerNodes;
+      const lx = waterdrops[i].x;
+      const ly = -waterdrops[i].y;
 
       hovererGeometry
         .addMeshCoords(hovererMeshCoords, { x: lx, y: ly }, 0x00ff00)
-        .forEach((meshIdx) => (idxToDrop[meshIdx] = i));
+        .forEach((meshIdx) => (meshIdxToLargeDropIdx[meshIdx] = i));
 
       for (let j = 0; j < nodes.length; j++) {
         const { x, y, levs, maxLev } = nodes[j];
@@ -130,15 +177,14 @@ export default function LargeDropletV2App() {
             meshCoords,
             { x: xx, y: yy },
             color,
-            (j % 5) / 20
+            (j % 5) / 50 + 0.001
           );
         }
 
-        outlineGeometry.addMeshCoords(
-          outlineMeshCoords,
-          { x: xx, y: yy },
-          null,
-          (j % 5) / 20 - 0.001
+        outlinePoints.push(
+          ...outlineMeshCoords.map(
+            ([x, y]) => new THREE.Vector3(xx + x, yy - y, (j % 5) / 50)
+          )
         );
       }
     }
@@ -158,7 +204,7 @@ export default function LargeDropletV2App() {
       })
     );
     const lineMesh = new THREE.LineSegments(
-      new THREE.EdgesGeometry(outlineGeometry.threeGeom),
+      new THREE.BufferGeometry().setFromPoints(outlinePoints),
       (outlineMat.current = new THREE.LineBasicMaterial({
         color: 0xcccccc,
         transparent: true,
@@ -166,8 +212,45 @@ export default function LargeDropletV2App() {
       }))
     );
 
-    // lineMesh.renderOrder = -1;
     scene.add(lineMesh, dropsMesh, hovererMesh);
+
+    let pointsGeometry = new THREE.Geometry();
+    let colors = [];
+
+    for (let i = 0; i < waterdrops.length; i++) {
+      const nodes = waterdrops[i].innerNodes;
+      const lx = waterdrops[i].x;
+      const ly = -waterdrops[i].y;
+
+      for (let j = 0; j < nodes.length; j++) {
+        const { x, y, levs, maxLev } = nodes[j];
+        const xx = lx + x;
+        const yy = ly - y;
+
+        pointsGeometry.vertices.push(new THREE.Vector3(xx, yy, 0.002));
+        colors.push(
+          new THREE.Color(
+            interpolateWatercolorBlue(levs[Math.floor(LEVELS / 2)])
+          )
+        );
+      }
+    }
+    pointsGeometry.colors = colors;
+
+    let pointsMaterial = new THREE.PointsMaterial({
+      size: 0.4,
+      sizeAttenuation: true,
+      vertexColors: THREE.VertexColors,
+    });
+
+    pointsMaterial.map = new THREE.TextureLoader().load(
+      "https://blog.fastforwardlabs.com/images/2018/02/circle-1518727951930.png"
+    );
+    pointsMaterial.transparent = true;
+
+    pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
+
+    scene.add(pointsMesh);
 
     camera.view.on("mousemove", function checkIntersects(e) {
       raycaster.setFromCamera(
@@ -177,7 +260,7 @@ export default function LargeDropletV2App() {
       const intersects = raycaster.intersectObject(hovererMesh);
       if (intersects[0]) {
         const intersect = sortBy(intersects, "distanceToRay")[0];
-        const datum = idxToDrop[intersect.faceIndex];
+        const dropIdx = meshIdxToLargeDropIdx[intersect.faceIndex];
 
         setTooltip((tooltip) => ({
           ...tooltip,
@@ -187,7 +270,7 @@ export default function LargeDropletV2App() {
             left: e.x,
             top: e.y,
           },
-          text: objectiveIDs[datum],
+          text: primaryKeys[dropIdx],
         }));
       } else {
         setTooltip((tooltip) => ({
@@ -199,6 +282,56 @@ export default function LargeDropletV2App() {
         }));
       }
     });
+
+    svgSelector.current
+      .attr("width", width)
+      .attr("height", height)
+      .call((s) => {
+        s.append("rect")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("stroke", "none")
+          .attr("fill", "transparent");
+        // .on("mousemove", () => console.log("alo"));
+      })
+      .append("g")
+      .attr("class", "svg-trans")
+      .selectAll(".largeDrop")
+      .data(waterdrops)
+      .join((enter) => {
+        return enter
+          .append("g")
+          .attr("class", "largeDrop")
+          .call((s) => {
+            s.append("path")
+              .attr("d", DROPLET_SHAPE)
+              .attr("fill", "none")
+              .attr("stroke", "transparent")
+              .attr("vector-effect", "non-scaling-stroke")
+              .attr("stroke-width", 1)
+              .on("mouseenter", function () {
+                d3.select(this).attr("stroke", "lightgray");
+              })
+              .on("mouseleave", function () {
+                d3.select(this).attr("stroke", "transparent");
+              });
+          });
+      })
+      .attr(
+        "transform",
+        ({ x, y }) =>
+          `translate(${x}, ${y}) scale(${
+            (waterdrops.innerNodesHeight / (1 + Math.SQRT1_2)) * 1.3
+          })`
+      );
+
+    // TODO refactor
+    camera.zoom.transform(
+      svgSelector.current,
+      d3.zoomIdentity
+        .translate(camera.width / 2, camera.height / 2)
+        .scale(camera.getScaleFromZ(camera.far))
+    );
   }, []);
 
   return (
@@ -208,58 +341,76 @@ export default function LargeDropletV2App() {
         {tooltip.text}
       </div>
       <div id="mosaic-area"></div>
+      <svg
+        className="mosaic-overlay"
+        ref={(e) => (svgSelector.current = d3.select(e))}
+      ></svg>
     </div>
   );
 }
 
-function initNodes(objToWaterLevels) {
-  const amtObjectives = Object.values(objToWaterLevels).length;
-  const amtScenarios = Object.values(objToWaterLevels)[0].length;
+function initWaterdrops(waterdropMatrix) {
+  const primaryKeys = Object.keys(waterdropMatrix);
+  const secondaryKeys = Object.keys(Object.values(waterdropMatrix)[0]);
+  const amtPrimaryKeys = primaryKeys.length;
+  const amtSecondaryKeys = secondaryKeys.length;
 
-  const smallDropRad = Math.max(2, RAD_PX * SMALL_DROP_PAD_FACTOR);
   const largeDropRad = Math.max(
     1,
-    Math.sqrt((RAD_PX * amtScenarios) / Math.PI) * 4
+    Math.sqrt(amtSecondaryKeys / Math.PI) *
+      RAD_PX *
+      2 *
+      SMALL_DROP_PAD_FACTOR *
+      LARGE_DROP_PAD_FACTOR
+  );
+  const smallDropRad = Math.max(2, RAD_PX * SMALL_DROP_PAD_FACTOR);
+  const largeNodesPos = placeDropsUsingPhysics(
+    0,
+    0,
+    primaryKeys.map(() => ({
+      r: largeDropRad,
+    }))
   );
 
   const smallNodesPos = placeDropsUsingPhysics(
     0,
     0,
-    d3.range(amtScenarios).map((_, id) => ({
+    secondaryKeys.map(() => ({
       r: smallDropRad,
-      id,
-    }))
-  );
-  const largeNodesPos = placeDropsUsingPhysics(
-    0,
-    0,
-    d3.range(amtObjectives).map((_, id) => ({
-      r: largeDropRad,
-      id,
     }))
   );
 
-  const largeNodes = Object.keys(objToWaterLevels).map((obj, objId) => {
-    const innerNodes = smallNodesPos.map(({ id: idx, x, y }) => ({
-      levs: objToWaterLevels[obj][idx].map(
-        (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
-      ),
-      maxLev: RAD_PX,
-      tilt: Math.random() * 50 - 25,
-      dur: Math.random() * 100 + 400,
-      x,
-      y,
-      obj,
-    }));
+  const pLookup = {};
+  const sLookup = {};
+
+  const largeNodes = primaryKeys.map((primaryKey, primaryKeyIdx) => {
+    pLookup[primaryKey] = primaryKeyIdx;
+    const innerNodes = secondaryKeys.map((secondaryKey, secondaryKeyIdx) => {
+      sLookup[secondaryKey] = secondaryKeyIdx;
+
+      return {
+        levs: waterdropMatrix[primaryKey][secondaryKey].map(
+          (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
+        ),
+        maxLev: RAD_PX,
+        tilt: Math.random() * 50 - 25,
+        dur: Math.random() * 100 + 400,
+        x: smallNodesPos[secondaryKeyIdx].x,
+        y: smallNodesPos[secondaryKeyIdx].y,
+        group: primaryKey,
+      };
+    });
 
     return {
       innerNodes,
-      ...largeNodesPos[objId],
+      ...largeNodesPos[primaryKeyIdx],
       tilt: Math.random() * 50 - 25,
     };
   });
 
   largeNodes.innerNodesHeight = smallNodesPos.height;
+  largeNodes.pLookup = smallNodesPos.pLookup;
+  largeNodes.sLookup = smallNodesPos.sLookup;
 
   return largeNodes;
 }
