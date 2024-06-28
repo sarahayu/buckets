@@ -125,17 +125,67 @@ export default function LargeDropletV2App() {
     const waterdrops = initWaterdrops(waterdropMatrix);
     const waterdrops2 = initWaterdrops(waterdropMatrix2);
 
-    const translation = [];
+    const translations = {};
+
+    console.log(waterdrops);
+
+    for (const pKey of primaryKeys) {
+      const row = {};
+      for (const sKey of secondaryKeys) {
+        let { x: xStart, y: yStart } =
+          waterdrops[waterdrops.pLookup[pKey]].innerNodes[
+            waterdrops.sLookup[sKey]
+          ];
+        xStart = waterdrops[waterdrops.pLookup[pKey]].x + xStart;
+        yStart = -waterdrops[waterdrops.pLookup[pKey]].y - yStart;
+        let { x: xEnd, y: yEnd } =
+          waterdrops2[waterdrops2.pLookup[sKey]].innerNodes[
+            waterdrops2.sLookup[pKey]
+          ];
+        xEnd = waterdrops2[waterdrops2.pLookup[sKey]].x + xEnd;
+        yEnd = -waterdrops2[waterdrops2.pLookup[sKey]].y - yEnd;
+        const dist = Math.sqrt((xEnd - xStart) ** 2 + (yEnd - yStart) ** 2);
+        row[sKey] = [xEnd - xStart, yEnd - yStart, dist];
+      }
+
+      translations[pKey] = row;
+    }
+
+    const ANIM_TIME = 3;
+    let totDelta = 0;
+    const easer = d3.easeExpOut;
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera.camera);
 
+      if (totDelta > ANIM_TIME) return;
+
       const g = pointsMesh.geometry;
 
       const delta = clock.getDelta();
+      totDelta += delta;
 
-      for (let i = 0; i < g.vertices.length; i++) {
-        g.vertices[i].setX(g.vertices[i].x + delta * i);
+      let idx = 0;
+
+      for (let i = 0; i < waterdrops.length; i++) {
+        const nodes = waterdrops[i].innerNodes;
+        const groupX = waterdrops[i].x;
+        const groupY = -waterdrops[i].y;
+        const pKey = waterdrops[i].key;
+
+        for (let j = 0; j < nodes.length; j++) {
+          const { x, y, levs, maxLev, key: sKey } = nodes[j];
+
+          const [dx, dy, dist] = translations[pKey][sKey];
+
+          const startX = groupX + x;
+          const startY = groupY - y;
+
+          g.vertices[idx].setX(startX + easer(totDelta / ANIM_TIME) * dx);
+          g.vertices[idx].setY(startY + easer(totDelta / ANIM_TIME) * dy);
+
+          idx++;
+        }
       }
 
       g.verticesNeedUpdate = true;
@@ -212,7 +262,7 @@ export default function LargeDropletV2App() {
       }))
     );
 
-    scene.add(lineMesh, dropsMesh, hovererMesh);
+    // scene.add(lineMesh, dropsMesh, hovererMesh);
 
     let pointsGeometry = new THREE.Geometry();
     let colors = [];
@@ -398,19 +448,21 @@ function initWaterdrops(waterdropMatrix) {
         x: smallNodesPos[secondaryKeyIdx].x,
         y: smallNodesPos[secondaryKeyIdx].y,
         group: primaryKey,
+        key: secondaryKey,
       };
     });
 
     return {
       innerNodes,
-      ...largeNodesPos[primaryKeyIdx],
+      ...largeNodesPos[primaryKeyIdx], // TODO comment out?
       tilt: Math.random() * 50 - 25,
+      key: primaryKey,
     };
   });
 
   largeNodes.innerNodesHeight = smallNodesPos.height;
-  largeNodes.pLookup = smallNodesPos.pLookup;
-  largeNodes.sLookup = smallNodesPos.sLookup;
+  largeNodes.pLookup = pLookup;
+  largeNodes.sLookup = sLookup;
 
   return largeNodes;
 }
