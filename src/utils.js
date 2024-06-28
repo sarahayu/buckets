@@ -142,8 +142,6 @@ export function waterdropDeltaOutline(yStart, yEnd, size = 2) {
 
   rightCoords.push(...leftCoords.reverse());
 
-  console.log(rightCoords);
-
   return rightCoords;
 }
 
