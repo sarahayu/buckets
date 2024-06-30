@@ -26,7 +26,7 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 1;
+const SCEN_DIVISOR = 10;
 const SMALL_DROP_PAD_FACTOR = 1;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 3;
@@ -44,25 +44,137 @@ export default function LargeDropletV2App() {
   const outlineMat = useRef();
   const svgSelector = useRef();
   const [grouping, setGrouping, groupingRef] = useStateRef("objective");
-  const groupingFn = useRef();
   const { current: filteredKeys } = useRef(
     scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0)
   );
 
+  const primaryRef = useRef();
+  const secondaryRef = useRef();
+
   const primaryKeys = grouping === "objective" ? objectiveIDs : filteredKeys;
   const secondaryKeys = grouping === "objective" ? filteredKeys : objectiveIDs;
 
+  primaryRef.current = primaryKeys;
+  secondaryRef.current = secondaryKeys;
+
   const watConfig = useRef();
-  const reverseTranslation = useRef();
+  const [reverseTranslation, setReverseTranslation, reverseTranslationRef] =
+    useStateRef();
   const clockRef = useRef();
 
-  const sceneRef = useRef();
+  const [scene] = useState(() => {
+    const s = new THREE.Scene();
+    s.background = new THREE.Color(0xefefef);
+    return s;
+  });
   const hovererMeshRef = useRef();
   const pointsMeshRef = useRef();
   const meshIdxToLargeDropIdxRef = useRef({});
 
   useEffect(() => {
-    if (!sceneRef.current) return;
+    winDim.current = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    const width = winDim.current.width,
+      height = winDim.current.height;
+
+    svgSelector.current
+      .attr("width", width)
+      .attr("height", height)
+      .call((s) => {
+        s.append("rect")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("stroke", "none")
+          .attr("fill", "transparent");
+      })
+      .append("g")
+      .attr("class", "svg-trans");
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    document.querySelector("#mosaic-area").appendChild(renderer.domElement);
+
+    const camera = new Camera({
+      fov: 160,
+      near: 1,
+      far: 100,
+      width,
+      height,
+      domElement: d3.select(".bubbles-wrapper").node(),
+      zoomFn: (e) => {
+        svgSelector.current.select(".svg-trans").attr("transform", e.transform);
+
+        if (!outlineMat.current) return;
+        outlineMat.current.opacity = d3
+          .scaleLinear()
+          .domain([1, 5])
+          .range([0.1, 1])
+          .clamp(true)(e.transform.k);
+        outlineMat.current.needsUpdate = true;
+      },
+    });
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera.camera);
+
+      if (!reverseTranslationRef.current) return;
+
+      if (clockRef.current.getElapsedTime() > ANIM_TIME) {
+        setReverseTranslation(null);
+        return;
+      }
+
+      const g = pointsMeshRef.current.geometry;
+
+      updateGeom(
+        g,
+        watConfig.current,
+        reverseTranslationRef.current,
+        d3.easeExp(clockRef.current.getElapsedTime() / ANIM_TIME)
+      );
+
+      g.verticesNeedUpdate = true;
+    });
+
+    const raycaster = new THREE.Raycaster();
+    camera.view.on("mousemove", function checkIntersects(e) {
+      raycaster.setFromCamera(
+        mouseToThree(e.x, e.y, width, height),
+        camera.camera
+      );
+      if (!hovererMeshRef.current) return;
+
+      const intersects = raycaster.intersectObject(hovererMeshRef.current);
+      if (intersects[0]) {
+        const intersect = sortBy(intersects, "distanceToRay")[0];
+        const dropIdx = meshIdxToLargeDropIdxRef.current[intersect.faceIndex];
+
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            ...tooltip.style,
+            display: "block",
+            left: e.x,
+            top: e.y,
+          },
+          text: primaryRef.current[dropIdx],
+        }));
+      } else {
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            ...tooltip.style,
+            display: "none",
+          },
+        }));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     const prevConfig = watConfig.current;
 
     const mat = {};
@@ -97,35 +209,42 @@ export default function LargeDropletV2App() {
 
     const config = initWaterdrops(mat);
 
-    if (prevConfig)
-      reverseTranslation.current = calcTranslations(config, prevConfig);
+    if (prevConfig) setReverseTranslation(calcTranslations(config, prevConfig));
     watConfig.current = config;
     clockRef.current = new THREE.Clock();
 
     const pointsMesh = initWaterdropsSimplified(config);
 
-    sceneRef.current.remove(...sceneRef.current.children);
-    sceneRef.current.add(pointsMesh);
+    svgSelector.current
+      .select(".svg-trans")
+      .selectAll(".largeDrop")
+      .attr("display", "none");
+
+    hovererMeshRef.current = null;
+    scene.remove(...scene.children);
+    scene.add(pointsMesh);
     pointsMeshRef.current = pointsMesh;
-  }, [grouping, sceneRef]);
+    watConfig.current = config;
+  }, [grouping]);
 
   useEffect(() => {
-    if (!watConfig.current) return;
-    if (reverseTranslation.current) return;
+    if (reverseTranslationRef.current) return;
 
-    const configObjScen = watConfig.current;
+    const config = watConfig.current;
 
-    const { dropsMesh, lineMesh } = initWaterdropsMesh(configObjScen);
+    const { dropsMesh, lineMesh } = initWaterdropsMesh(config);
     const hovererMesh = initWaterdropsHoverers(
-      configObjScen,
+      config,
       meshIdxToLargeDropIdxRef.current
     );
     hovererMeshRef.current = hovererMesh;
 
     outlineMat.current = lineMesh.material;
 
-    d3.selectAll(".largeDrop")
-      .data(configObjScen.nodes)
+    svgSelector.current
+      .select(".svg-trans")
+      .selectAll(".largeDrop")
+      .data(config.nodes)
       .join((enter) => {
         return enter
           .append("g")
@@ -145,127 +264,13 @@ export default function LargeDropletV2App() {
               });
           });
       })
+      .attr("display", "initial")
       .attr(
         "transform",
         ({ x, y }) =>
-          `translate(${x}, ${y}) scale(${
-            configObjScen.height * HOVER_AREA_FACTOR
-          })`
+          `translate(${x}, ${y}) scale(${config.height * HOVER_AREA_FACTOR})`
       );
-  }, [watConfig, reverseTranslation]);
-
-  useEffect(() => {
-    winDim.current = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    };
-
-    const width = winDim.current.width,
-      height = winDim.current.height;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    document.querySelector("#mosaic-area").appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xefefef);
-    sceneRef.current = scene;
-    const camera = new Camera({
-      fov: 160,
-      near: 1,
-      far: 100,
-      width,
-      height,
-      domElement: d3.select(".bubbles-wrapper").node(),
-      zoomFn: (e) => {
-        if (!outlineMat.current) return;
-        outlineMat.current.opacity = d3
-          .scaleLinear()
-          .domain([1, 5])
-          .range([0.1, 1])
-          .clamp(true)(e.transform.k);
-        outlineMat.current.needsUpdate = true;
-        svgSelector.current.select(".svg-trans").attr("transform", e.transform);
-      },
-    });
-
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera.camera);
-
-      if (!reverseTranslation.current) return;
-
-      if (clockRef.current.getElapsedTime() > ANIM_TIME) {
-        reverseTranslation.current = null;
-        return;
-      }
-
-      const g = pointsMeshRef.current.geometry;
-
-      updateGeom(
-        g,
-        watConfig.current,
-        reverseTranslation.current,
-        d3.easeExp(clockRef.current.getElapsedTime() / ANIM_TIME)
-      );
-
-      g.verticesNeedUpdate = true;
-    });
-
-    const raycaster = new THREE.Raycaster();
-    camera.view.on("mousemove", function checkIntersects(e) {
-      raycaster.setFromCamera(
-        mouseToThree(e.x, e.y, width, height),
-        camera.camera
-      );
-      if (!hovererMeshRef.current) return;
-
-      const intersects = raycaster.intersectObject(hovererMeshRef.current);
-      if (intersects[0]) {
-        const intersect = sortBy(intersects, "distanceToRay")[0];
-        const dropIdx = meshIdxToLargeDropIdxRef.current[intersect.faceIndex];
-
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            ...tooltip.style,
-            display: "block",
-            left: e.x,
-            top: e.y,
-          },
-          text: primaryKeys[dropIdx],
-        }));
-      } else {
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            ...tooltip.style,
-            display: "none",
-          },
-        }));
-      }
-    });
-
-    svgSelector.current
-      .attr("width", width)
-      .attr("height", height)
-      .call((s) => {
-        s.append("rect")
-          .attr("width", width)
-          .attr("height", height)
-          .attr("stroke", "none")
-          .attr("fill", "transparent");
-      })
-      .append("g")
-      .attr("class", "svg-trans");
-
-    // TODO refactor
-    camera.zoom.transform(
-      svgSelector.current,
-      d3.zoomIdentity
-        .translate(camera.width / 2, camera.height / 2)
-        .scale(camera.getScaleFromZ(camera.far))
-    );
-  }, []);
+  }, [grouping, reverseTranslation]);
 
   return (
     <div className="bubbles-wrapper">
@@ -531,9 +536,7 @@ function initWaterdropsSimplified(configDrops) {
     size: 0.4,
     sizeAttenuation: true,
     vertexColors: THREE.VertexColors,
-    map: new THREE.TextureLoader().load(
-      "https://blog.fastforwardlabs.com/images/2018/02/circle-1518727951930.png"
-    ),
+    map: new THREE.TextureLoader().load("drop.png"),
     transparent: true,
   });
 

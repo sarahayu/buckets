@@ -488,6 +488,7 @@ export class Camera {
   camera;
   zoom;
   view;
+  curTransform;
 
   constructor({ fov, near, far, width, height, domElement, zoomFn }) {
     this.fov = fov;
@@ -513,6 +514,7 @@ export class Camera {
       ])
       .on("zoom", (e) => {
         this.d3ZoomHandler(e);
+        this.curTransform = e.transform;
 
         zoomFn && zoomFn(e);
       });
@@ -598,10 +600,14 @@ export function mouseToThree(mouseX, mouseY, width, height) {
 }
 
 export function useStateRef(val) {
-  const [state, setState] = useState(val);
+  const [state, _setState] = useState(val);
   const stateRef = useRef(val);
 
   useEffect(() => void (stateRef.current = state), [state]);
+
+  const setState = useCallback((v) => {
+    _setState((stateRef.current = v));
+  }, []);
 
   return [state, setState, stateRef];
 }
