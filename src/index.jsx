@@ -12,7 +12,6 @@ const ScenarioDropletsApp = React.lazy(() => import("./ScenarioDropletsApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
 const LargeDropletApp = React.lazy(() => import("./LargeDropletApp"));
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
-const ScenarioDropletsWatercolorApp = React.lazy(() => import("./ScenarioDropletsWatercolorApp"));
 
 
 const Loader = () => {
@@ -39,7 +38,6 @@ root.render(
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
               <Link to="LargeDropletApp" title="Large Droplet" ><img src="LargeDropletApp.png" className="linkPics" /></Link>
               <Link to="BigBucketApp" title="Big Bucket" ><img src="BigBucketApp.png" className="linkPics" /></Link>
-              <Link to="ScenarioDropletsWatercolorApp" title="Scenario Droplets Watercolor" ><img src="ScenarioDropletsWatercolorApp.png" className="linkPics" /></Link>
             </div>
           </main>
         }
@@ -97,14 +95,6 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <BigBucketApp />
-          </React.Suspense>
-        }
-      />
-      <Route
-        path="ScenarioDropletsWatercolorApp"
-        element={
-          <React.Suspense fallback={<Loader />}>
-            <ScenarioDropletsWatercolorApp />
           </React.Suspense>
         }
       />
