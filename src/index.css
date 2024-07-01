@@ -1023,3 +1023,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   position: absolute;
   pointer-events: "none";
 }
+
+.explanation-anim-wrapper {
+  display: grid;
+  min-height: 100vh;
+  grid-template-areas: "animcenter";
+  justify-content: center;
+  align-items: center;
+}
+
+.explanation-anim-wrapper > * {
+  grid-area: animcenter;
+  place-self: center;
+}
+
+.explanation-anim-wrapper .bucket-wrapper {
+  z-index: -1;
+}

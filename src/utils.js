@@ -422,8 +422,9 @@ export function useStickyScale(defaultVal, scale) {
   return [valActual, setValActual];
 }
 
-export function createInterps(name, curScen, data, maxDelivs) {
-  const delivs = data[name][SCENARIO_KEY_STRING][curScen][DELIV_KEY_STRING];
+export function createInterps(obj_name, scen_name, data, maxDelivs) {
+  const delivs =
+    data[obj_name][SCENARIO_KEY_STRING][scen_name][DELIV_KEY_STRING];
   return d3
     .scaleLinear()
     .domain(ticksExact(0, 1, delivs.length))

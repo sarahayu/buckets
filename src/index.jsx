@@ -7,6 +7,7 @@ import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
 const OldMainApp = React.lazy(() => import("./OldMainApp"));
+const ExplanationAnimApp = React.lazy(() => import("./ExplanationAnimApp"));
 const LargeDropletV2App = React.lazy(() => import("./LargeDropletV2App"));
 const ScenarioDropletsApp = React.lazy(() => import("./ScenarioDropletsApp"));
 const MainApp = React.lazy(() => import("./MainApp"));
@@ -33,6 +34,7 @@ root.render(
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
               <Link to="OldMainApp" title="Old Main" ><img src="OldMainApp.png" className="linkPics" /></Link>
+              <Link to="ExplanationAnimApp">Explanation Anim</Link>
               <Link to="LargeDropletV2App" title="Large Droplet V2" ><img src="LargeDropletV2App.png" className="linkPics" /></Link>
               <Link to="ScenarioDropletsApp" title="Scenario Droplets" ><img src="ScenarioDropletsApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
@@ -55,6 +57,14 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <OldMainApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="ExplanationAnimApp"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <ExplanationAnimApp />
           </React.Suspense>
         }
       />

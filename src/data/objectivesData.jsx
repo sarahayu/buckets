@@ -3,6 +3,7 @@ import { mapBy } from "../utils";
 export const MAX_DELIVS = 1200;
 export const SCENARIO_KEY_STRING = "scens";
 export const DELIV_KEY_STRING = "delivs";
+export const DELIV_KEY_STRING_UNORD = "delivs_unord";
 
 export const objectivesData = await (async function () {
   const objs = await (await fetch("./all_objectives.json")).json();
@@ -10,7 +11,9 @@ export const objectivesData = await (async function () {
   for (const obj of objs) {
     obj[SCENARIO_KEY_STRING] = obj[SCENARIO_KEY_STRING];
     for (const scen of obj[SCENARIO_KEY_STRING]) {
-      scen[DELIV_KEY_STRING] = scen[DELIV_KEY_STRING].map((v) =>
+      scen[DELIV_KEY_STRING_UNORD] = scen[DELIV_KEY_STRING];
+
+      scen[DELIV_KEY_STRING] = scen[DELIV_KEY_STRING_UNORD].map((v) =>
         Math.min(Math.max(0, v), MAX_DELIVS)
       ).sort((a, b) => b - a);
     }
