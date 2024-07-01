@@ -26,7 +26,7 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 10;
+const SCEN_DIVISOR = 4;
 const SMALL_DROP_PAD_FACTOR = 1;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 3;
@@ -35,11 +35,7 @@ const HOVER_AREA_FACTOR = 1.3 / (1 + Math.SQRT1_2);
 export default function LargeDropletV2App() {
   const winDim = useRef();
   const [tooltip, setTooltip] = useState({
-    style: {
-      display: "none",
-      position: "absolute",
-      pointerEvents: "none",
-    },
+    style: {},
   });
   const outlineMat = useRef();
   const svgSelector = useRef();
@@ -67,7 +63,6 @@ export default function LargeDropletV2App() {
     s.background = new THREE.Color(0xefefef);
     return s;
   });
-  const hovererMeshRef = useRef();
   const pointsMeshRef = useRef();
   const meshIdxToLargeDropIdxRef = useRef({});
 
@@ -138,40 +133,6 @@ export default function LargeDropletV2App() {
 
       g.verticesNeedUpdate = true;
     });
-
-    const raycaster = new THREE.Raycaster();
-    camera.view.on("mousemove", function checkIntersects(e) {
-      raycaster.setFromCamera(
-        mouseToThree(e.x, e.y, width, height),
-        camera.camera
-      );
-      if (!hovererMeshRef.current) return;
-
-      const intersects = raycaster.intersectObject(hovererMeshRef.current);
-      if (intersects[0]) {
-        const intersect = sortBy(intersects, "distanceToRay")[0];
-        const dropIdx = meshIdxToLargeDropIdxRef.current[intersect.faceIndex];
-
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            ...tooltip.style,
-            display: "block",
-            left: e.x,
-            top: e.y,
-          },
-          text: primaryRef.current[dropIdx],
-        }));
-      } else {
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            ...tooltip.style,
-            display: "none",
-          },
-        }));
-      }
-    });
   }, []);
 
   useEffect(() => {
@@ -220,7 +181,6 @@ export default function LargeDropletV2App() {
       .selectAll(".largeDrop")
       .attr("display", "none");
 
-    hovererMeshRef.current = null;
     scene.remove(...scene.children);
     scene.add(pointsMesh);
     pointsMeshRef.current = pointsMesh;
@@ -233,11 +193,8 @@ export default function LargeDropletV2App() {
     const config = watConfig.current;
 
     const { dropsMesh, lineMesh } = initWaterdropsMesh(config);
-    const hovererMesh = initWaterdropsHoverers(
-      config,
-      meshIdxToLargeDropIdxRef.current
-    );
-    hovererMeshRef.current = hovererMesh;
+    scene.add(dropsMesh, lineMesh);
+    scene.remove(pointsMeshRef.current);
 
     outlineMat.current = lineMesh.material;
 
@@ -255,13 +212,7 @@ export default function LargeDropletV2App() {
               .attr("fill", "none")
               .attr("stroke", "transparent")
               .attr("vector-effect", "non-scaling-stroke")
-              .attr("stroke-width", 1)
-              .on("mouseenter", function () {
-                d3.select(this).attr("stroke", "lightgray");
-              })
-              .on("mouseleave", function () {
-                d3.select(this).attr("stroke", "transparent");
-              });
+              .attr("stroke-width", 1);
           });
       })
       .attr("display", "initial")
@@ -269,7 +220,33 @@ export default function LargeDropletV2App() {
         "transform",
         ({ x, y }) =>
           `translate(${x}, ${y}) scale(${config.height * HOVER_AREA_FACTOR})`
-      );
+      )
+      .on("mouseenter", function (e, d) {
+        d3.select(this).select("path").attr("stroke", "lightgray");
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          text: d.key,
+        }));
+      })
+      .on("mousemove", function (e, d) {
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            display: "block",
+            left: e.x,
+            top: e.y,
+          },
+        }));
+      })
+      .on("mouseleave", function () {
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            display: "none",
+          },
+        }));
+        d3.select(this).select("path").attr("stroke", "transparent");
+      });
   }, [grouping, reverseTranslation]);
 
   return (
@@ -346,11 +323,14 @@ function initWaterdrops(waterdropMatrix) {
     const innerNodes = secondaryKeys.map((secondaryKey, secondaryKeyIdx) => {
       sLookup[secondaryKey] = secondaryKeyIdx;
 
+      const levs = waterdropMatrix[primaryKey][secondaryKey].map(
+        (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
+      );
+
       return {
-        levs: waterdropMatrix[primaryKey][secondaryKey].map(
-          (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
-        ),
+        levs,
         maxLev: RAD_PX,
+        domLev: calcDomLev(levs),
         tilt: Math.random() * 50 - 25,
         dur: Math.random() * 100 + 400,
         x: smallNodesPos[secondaryKeyIdx].x,
@@ -523,12 +503,12 @@ function initWaterdropsSimplified(configDrops) {
     const nodes = configDrops.nodes[i].nodes;
 
     for (let j = 0; j < nodes.length; j++) {
-      const { globalX: x, globalY: y, levs } = nodes[j];
+      const { globalX: x, globalY: y, levs, domLev } = nodes[j];
+
+      const color = domLev > 0 ? interpolateWatercolorBlue(domLev) : "white";
 
       pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0.002));
-      pointsGeometry.colors.push(
-        new THREE.Color(interpolateWatercolorBlue(levs[Math.floor(LEVELS / 2)]))
-      );
+      pointsGeometry.colors.push(new THREE.Color(color));
     }
   }
 
@@ -543,4 +523,17 @@ function initWaterdropsSimplified(configDrops) {
   const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
 
   return pointsMesh;
+}
+
+// TODO fix colors
+function calcDomLev(levs) {
+  levs = [1, ...levs, 0]; // include full level=1 because dominant lev might just be white
+
+  let mean = 0;
+  for (let i = 0; i < levs.length - 1; i++) {
+    const dif = levs[i] - levs[i + 1];
+    mean += (dif * (i - 1)) / (LEVELS + 4);
+  }
+
+  return mean;
 }

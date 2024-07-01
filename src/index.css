@@ -1018,3 +1018,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   left: 0;
   pointer-events: all;
 }
+
+.bubbles-tooltip {
+  position: absolute;
+  pointer-events: "none";
+}
