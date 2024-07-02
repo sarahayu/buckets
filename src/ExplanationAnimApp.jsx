@@ -52,7 +52,11 @@ export default function ExplanationAnimApp() {
 
     let vals = objectivesData[DEFAULT_OBJECTIVE][SCENARIO_KEY_STRING][
       DEFAULT_SCENARIO_1
-    ][DELIV_KEY_STRING_UNORD].map((val, id) => ({ val, id, year: id + 1930 }));
+    ][DELIV_KEY_STRING_UNORD].map((val, id) => ({
+      val,
+      id,
+      year: id + 1930,
+    })).sort((a, b) => b.val - a.val);
 
     setInterp(() =>
       d3
@@ -68,7 +72,7 @@ export default function ExplanationAnimApp() {
 
     const xByYear = d3
       .scaleBand()
-      .domain(vals.map(({ year }) => year))
+      .domain(vals.map(({ year }) => year).sort())
       .range([0, width])
       .padding(0.4);
     const xByIndex = d3
@@ -104,56 +108,49 @@ export default function ExplanationAnimApp() {
         .attr("height", 0)
         .attr("opacity", 1)
         .attr("fill", "steelblue")
-        .style("mix-blend-mode", "multiply")
         .transition()
         .duration(500)
+        .delay((d) => d.id * 10)
         .attr("y", (d) => y(d.val))
         .attr("height", (d) => height - y(d.val));
     };
 
     slide1.current = () => {
-      vals = vals.sort((a, b) => b.val - a.val);
       xaxis.tickFormat("");
       svgAxis.call(xaxis);
-      svgGroup
+      const b = svgGroup
         .selectAll(".bars")
         .data(vals, (d) => d.id)
+        .style("mix-blend-mode", "multiply");
+      b.transition("a")
+        .duration(5 * vals.length)
+        // .ease((t) => 1 - 0.5 ** (t * Math.log2(vals.length)))
+        .ease(d3.easeCubicInOut)
+        .attr("opacity", 0.05);
+      b.transition("b")
+        .delay((d, i) => d.id * 5)
+        .duration((d, i) => (vals.length - 1 - d.id) * 5)
+        // .ease(d3.easeLinear)
+        .ease(d3.easeCubicInOut)
+        // .delay((d, i) => (vals.length - i) * 5)
+        .attr("width", (d) => width - xByYear(d.year))
         .transition()
-        .duration(500)
-        .attr("x", (d, i) => xByIndex(i));
+        .delay((d, i) => (vals.length - d.id) * 5)
+        .duration((d, i) => d.id * 5)
+        .attr("x", 0)
+        .attr("width", width);
     };
 
     slide2.current = () => {
       svgGroup
         .selectAll(".bars")
         .data(vals, (d) => d.id)
-        .transition()
-        .duration(500)
-        .attr("opacity", 0.05)
-        .transition()
-        .duration(500)
-        .delay((d, i) => (vals.length - i) * 10)
-        .attr("x", 0)
-        .attr("width", (d, i) => xByIndex(i))
-        .transition()
-        .duration(500)
-        .delay((d, i) => (vals.length - i) * 10 + (vals.length / 4) * 10)
-        .attr("width", width);
-    };
-
-    slide3.current = () => {
-      svgGroup
-        .selectAll(".bars")
-        .data(vals, (d) => d.id)
         .style("mix-blend-mode", "normal")
+        .attr("fill", (_, i) =>
+          interpolateWatercolorBlue(i / (vals.length - 1))
+        )
         .transition()
-        .duration(500)
-        .attr("opacity", 1)
-        .attr("fill", (_, i) => interpolateWatercolorBlue(i / vals.length))
-        .on("end", () => {
-          document.querySelector(".bucket-wrapper").style.display = "initial";
-          svgContainer.current.transition().duration(500).attr("opacity", 0);
-        });
+        .attr("opacity", 1);
     };
 
     return () => {
@@ -171,8 +168,6 @@ export default function ExplanationAnimApp() {
         slide1.current();
       } else if (slide === 2) {
         slide2.current();
-      } else if (slide === 3) {
-        slide3.current();
       }
     }
 
