@@ -34,7 +34,7 @@ root.render(
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
               <Link to="OldMainApp" title="Old Main" ><img src="OldMainApp.png" className="linkPics" /></Link>
-              <Link to="ExplanationAnimApp">Explanation Anim</Link>
+              <Link to="ExplanationAnimApp" title="Explanation Anim" ><img src="ExplanationAnimApp.png" className="linkPics" /></Link>
               <Link to="LargeDropletV2App" title="Large Droplet V2" ><img src="LargeDropletV2App.png" className="linkPics" /></Link>
               <Link to="ScenarioDropletsApp" title="Scenario Droplets" ><img src="ScenarioDropletsApp.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>

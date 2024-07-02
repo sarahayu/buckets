@@ -22,7 +22,8 @@ export default function BucketGlyph({
   const svgSelector = useRef();
 
   const liquidLevels = useMemo(
-    () => ticksExact(1 / resolution, 1, resolution).map((d) => levelInterp(d)),
+    () =>
+      ticksExact(0, 1 - 1 / resolution, resolution).map((d) => levelInterp(d)),
     [levelInterp, resolution]
   );
 

@@ -26,7 +26,7 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 4;
+const SCEN_DIVISOR = 2;
 const SMALL_DROP_PAD_FACTOR = 1;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 3;

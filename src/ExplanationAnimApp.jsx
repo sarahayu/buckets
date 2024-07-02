@@ -1,71 +1,69 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   DELIV_KEY_STRING,
   DELIV_KEY_STRING_UNORD,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
+  objectiveIDs,
   objectivesData,
 } from "./data/objectivesData";
 import BucketGlyph from "./bucket-lib/BucketGlyph";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 
 const DEFAULT_SCENARIO_1 = "expl0595";
-const DEFAULT_SCENARIO_2 = "expl0531";
-const DEFAULT_OBJECTIVE = "C_STANGDWN_MIF";
+const DEFAULT_OBJECTIVE_IDX = objectiveIDs.indexOf("C_STANGDWN_MIF");
 
 export default function ExplanationAnimApp() {
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const lastScrollPosition = useRef(-1);
-  const svgContainer = useRef();
-  const [interp, setInterp] = useState(() => () => 0);
+  const [curObjectiveIdx, setCurObjectiveIdx] = useState(DEFAULT_OBJECTIVE_IDX);
+  const [slide, setSlide] = useState(-1);
+  const lastSlide = useRef(0);
+  const slideFns = useRef([]);
 
-  const slide0 = useRef();
-  const slide1 = useRef();
-  const slide2 = useRef();
-  const slide3 = useRef();
+  const svgContainer = useRef();
+  const [bucketInterper, setBucketInterper] = useState(() => () => 0);
+
   const width = 800,
     height = 400;
 
   useLayoutEffect(() => {
-    const handleScroll = (e) => {
-      setScrollPosition((p) => Math.max(0, p + e.deltaY));
+    svgContainer.current.selectAll("*").remove();
+
+    const handleClick = () => {
+      setSlide((p) => p + 1);
     };
 
-    window.addEventListener("wheel", handleScroll);
+    svgContainer.current.node().addEventListener("click", handleClick);
     document.querySelector(".bucket-wrapper").style.display = "none";
 
-    const margin = { top: 30, right: 30, bottom: 70, left: 60 };
+    const margin = { top: 30, right: 30, bottom: 30, left: 60 };
 
     const svgGroup = svgContainer.current
-      .attr("opacity", 1)
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
+      .style("background", "rgb(251, 251, 255)")
+      .attr("opacity", 1)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    let vals = objectivesData[DEFAULT_OBJECTIVE][SCENARIO_KEY_STRING][
+    const curObjective = objectiveIDs[curObjectiveIdx];
+
+    const vals = objectivesData[curObjective][SCENARIO_KEY_STRING][
       DEFAULT_SCENARIO_1
-    ][DELIV_KEY_STRING_UNORD].map((val, id) => ({
+    ][DELIV_KEY_STRING_UNORD].map((val, realIdx) => ({
       val,
-      id,
-      year: id + 1930,
+      realIdx,
+      year: realIdx + 1930,
     })).sort((a, b) => b.val - a.val);
 
-    setInterp(() =>
+    setBucketInterper(() =>
       d3
         .scaleLinear()
         .domain(ticksExact(0, 1, vals.length))
         .range(
-          objectivesData[DEFAULT_OBJECTIVE][SCENARIO_KEY_STRING][
-            DEFAULT_SCENARIO_1
-          ][DELIV_KEY_STRING].map((v) => Math.min(1, v / MAX_DELIVS))
+          objectivesData[curObjective][SCENARIO_KEY_STRING][DEFAULT_SCENARIO_1][
+            DELIV_KEY_STRING
+          ].map((v) => Math.min(1, v / MAX_DELIVS))
         )
         .clamp(true)
     );
@@ -75,17 +73,14 @@ export default function ExplanationAnimApp() {
       .domain(vals.map(({ year }) => year).sort())
       .range([0, width])
       .padding(0.4);
-    const xByIndex = d3
-      .scaleBand()
-      .domain(d3.range(vals.length))
-      .range([0, width])
-      .padding(0.4);
     const xaxis = d3
       .axisBottom(xByYear)
       .tickSize(0)
       .tickValues(xByYear.domain().filter((_, i) => i % 10 === 0));
     const svgAxis = svgGroup
       .append("g")
+      .attr("class", "anim-xaxis")
+      .attr("opacity", 1)
       .attr("transform", `translate(0, ${height})`)
       .call(xaxis);
     svgAxis
@@ -96,10 +91,10 @@ export default function ExplanationAnimApp() {
     const y = d3.scaleLinear().domain([0, MAX_DELIVS]).range([height, 0]);
     svgGroup.append("g").call(d3.axisLeft(y));
 
-    slide0.current = () => {
+    slideFns.current[0] = () => {
       svgGroup
         .selectAll(".bars")
-        .data(vals, (d) => d.id)
+        .data(vals, (d) => d.realIdx)
         .join("rect")
         .attr("class", "bars")
         .attr("x", (d, i) => xByYear(d.year))
@@ -110,41 +105,60 @@ export default function ExplanationAnimApp() {
         .attr("fill", "steelblue")
         .transition()
         .duration(500)
-        .delay((d) => d.id * 10)
+        .delay((d) => d.realIdx * 10)
         .attr("y", (d) => y(d.val))
         .attr("height", (d) => height - y(d.val));
     };
 
-    slide1.current = () => {
+    slideFns.current[1] = () => {
+      const biggerWidth = width / 8;
+      const finalWidth = width / 5;
+
       xaxis.tickFormat("");
       svgAxis.call(xaxis);
-      const b = svgGroup
-        .selectAll(".bars")
-        .data(vals, (d) => d.id)
-        .style("mix-blend-mode", "multiply");
-      b.transition("a")
-        .duration(5 * vals.length)
-        // .ease((t) => 1 - 0.5 ** (t * Math.log2(vals.length)))
-        .ease(d3.easeCubicInOut)
-        .attr("opacity", 0.05);
-      b.transition("b")
-        .delay((d, i) => d.id * 5)
-        .duration((d, i) => (vals.length - 1 - d.id) * 5)
-        // .ease(d3.easeLinear)
-        .ease(d3.easeCubicInOut)
-        // .delay((d, i) => (vals.length - i) * 5)
-        .attr("width", (d) => width - xByYear(d.year))
+
+      const b = svgGroup.selectAll(".bars").data(vals, (d) => d.realIdx);
+
+      b.style("mix-blend-mode", "multiply")
         .transition()
-        .delay((d, i) => (vals.length - d.id) * 5)
-        .duration((d, i) => d.id * 5)
-        .attr("x", 0)
-        .attr("width", width);
+        .duration(500)
+        .attr("opacity", 0.05)
+        .transition()
+        .delay((d) => 100 + (1 - (1 - d.realIdx / vals.length) ** 4) * 1000)
+        .duration(500)
+        .attr("width", biggerWidth)
+        .attr("x", (d) => width / 2 - biggerWidth / 2)
+        .transition()
+        .duration(500)
+        .delay(100 + vals.length * 100)
+        .attr("x", width / 2 - finalWidth / 2)
+        .attr("width", finalWidth);
+
+      svgGroup
+        .select(".anim-xaxis")
+        .transition()
+        .delay(2000)
+        .transition(500)
+        .attr("transform", `translate(0, ${height + 50})`)
+        .attr("opacity", 0);
+
+      b.transition()
+        .delay(2000 + 500)
+        .attr("x", 0);
+
+      svgGroup
+        .transition()
+        .delay(2000 + 500)
+        .attr(
+          "transform",
+          `translate(${margin.left + width / 2 - finalWidth / 2},${margin.top})`
+        );
     };
 
-    slide2.current = () => {
+    slideFns.current[2] = () => {
       svgGroup
         .selectAll(".bars")
-        .data(vals, (d) => d.id)
+        .data(vals, (d) => d.realIdx)
         .style("mix-blend-mode", "normal")
         .attr("fill", (_, i) =>
           interpolateWatercolorBlue(i / (vals.length - 1))
@@ -153,32 +167,52 @@ export default function ExplanationAnimApp() {
         .attr("opacity", 1);
     };
 
-    return () => {
-      window.removeEventListener("wheel", handleScroll);
+    slideFns.current[3] = () => {
+      document.querySelector(".bucket-wrapper").style.display = "initial";
+      svgContainer.current.transition().duration(500).attr("opacity", 0);
     };
-  }, []);
+
+    return () => {
+      lastSlide.current = -1;
+      setSlide(-1);
+      svgContainer.current.node().removeEventListener("click", handleClick);
+    };
+  }, [curObjectiveIdx]);
 
   useEffect(() => {
-    const slide = Math.floor(scrollPosition / 1000);
-
-    if (lastScrollPosition.current < slide) {
-      if (slide === 0) {
-        slide0.current();
-      } else if (slide === 1) {
-        slide1.current();
-      } else if (slide === 2) {
-        slide2.current();
-      }
+    if (slide === -1) {
+      setSlide(0);
+    }
+    if (lastSlide.current < slide && slide < slideFns.current.length) {
+      slideFns.current[slide]();
     }
 
-    lastScrollPosition.current = slide;
-  }, [scrollPosition]);
+    lastSlide.current = slide;
+  }, [slide]);
 
   return (
     <div className="explanation-anim-wrapper">
-      <svg ref={(e) => (svgContainer.current = d3.select(e))}></svg>
-      {interp && (
-        <BucketGlyph levelInterp={interp} width={300} height={height} />
+      <select
+        style={{
+          position: "absolute",
+          top: 0,
+        }}
+        value={curObjectiveIdx}
+        onChange={(e) => setCurObjectiveIdx(parseInt(e.target.value))}
+      >
+        {objectiveIDs.map((objectiveID, i) => (
+          <option name={i} value={i} key={i}>
+            {objectiveID}
+          </option>
+        ))}
+      </select>
+      <svg
+        ref={(e) => {
+          !svgContainer.current && (svgContainer.current = d3.select(e));
+        }}
+      ></svg>
+      {bucketInterper && (
+        <BucketGlyph levelInterp={bucketInterper} width={300} height={height} />
       )}
     </div>
   );
