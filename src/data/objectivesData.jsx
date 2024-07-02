@@ -11,11 +11,13 @@ export const objectivesData = await (async function () {
   for (const obj of objs) {
     obj[SCENARIO_KEY_STRING] = obj[SCENARIO_KEY_STRING];
     for (const scen of obj[SCENARIO_KEY_STRING]) {
-      scen[DELIV_KEY_STRING_UNORD] = scen[DELIV_KEY_STRING];
-
-      scen[DELIV_KEY_STRING] = scen[DELIV_KEY_STRING_UNORD].map((v) =>
+      // data cleanup, clamping
+      const unord = scen[DELIV_KEY_STRING].map((v) =>
         Math.min(Math.max(0, v), MAX_DELIVS)
-      ).sort((a, b) => b - a);
+      );
+
+      scen[DELIV_KEY_STRING_UNORD] = unord;
+      scen[DELIV_KEY_STRING] = Array.from(unord).sort((a, b) => b - a);
     }
     obj[SCENARIO_KEY_STRING] = mapBy(
       obj[SCENARIO_KEY_STRING],
