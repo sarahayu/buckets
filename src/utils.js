@@ -593,11 +593,10 @@ export class MeshGeometry {
 }
 
 export function mouseToThree(mouseX, mouseY, width, height) {
-  return new THREE.Vector3(
-    (mouseX / width) * 2 - 1,
-    -(mouseY / height) * 2 + 1,
-    1
-  );
+  return {
+    x: (mouseX / width) * 2 - 1,
+    y: -(mouseY / height) * 2 + 1,
+  };
 }
 
 export function useStateRef(val) {

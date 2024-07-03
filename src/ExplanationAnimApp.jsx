@@ -14,6 +14,13 @@ import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 const DEFAULT_SCENARIO = "expl0595";
 const DEFAULT_OBJECTIVE = "C_STANGDWN_MIF";
 const DATE_START = 1930;
+const INTERP_COLOR = d3.interpolateRgbBasis([
+  "#F2F5FB",
+  "#D0DDEB",
+  "#7B9BC0",
+  "#4F739F",
+  "#112A57",
+]);
 
 export default function ExplanationAnimApp() {
   const [curObjective, setCurObjective] = useState(DEFAULT_OBJECTIVE);
@@ -148,17 +155,6 @@ export default function ExplanationAnimApp() {
     };
 
     slideFns.current[2] = () => {
-      svgGroup
-        .selectAll(".bars")
-        .style("mix-blend-mode", "normal")
-        .attr("fill", (_, i) =>
-          interpolateWatercolorBlue(i / (dataDescending.length - 1))
-        )
-        .transition()
-        .attr("opacity", 1);
-    };
-
-    slideFns.current[3] = () => {
       document.querySelector(".bucket-wrapper").style.display = "initial";
       svgContainer.transition().duration(500).attr("opacity", 0);
     };
@@ -202,7 +198,12 @@ export default function ExplanationAnimApp() {
         ))}
       </select>
       <svg ref={svgElement}></svg>
-      <BucketGlyph levelInterp={bucketInterper} width={300} height={height} />
+      <BucketGlyph
+        levelInterp={bucketInterper}
+        width={300}
+        height={height}
+        colorInterp={INTERP_COLOR}
+      />
       <p>
         We turn yearly water delivery quantities into a heatmap-like
         representation, where darker blue indicates ranges of likely quantities

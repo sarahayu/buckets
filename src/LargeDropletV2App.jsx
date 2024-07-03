@@ -64,7 +64,6 @@ export default function LargeDropletV2App() {
     return s;
   });
   const pointsMeshRef = useRef();
-  const meshIdxToLargeDropIdxRef = useRef({});
 
   useEffect(() => {
     winDim.current = {
@@ -93,9 +92,9 @@ export default function LargeDropletV2App() {
     document.querySelector("#mosaic-area").appendChild(renderer.domElement);
 
     const camera = new Camera({
-      fov: 160,
+      fov: 45,
       near: 1,
-      far: 100,
+      far: 3000,
       width,
       height,
       domElement: d3.select(".bubbles-wrapper").node(),
@@ -110,6 +109,41 @@ export default function LargeDropletV2App() {
           .clamp(true)(e.transform.k);
         outlineMat.current.needsUpdate = true;
       },
+    });
+
+    const raycaster = new THREE.Raycaster();
+    camera.view.on("mousemove", function checkIntersects(e) {
+      raycaster.setFromCamera(
+        mouseToThree(e.x, e.y, width, height),
+        camera.camera
+      );
+      if (!pointsMeshRef.current) return;
+
+      const intersects = raycaster.intersectObject(pointsMeshRef.current);
+      if (intersects[0]) {
+        const intersect = sortBy(intersects, "distanceToRay")[0];
+        const dropIdx = intersect.index;
+        const secondaryKey =
+          secondaryRef.current[dropIdx % secondaryRef.current.length];
+
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            ...tooltip.style,
+            fontWeight: "normal",
+          },
+          text: secondaryKey,
+        }));
+      } else {
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          style: {
+            ...tooltip.style,
+            fontWeight: "bold",
+          },
+          text: tooltip.primaryText,
+        }));
+      }
     });
 
     renderer.setAnimationLoop(() => {
@@ -225,13 +259,18 @@ export default function LargeDropletV2App() {
         d3.select(this).select("path").attr("stroke", "lightgray");
         setTooltip((tooltip) => ({
           ...tooltip,
+          style: {
+            fontWeight: "bold",
+          },
           text: d.key,
+          primaryText: d.key,
         }));
       })
       .on("mousemove", function (e, d) {
         setTooltip((tooltip) => ({
           ...tooltip,
           style: {
+            ...tooltip.style,
             display: "block",
             left: e.x,
             top: e.y,
@@ -244,6 +283,7 @@ export default function LargeDropletV2App() {
           style: {
             display: "none",
           },
+          primaryText: null,
         }));
         d3.select(this).select("path").attr("stroke", "transparent");
       });
@@ -430,13 +470,13 @@ function initWaterdropsMesh(configDrops) {
           meshCoords,
           { x: x, y: -y },
           color,
-          (j % 5) / 50 + 0.001
+          (j % 5) / 50 + 0.02
         );
       }
 
       outlinePoints.push(
         ...outlineMeshCoords.map(
-          ([dx, dy]) => new THREE.Vector3(x + dx, -y - dy, (j % 5) / 50)
+          ([dx, dy]) => new THREE.Vector3(x + dx, -y - dy, (j % 5) / 50 + 0.01)
         )
       );
     }
@@ -463,39 +503,6 @@ function initWaterdropsMesh(configDrops) {
   };
 }
 
-function initWaterdropsHoverers(configDrops, meshIdxToLargeDropIdx) {
-  const hovererGeometry = new MeshGeometry();
-
-  const hovererMeshCoords = waterdrop(
-    1,
-    configDrops.height * HOVER_AREA_FACTOR * 2
-  );
-
-  for (let i = 0; i < configDrops.nodes.length; i++) {
-    hovererGeometry
-      .addMeshCoords(
-        hovererMeshCoords,
-        {
-          x: configDrops.nodes[i].x,
-          y: -configDrops.nodes[i].y,
-        },
-        0x00ff00
-      )
-      .forEach((meshIdx) => (meshIdxToLargeDropIdx[meshIdx] = i));
-  }
-
-  const hovererMesh = new THREE.Mesh(
-    hovererGeometry.threeGeom,
-    new THREE.MeshBasicMaterial({
-      vertexColors: THREE.VertexColors,
-      transparent: true,
-      opacity: 0,
-    })
-  );
-
-  return hovererMesh;
-}
-
 function initWaterdropsSimplified(configDrops) {
   const pointsGeometry = new THREE.Geometry();
 
@@ -507,13 +514,13 @@ function initWaterdropsSimplified(configDrops) {
 
       const color = domLev > 0 ? interpolateWatercolorBlue(domLev) : "white";
 
-      pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0.002));
+      pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0));
       pointsGeometry.colors.push(new THREE.Color(color));
     }
   }
 
   const pointsMaterial = new THREE.PointsMaterial({
-    size: 0.4,
+    size: RAD_PX * 2,
     sizeAttenuation: true,
     vertexColors: THREE.VertexColors,
     map: new THREE.TextureLoader().load("drop.png"),
