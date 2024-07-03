@@ -81,7 +81,10 @@ export default function ExplanationAnimApp() {
       .attr("class", "anim-xaxis")
       .attr("opacity", 1)
       .attr("transform", `translate(0, ${height})`)
-      .call(xaxis);
+      .call(xaxis)
+      .selectAll("text")
+      .attr("transform", "translate(-10,0)rotate(-45)")
+      .style("text-anchor", "end");
     svgGroup.append("g").call(d3.axisLeft(y));
 
     slideFns.current[0] = () => {
@@ -200,6 +203,16 @@ export default function ExplanationAnimApp() {
       </select>
       <svg ref={svgElement}></svg>
       <BucketGlyph levelInterp={bucketInterper} width={300} height={height} />
+      <p>
+        We turn yearly water delivery quantities into a heatmap-like
+        representation, where darker blue indicates ranges of likely quantities
+        and lighter blue indicates ranges of less likely quantities. This works
+        well with the metaphor of a water bucket, since we can imagine water
+        deliveries as levels of water filled in a bucket; darker blue water
+        levels represent how much water we can expect AT LEAST, with lighter
+        blue water levels represent various less likely, but still plausible,
+        water delivery quantities.
+      </p>
     </div>
   );
 }

@@ -1045,3 +1045,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   position: absolute;
   top: 0;
 }
+
+.explanation-anim-wrapper p {
+  position: absolute;
+  width: 20%;
+  display: block;
+  left: 2rem;
+  top: 20%;
+}
