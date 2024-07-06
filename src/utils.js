@@ -491,6 +491,8 @@ export class Camera {
   view;
   curTransform;
 
+  raycaster = new THREE.Raycaster();
+
   constructor({ fov, near, far, width, height, domElement, zoomFn }) {
     this.fov = fov;
     this.near = near;
@@ -553,6 +555,18 @@ export class Camera {
     const scale_height = this.height / scale;
     const camera_z_position = scale_height / (2 * Math.tan(half_fov_radians));
     return camera_z_position;
+  }
+
+  intersectObject(mouseX, mouseY, mesh) {
+    this.raycaster.setFromCamera(
+      {
+        x: mouseX,
+        y: mouseY,
+      },
+      this.camera
+    );
+
+    return this.raycaster.intersectObject(mesh);
   }
 }
 

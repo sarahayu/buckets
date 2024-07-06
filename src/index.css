@@ -1012,7 +1012,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   }
 }
 
-.mosaic-overlay {
+#mosaic-svg {
   position: absolute;
   top: 0;
   left: 0;

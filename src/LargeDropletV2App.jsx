@@ -18,7 +18,6 @@ import {
   placeDropsUsingPhysics,
   sortBy,
   useStateRef,
-  waterdrop,
   waterdropDelta,
   waterdropDeltaOutline,
 } from "./utils";
@@ -26,71 +25,122 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 2;
-const SMALL_DROP_PAD_FACTOR = 1;
+const SCEN_DIVISOR = 2; // debugging purposes, don't render all scenarios to speed things up
+const SMALL_DROP_PAD_FACTOR = 1.75;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 3;
 const HOVER_AREA_FACTOR = 1.3 / (1 + Math.SQRT1_2);
+const FILTERED_KEYS = scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0);
 
 export default function LargeDropletV2App() {
-  const winDim = useRef();
-  const [tooltip, setTooltip] = useState({
-    style: {},
-  });
-  const outlineMat = useRef();
-  const svgSelector = useRef();
-  const [grouping, setGrouping, groupingRef] = useStateRef("objective");
-  const { current: filteredKeys } = useRef(
-    scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0)
-  );
+  const width = window.innerWidth,
+    height = window.innerHeight;
 
-  const primaryRef = useRef();
-  const secondaryRef = useRef();
+  const { current: scene } = useRef(getScene());
 
-  const primaryKeys = grouping === "objective" ? objectiveIDs : filteredKeys;
-  const secondaryKeys = grouping === "objective" ? filteredKeys : objectiveIDs;
+  const [grouping, setGrouping] = useState("objective");
+  const [tooltip, setTooltip] = useState({});
 
-  primaryRef.current = primaryKeys;
-  secondaryRef.current = secondaryKeys;
+  const primaryKeysRef = useRef();
+  const secondaryKeysRef = useRef();
 
-  const watConfig = useRef();
-  const [reverseTranslation, setReverseTranslation, reverseTranslationRef] =
-    useStateRef();
+  const waterdrops = useRef();
+
   const clockRef = useRef();
 
-  const [scene] = useState(() => {
-    const s = new THREE.Scene();
-    s.background = new THREE.Color(0xefefef);
-    return s;
-  });
+  const dropsMeshRef = useRef();
+  const outlineMeshRef = useRef();
   const pointsMeshRef = useRef();
 
-  useEffect(() => {
-    winDim.current = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    };
+  const [reverseTranslation, setReverseTranslation, reverseTranslationRef] =
+    useStateRef();
 
-    const width = winDim.current.width,
-      height = winDim.current.height;
+  primaryKeysRef.current =
+    grouping === "objective" ? objectiveIDs : FILTERED_KEYS;
+  secondaryKeysRef.current =
+    grouping === "objective" ? FILTERED_KEYS : objectiveIDs;
 
-    svgSelector.current
+  useEffect(function initialize() {
+    d3.select("#mosaic-svg")
       .attr("width", width)
       .attr("height", height)
-      .call((s) => {
-        s.append("rect")
-          .attr("width", width)
-          .attr("height", height)
-          .attr("stroke", "none")
-          .attr("fill", "transparent");
-      })
       .append("g")
-      .attr("class", "svg-trans");
+      .attr("class", "svg-trans")
+      .on("mousemove", function (e) {
+        const { x, y } = e;
+        setTooltip((tooltip) => ({
+          ...tooltip,
+          x,
+          y,
+        }));
+      });
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    document.querySelector("#mosaic-area").appendChild(renderer.domElement);
+    initTHREE();
+  }, []);
 
+  useEffect(
+    function onChangeGrouping() {
+      d3.select("#mosaic-svg")
+        .select(".svg-trans")
+        .selectAll(".largeDrop")
+        .attr("display", "none");
+
+      const prevWaterdrops = waterdrops.current;
+      waterdrops.current = initWaterdrops(
+        getWaterlevels(
+          grouping,
+          primaryKeysRef.current,
+          secondaryKeysRef.current
+        )
+      );
+
+      if (prevWaterdrops)
+        setReverseTranslation(
+          calcTranslations(waterdrops.current, prevWaterdrops)
+        );
+
+      pointsMeshRef.current = initWaterdropsMeshSimplified(waterdrops.current);
+
+      scene.remove(dropsMeshRef.current, outlineMeshRef.current);
+      scene.add(pointsMeshRef.current);
+
+      clockRef.current = new THREE.Clock();
+    },
+    [grouping]
+  );
+
+  useEffect(
+    function onGroupingAnimationEnd() {
+      if (reverseTranslationRef.current) return;
+
+      scene.remove(pointsMeshRef.current);
+
+      const { dropsMesh, outlineMesh } = initWaterdropsMesh(waterdrops.current);
+      dropsMeshRef.current = dropsMesh;
+      outlineMeshRef.current = outlineMesh;
+      scene.add(dropsMesh, outlineMesh);
+
+      updateLargeDropSVG(
+        d3.select("#mosaic-svg").select(".svg-trans"),
+        waterdrops.current,
+        (d) =>
+          setTooltip((tooltip) => ({
+            ...tooltip,
+            text: d.key,
+            primaryText: d.key,
+          })),
+        () =>
+          setTooltip((tooltip) => ({
+            ...tooltip,
+            text: "",
+            primaryText: "",
+          }))
+      );
+    },
+    [reverseTranslation]
+  );
+
+  function initTHREE() {
     const camera = new Camera({
       fov: 45,
       near: 1,
@@ -99,52 +149,48 @@ export default function LargeDropletV2App() {
       height,
       domElement: d3.select(".bubbles-wrapper").node(),
       zoomFn: (e) => {
-        svgSelector.current.select(".svg-trans").attr("transform", e.transform);
+        d3.select("#mosaic-svg")
+          .select(".svg-trans")
+          .attr("transform", e.transform);
 
-        if (!outlineMat.current) return;
-        outlineMat.current.opacity = d3
+        if (!outlineMeshRef.current) return;
+        outlineMeshRef.current.material.opacity = d3
           .scaleLinear()
           .domain([1, 5])
           .range([0.1, 1])
           .clamp(true)(e.transform.k);
-        outlineMat.current.needsUpdate = true;
+        outlineMeshRef.current.material.needsUpdate = true;
       },
     });
 
-    const raycaster = new THREE.Raycaster();
-    camera.view.on("mousemove", function checkIntersects(e) {
-      raycaster.setFromCamera(
-        mouseToThree(e.x, e.y, width, height),
-        camera.camera
-      );
+    camera.view.on("mousemove", (e) => {
       if (!pointsMeshRef.current) return;
 
-      const intersects = raycaster.intersectObject(pointsMeshRef.current);
+      const { x, y } = mouseToThree(e.x, e.y, width, height);
+      const intersects = camera.intersectObject(x, y, pointsMeshRef.current);
+
       if (intersects[0]) {
         const intersect = sortBy(intersects, "distanceToRay")[0];
-        const dropIdx = intersect.index;
         const secondaryKey =
-          secondaryRef.current[dropIdx % secondaryRef.current.length];
+          secondaryKeysRef.current[
+            intersect.index % secondaryKeysRef.current.length
+          ];
 
         setTooltip((tooltip) => ({
           ...tooltip,
-          style: {
-            ...tooltip.style,
-            fontWeight: "normal",
-          },
-          text: secondaryKey,
+          secondaryText: secondaryKey,
         }));
       } else {
         setTooltip((tooltip) => ({
           ...tooltip,
-          style: {
-            ...tooltip.style,
-            fontWeight: "bold",
-          },
-          text: tooltip.primaryText,
+          secondaryText: "",
         }));
       }
     });
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    document.querySelector("#mosaic-webgl").appendChild(renderer.domElement);
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera.camera);
@@ -156,173 +202,56 @@ export default function LargeDropletV2App() {
         return;
       }
 
-      const g = pointsMeshRef.current.geometry;
-
       updateGeom(
-        g,
-        watConfig.current,
+        pointsMeshRef.current.geometry,
+        waterdrops.current,
         reverseTranslationRef.current,
         d3.easeExp(clockRef.current.getElapsedTime() / ANIM_TIME)
       );
 
-      g.verticesNeedUpdate = true;
+      pointsMeshRef.current.geometry.verticesNeedUpdate = true;
     });
-  }, []);
-
-  useEffect(() => {
-    const prevConfig = watConfig.current;
-
-    const mat = {};
-
-    if (grouping === "objective") {
-      for (let i = 0; i < primaryKeys.length; i++) {
-        const obj = primaryKeys[i];
-        const row = {};
-
-        for (let j = 0; j < secondaryKeys.length; j++) {
-          const scen = secondaryKeys[j];
-          const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
-          row[scen] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-        }
-
-        mat[obj] = row;
-      }
-    } else if (grouping === "scenario") {
-      for (let i = 0; i < primaryKeys.length; i++) {
-        const scen = primaryKeys[i];
-        const row = {};
-
-        for (let j = 0; j < secondaryKeys.length; j++) {
-          const obj = secondaryKeys[j];
-          const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
-          row[obj] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-        }
-
-        mat[scen] = row;
-      }
-    }
-
-    const config = initWaterdrops(mat);
-
-    if (prevConfig) setReverseTranslation(calcTranslations(config, prevConfig));
-    watConfig.current = config;
-    clockRef.current = new THREE.Clock();
-
-    const pointsMesh = initWaterdropsSimplified(config);
-
-    svgSelector.current
-      .select(".svg-trans")
-      .selectAll(".largeDrop")
-      .attr("display", "none");
-
-    scene.remove(...scene.children);
-    scene.add(pointsMesh);
-    pointsMeshRef.current = pointsMesh;
-    watConfig.current = config;
-  }, [grouping]);
-
-  useEffect(() => {
-    if (reverseTranslationRef.current) return;
-
-    const config = watConfig.current;
-
-    const { dropsMesh, lineMesh } = initWaterdropsMesh(config);
-    scene.add(dropsMesh, lineMesh);
-    scene.remove(pointsMeshRef.current);
-
-    outlineMat.current = lineMesh.material;
-
-    svgSelector.current
-      .select(".svg-trans")
-      .selectAll(".largeDrop")
-      .data(config.nodes)
-      .join((enter) => {
-        return enter
-          .append("g")
-          .attr("class", "largeDrop")
-          .call((s) => {
-            s.append("path")
-              .attr("d", DROPLET_SHAPE)
-              .attr("fill", "none")
-              .attr("stroke", "transparent")
-              .attr("vector-effect", "non-scaling-stroke")
-              .attr("stroke-width", 1);
-          });
-      })
-      .attr("display", "initial")
-      .attr(
-        "transform",
-        ({ x, y }) =>
-          `translate(${x}, ${y}) scale(${config.height * HOVER_AREA_FACTOR})`
-      )
-      .on("mouseenter", function (e, d) {
-        d3.select(this).select("path").attr("stroke", "lightgray");
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            fontWeight: "bold",
-          },
-          text: d.key,
-          primaryText: d.key,
-        }));
-      })
-      .on("mousemove", function (e, d) {
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            ...tooltip.style,
-            display: "block",
-            left: e.x,
-            top: e.y,
-          },
-        }));
-      })
-      .on("mouseleave", function () {
-        setTooltip((tooltip) => ({
-          ...tooltip,
-          style: {
-            display: "none",
-          },
-          primaryText: null,
-        }));
-        d3.select(this).select("path").attr("stroke", "transparent");
-      });
-  }, [grouping, reverseTranslation]);
+  }
 
   return (
     <div className="bubbles-wrapper">
-      <div
-        className="bubbles-input-area"
+      <InputArea
+        grouping={grouping}
         onChange={(e) => void setGrouping(e.target.value)}
-      >
-        <input
-          type="radio"
-          name="grouping"
-          value="objective"
-          id="objective"
-          checked={grouping === "objective"}
-        />
-        <label htmlFor="objective">objective</label>
-        <input
-          type="radio"
-          name="grouping"
-          value="scenario"
-          id="scenario"
-          checked={grouping === "scenario"}
-        />
-        <label htmlFor="scenario">scenario</label>
+      />
+      <div className="bubbles-tooltip" style={getTooltipStyle(tooltip)}>
+        {tooltip.secondaryText || tooltip.primaryText}
       </div>
-      <div className="bubbles-tooltip" style={tooltip.style}>
-        {tooltip.text}
-      </div>
-      <div id="mosaic-area"></div>
-      <svg
-        className="mosaic-overlay"
-        ref={(e) => (svgSelector.current = d3.select(e))}
-      ></svg>
+      <div id="mosaic-webgl"></div>
+      <svg id="mosaic-svg"></svg>
     </div>
   );
 }
+
+function InputArea({ grouping, onChange }) {
+  return (
+    <div className="bubbles-input-area" onChange={onChange}>
+      <input
+        type="radio"
+        name="grouping"
+        value="objective"
+        id="objective"
+        checked={grouping === "objective"}
+      />
+      <label htmlFor="objective">objective</label>
+      <input
+        type="radio"
+        name="grouping"
+        value="scenario"
+        id="scenario"
+        checked={grouping === "scenario"}
+      />
+      <label htmlFor="scenario">scenario</label>
+    </div>
+  );
+}
+
+/*-------------------------------------------- !! spaghetti code below !! --------------------------------------------------------------------*/
 
 function initWaterdrops(waterdropMatrix) {
   const primaryKeys = Object.keys(waterdropMatrix);
@@ -401,60 +330,14 @@ function initWaterdrops(waterdropMatrix) {
   };
 }
 
-function calcTranslations(configObjScen, configScenObj) {
-  const translations = {};
-
-  for (const pKey of Object.keys(configObjScen.pLookup)) {
-    const row = {};
-    for (const sKey of Object.keys(configScenObj.pLookup)) {
-      let { globalX: xStart, globalY: yStart } =
-        configObjScen.nodes[configObjScen.pLookup[pKey]].nodes[
-          configObjScen.sLookup[sKey]
-        ];
-
-      let { globalX: xEnd, globalY: yEnd } =
-        configScenObj.nodes[configScenObj.pLookup[sKey]].nodes[
-          configScenObj.sLookup[pKey]
-        ];
-
-      row[sKey] = [xEnd - xStart, yEnd - yStart];
-    }
-
-    translations[pKey] = row;
-  }
-
-  return translations;
-}
-
-function updateGeom(g, endConfig, reverseTranslations, t) {
-  let idx = 0;
-  t = 1 - t;
-
-  for (let i = 0; i < endConfig.nodes.length; i++) {
-    const nodes = endConfig.nodes[i].nodes;
-    const pKey = endConfig.nodes[i].key;
-
-    for (let j = 0; j < nodes.length; j++) {
-      const { globalX: endX, globalY: endY, key: sKey } = nodes[j];
-
-      const [dx, dy] = reverseTranslations[pKey][sKey];
-
-      g.vertices[idx].setX(endX + t * dx);
-      g.vertices[idx].setY(-(endY + t * dy));
-
-      idx++;
-    }
-  }
-}
-
-function initWaterdropsMesh(configDrops) {
+function initWaterdropsMesh(waterdrops) {
   const dropsGeometry = new MeshGeometry();
   const outlinePoints = [];
 
   const outlineMeshCoords = waterdropDeltaOutline(0, 1, RAD_PX * 0.975);
 
-  for (let i = 0; i < configDrops.nodes.length; i++) {
-    const nodes = configDrops.nodes[i].nodes;
+  for (let i = 0; i < waterdrops.nodes.length; i++) {
+    const nodes = waterdrops.nodes[i].nodes;
 
     for (let j = 0; j < nodes.length; j++) {
       const { globalX: x, globalY: y, levs, maxLev } = nodes[j];
@@ -488,7 +371,7 @@ function initWaterdropsMesh(configDrops) {
       vertexColors: THREE.VertexColors,
     })
   );
-  const lineMesh = new THREE.LineSegments(
+  const outlineMesh = new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(outlinePoints),
     new THREE.LineBasicMaterial({
       color: 0xcccccc,
@@ -499,15 +382,15 @@ function initWaterdropsMesh(configDrops) {
 
   return {
     dropsMesh,
-    lineMesh,
+    outlineMesh,
   };
 }
 
-function initWaterdropsSimplified(configDrops) {
+function initWaterdropsMeshSimplified(waterdrops) {
   const pointsGeometry = new THREE.Geometry();
 
-  for (let i = 0; i < configDrops.nodes.length; i++) {
-    const nodes = configDrops.nodes[i].nodes;
+  for (let i = 0; i < waterdrops.nodes.length; i++) {
+    const nodes = waterdrops.nodes[i].nodes;
 
     for (let j = 0; j < nodes.length; j++) {
       const { globalX: x, globalY: y, levs, domLev } = nodes[j];
@@ -530,6 +413,133 @@ function initWaterdropsSimplified(configDrops) {
   const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
 
   return pointsMesh;
+}
+
+function calcTranslations(waterdropsObjScen, waterdropsScenObj) {
+  const translations = {};
+
+  for (const pKey of Object.keys(waterdropsObjScen.pLookup)) {
+    const row = {};
+    for (const sKey of Object.keys(waterdropsScenObj.pLookup)) {
+      let { globalX: xStart, globalY: yStart } =
+        waterdropsObjScen.nodes[waterdropsObjScen.pLookup[pKey]].nodes[
+          waterdropsObjScen.sLookup[sKey]
+        ];
+
+      let { globalX: xEnd, globalY: yEnd } =
+        waterdropsScenObj.nodes[waterdropsScenObj.pLookup[sKey]].nodes[
+          waterdropsScenObj.sLookup[pKey]
+        ];
+
+      row[sKey] = [xEnd - xStart, yEnd - yStart];
+    }
+
+    translations[pKey] = row;
+  }
+
+  return translations;
+}
+
+function updateGeom(g, endWaterdrops, reverseTranslations, t) {
+  let idx = 0;
+  t = 1 - t;
+
+  for (let i = 0; i < endWaterdrops.nodes.length; i++) {
+    const nodes = endWaterdrops.nodes[i].nodes;
+    const pKey = endWaterdrops.nodes[i].key;
+
+    for (let j = 0; j < nodes.length; j++) {
+      const { globalX: endX, globalY: endY, key: sKey } = nodes[j];
+
+      const [dx, dy] = reverseTranslations[pKey][sKey];
+
+      g.vertices[idx].setX(endX + t * dx);
+      g.vertices[idx].setY(-(endY + t * dy));
+
+      idx++;
+    }
+  }
+}
+
+function getScene() {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(0xefefef);
+  return s;
+}
+
+function getTooltipStyle(tooltip) {
+  return {
+    display: tooltip.secondaryText || tooltip.primaryText ? "initial" : "none",
+    left: tooltip.x,
+    top: tooltip.y,
+  };
+}
+
+function updateLargeDropSVG(container, waterdrops, onHover, onUnhover) {
+  container
+    .selectAll(".largeDrop")
+    .data(waterdrops.nodes)
+    .join((enter) => {
+      return enter
+        .append("g")
+        .attr("class", "largeDrop")
+        .call((s) => {
+          s.append("path")
+            .attr("d", DROPLET_SHAPE)
+            .attr("fill", "none")
+            .attr("stroke", "transparent")
+            .attr("vector-effect", "non-scaling-stroke")
+            .attr("stroke-width", 1);
+        });
+    })
+    .attr("display", "initial")
+    .attr(
+      "transform",
+      ({ x, y }) =>
+        `translate(${x}, ${y}) scale(${waterdrops.height * HOVER_AREA_FACTOR})`
+    )
+    .on("mouseenter", function (e, d) {
+      d3.select(this).select("path").attr("stroke", "lightgray");
+      onHover(d);
+    })
+    .on("mouseleave", function (e, d) {
+      d3.select(this).select("path").attr("stroke", "transparent");
+      onUnhover(d);
+    });
+}
+
+function getWaterlevels(grouping, primaryKeys, secondaryKeys) {
+  const mat = {};
+
+  if (grouping === "objective") {
+    for (let i = 0; i < primaryKeys.length; i++) {
+      const obj = primaryKeys[i];
+      const row = {};
+
+      for (let j = 0; j < secondaryKeys.length; j++) {
+        const scen = secondaryKeys[j];
+        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
+        row[scen] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+      }
+
+      mat[obj] = row;
+    }
+  } else if (grouping === "scenario") {
+    for (let i = 0; i < primaryKeys.length; i++) {
+      const scen = primaryKeys[i];
+      const row = {};
+
+      for (let j = 0; j < secondaryKeys.length; j++) {
+        const obj = secondaryKeys[j];
+        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
+        row[obj] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+      }
+
+      mat[scen] = row;
+    }
+  }
+
+  return mat;
 }
 
 // TODO fix colors
