@@ -4,7 +4,9 @@ import * as THREE from "three";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
 import {
+  DELIV_KEY_STRING,
   MAX_DELIVS,
+  SCENARIO_KEY_STRING,
   objectiveIDs,
   objectivesData,
   scenarioIDs,
@@ -14,6 +16,7 @@ import {
   DROPLET_SHAPE,
   MeshGeometry,
   createInterps,
+  mapBy,
   mouseToThree,
   placeDropsUsingPhysics,
   sortBy,
@@ -25,12 +28,32 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 2; // debugging purposes, don't render all scenarios to speed things up
+const SCEN_DIVISOR = 1; // debugging purposes, don't render all scenarios to speed things up
 const SMALL_DROP_PAD_FACTOR = 1.75;
 const LARGE_DROP_PAD_FACTOR = 1.5;
-const ANIM_TIME = 3;
+const ANIM_TIME = 1;
 const HOVER_AREA_FACTOR = 1.3 / (1 + Math.SQRT1_2);
 const FILTERED_KEYS = scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0);
+
+// ensures order-consistent traversal
+const flattenedData = (function () {
+  const _flattenedData = [];
+  let idx = 0;
+  for (const obj of objectiveIDs) {
+    for (const scen of FILTERED_KEYS) {
+      _flattenedData.push({
+        id: idx,
+        objective: obj,
+        scenario: scen,
+        deliveries:
+          objectivesData[obj][SCENARIO_KEY_STRING][scen][DELIV_KEY_STRING],
+      });
+      idx++;
+    }
+  }
+
+  return _flattenedData;
+})();
 
 export default function LargeDropletV2App() {
   const width = window.innerWidth,
@@ -38,27 +61,24 @@ export default function LargeDropletV2App() {
 
   const { current: scene } = useRef(getScene());
 
-  const [grouping, setGrouping] = useState("objective");
-  const [tooltip, setTooltip] = useState({});
+  const waterdrops1 = useRef();
+  const waterdrops2 = useRef();
 
-  const primaryKeysRef = useRef();
-  const secondaryKeysRef = useRef();
+  if (!waterdrops1.current) waterdrops1.current = initWaterdrops("objective");
+  if (!waterdrops2.current) waterdrops2.current = initWaterdrops("scenario");
+
+  const [grouping, setGrouping, groupingRef] = useStateRef("objective");
+  const [tooltip, setTooltip] = useState({});
 
   const waterdrops = useRef();
 
   const clockRef = useRef();
 
-  const dropsMeshRef = useRef();
-  const outlineMeshRef = useRef();
-  const pointsMeshRef = useRef();
+  const dropsMeshRef = useRef(new WaterdropMesh());
+  const pointsMeshRef = useRef(new WaterdropSimplifiedMesh());
 
   const [reverseTranslation, setReverseTranslation, reverseTranslationRef] =
     useStateRef();
-
-  primaryKeysRef.current =
-    grouping === "objective" ? objectiveIDs : FILTERED_KEYS;
-  secondaryKeysRef.current =
-    grouping === "objective" ? FILTERED_KEYS : objectiveIDs;
 
   useEffect(function initialize() {
     d3.select("#mosaic-svg")
@@ -86,23 +106,18 @@ export default function LargeDropletV2App() {
         .attr("display", "none");
 
       const prevWaterdrops = waterdrops.current;
-      waterdrops.current = initWaterdrops(
-        getWaterlevels(
-          grouping,
-          primaryKeysRef.current,
-          secondaryKeysRef.current
-        )
-      );
 
-      if (prevWaterdrops)
+      waterdrops.current =
+        grouping === "objective" ? waterdrops1.current : waterdrops2.current;
+
+      if (prevWaterdrops) {
         setReverseTranslation(
           calcTranslations(waterdrops.current, prevWaterdrops)
         );
+        pointsMeshRef.current.draw(scene);
+      }
 
-      pointsMeshRef.current = initWaterdropsMeshSimplified(waterdrops.current);
-
-      scene.remove(dropsMeshRef.current, outlineMeshRef.current);
-      scene.add(pointsMeshRef.current);
+      dropsMeshRef.current.remove(scene);
 
       clockRef.current = new THREE.Clock();
     },
@@ -113,12 +128,11 @@ export default function LargeDropletV2App() {
     function onGroupingAnimationEnd() {
       if (reverseTranslationRef.current) return;
 
-      scene.remove(pointsMeshRef.current);
+      pointsMeshRef.current.createMesh(waterdrops.current);
+      dropsMeshRef.current.createMesh(waterdrops.current);
 
-      const { dropsMesh, outlineMesh } = initWaterdropsMesh(waterdrops.current);
-      dropsMeshRef.current = dropsMesh;
-      outlineMeshRef.current = outlineMesh;
-      scene.add(dropsMesh, outlineMesh);
+      pointsMeshRef.current.remove(scene);
+      dropsMeshRef.current.draw(scene);
 
       updateLargeDropSVG(
         d3.select("#mosaic-svg").select(".svg-trans"),
@@ -153,13 +167,13 @@ export default function LargeDropletV2App() {
           .select(".svg-trans")
           .attr("transform", e.transform);
 
-        if (!outlineMeshRef.current) return;
-        outlineMeshRef.current.material.opacity = d3
-          .scaleLinear()
-          .domain([1, 5])
-          .range([0.1, 1])
-          .clamp(true)(e.transform.k);
-        outlineMeshRef.current.material.needsUpdate = true;
+        if (!dropsMeshRef.current) return;
+
+        dropsMeshRef.current.updateOutlineVisibility(
+          d3.scaleLinear().domain([1, 5]).range([0.1, 1]).clamp(true)(
+            e.transform.k
+          )
+        );
       },
     });
 
@@ -167,18 +181,20 @@ export default function LargeDropletV2App() {
       if (!pointsMeshRef.current) return;
 
       const { x, y } = mouseToThree(e.x, e.y, width, height);
-      const intersects = camera.intersectObject(x, y, pointsMeshRef.current);
 
-      if (intersects[0]) {
-        const intersect = sortBy(intersects, "distanceToRay")[0];
-        const secondaryKey =
-          secondaryKeysRef.current[
-            intersect.index % secondaryKeysRef.current.length
-          ];
+      const intersectID = pointsMeshRef.current.intersectObject(camera, x, y);
+
+      if (intersectID) {
+        const waterdropIntersected = flattenedData.find(
+          (n) => n.id === intersectID
+        );
 
         setTooltip((tooltip) => ({
           ...tooltip,
-          secondaryText: secondaryKey,
+          secondaryText:
+            groupingRef.current === "objective"
+              ? waterdropIntersected.scenario
+              : waterdropIntersected.objective,
         }));
       } else {
         setTooltip((tooltip) => ({
@@ -197,19 +213,18 @@ export default function LargeDropletV2App() {
 
       if (!reverseTranslationRef.current) return;
 
+      const dt = clockRef.current.getDelta();
+
       if (clockRef.current.getElapsedTime() > ANIM_TIME) {
         setReverseTranslation(null);
         return;
       }
 
-      updateGeom(
-        pointsMeshRef.current.geometry,
+      pointsMeshRef.current.updatePoints(
         waterdrops.current,
         reverseTranslationRef.current,
-        d3.easeExp(clockRef.current.getElapsedTime() / ANIM_TIME)
+        dt / ANIM_TIME
       );
-
-      pointsMeshRef.current.geometry.verticesNeedUpdate = true;
     });
   }
 
@@ -253,188 +268,113 @@ function InputArea({ grouping, onChange }) {
 
 /*-------------------------------------------- !! spaghetti code below !! --------------------------------------------------------------------*/
 
-function initWaterdrops(waterdropMatrix) {
-  const primaryKeys = Object.keys(waterdropMatrix);
-  const secondaryKeys = Object.keys(Object.values(waterdropMatrix)[0]);
-  const amtPrimaryKeys = primaryKeys.length;
-  const amtSecondaryKeys = secondaryKeys.length;
+// TODO optimize!!
+function initWaterdrops(grouping) {
+  const groupKeys = grouping === "objective" ? objectiveIDs : FILTERED_KEYS;
+  const memberKeys = grouping === "objective" ? FILTERED_KEYS : objectiveIDs;
+
+  const amtGroups = groupKeys.length;
+  const amtPerGroup = memberKeys.length;
 
   const largeDropRad = Math.max(
     1,
-    Math.sqrt(amtSecondaryKeys / Math.PI) *
+    Math.sqrt(amtPerGroup / Math.PI) *
       RAD_PX *
       2 *
       SMALL_DROP_PAD_FACTOR *
       LARGE_DROP_PAD_FACTOR
   );
   const smallDropRad = Math.max(2, RAD_PX * SMALL_DROP_PAD_FACTOR);
-  const largeNodesPos = placeDropsUsingPhysics(
-    0,
-    0,
-    primaryKeys.map(() => ({
-      r: largeDropRad,
-    }))
+
+  const largeNodesPos = mapBy(
+    placeDropsUsingPhysics(
+      0,
+      0,
+      groupKeys.map((p) => ({
+        r: largeDropRad,
+        id: p,
+      }))
+    ),
+    ({ id }) => id
   );
 
-  const smallNodesPos = placeDropsUsingPhysics(
+  const smallNodesPhys = placeDropsUsingPhysics(
     0,
     0,
-    secondaryKeys.map(() => ({
+    memberKeys.map((s) => ({
       r: smallDropRad,
+      id: s,
     }))
   );
 
-  const pLookup = {};
-  const sLookup = {};
+  const smallNodesPos = mapBy(smallNodesPhys, ({ id }) => id);
 
-  const largeNodes = primaryKeys.map((primaryKey, primaryKeyIdx) => {
-    pLookup[primaryKey] = primaryKeyIdx;
-    const innerNodes = secondaryKeys.map((secondaryKey, secondaryKeyIdx) => {
-      sLookup[secondaryKey] = secondaryKeyIdx;
+  const nodes = [];
+  const groupNodes = [];
+  const nodeIDtoIdx = {};
 
-      const levs = waterdropMatrix[primaryKey][secondaryKey].map(
-        (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
-      );
+  let idx = 0;
 
-      return {
-        levs,
-        maxLev: RAD_PX,
-        domLev: calcDomLev(levs),
-        tilt: Math.random() * 50 - 25,
-        dur: Math.random() * 100 + 400,
-        x: smallNodesPos[secondaryKeyIdx].x,
-        y: smallNodesPos[secondaryKeyIdx].y,
-        group: primaryKey,
-        key: secondaryKey,
-        globalX:
-          largeNodesPos[primaryKeyIdx].x + smallNodesPos[secondaryKeyIdx].x,
-        globalY:
-          largeNodesPos[primaryKeyIdx].y + smallNodesPos[secondaryKeyIdx].y,
-      };
+  for (const node of flattenedData) {
+    const { id, objective, scenario, deliveries } = node;
+
+    const i = createInterps(objective, scenario, objectivesData, MAX_DELIVS);
+    const wds = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
+
+    const levs = wds.map(
+      (w, i) => Math.max(w, i == 0 ? MIN_LEV_VAL : 0) * RAD_PX
+    );
+
+    const groupID = grouping === "objective" ? objective : scenario;
+    const memberID = grouping === "objective" ? scenario : objective;
+
+    nodes.push({
+      id,
+      levs,
+      maxLev: RAD_PX,
+      domLev: calcDomLev(levs),
+      tilt: Math.random() * 50 - 25,
+      dur: Math.random() * 100 + 400,
+      x: smallNodesPos[memberID].x,
+      y: smallNodesPos[memberID].y,
+      group: groupID,
+      key: memberID,
+      globalX: largeNodesPos[groupID].x + smallNodesPos[memberID].x,
+      globalY: largeNodesPos[groupID].y + smallNodesPos[memberID].y,
     });
 
-    return {
-      nodes: innerNodes,
-      x: largeNodesPos[primaryKeyIdx].x,
-      y: largeNodesPos[primaryKeyIdx].y,
+    nodeIDtoIdx[id] = idx++;
+  }
+
+  for (const groupKey of groupKeys) {
+    groupNodes.push({
+      x: largeNodesPos[groupKey].x,
+      y: largeNodesPos[groupKey].y,
       tilt: Math.random() * 50 - 25,
-      key: primaryKey,
-    };
-  });
+      key: groupKey,
+      height: smallNodesPhys.height,
+    });
+  }
 
   return {
-    nodes: largeNodes,
-    height: smallNodesPos.height,
-    pLookup: pLookup,
-    sLookup: sLookup,
+    nodes: nodes,
+    nodeIDtoIdx,
+    groups: groupNodes,
   };
 }
 
-function initWaterdropsMesh(waterdrops) {
-  const dropsGeometry = new MeshGeometry();
-  const outlinePoints = [];
-
-  const outlineMeshCoords = waterdropDeltaOutline(0, 1, RAD_PX * 0.975);
-
-  for (let i = 0; i < waterdrops.nodes.length; i++) {
-    const nodes = waterdrops.nodes[i].nodes;
-
-    for (let j = 0; j < nodes.length; j++) {
-      const { globalX: x, globalY: y, levs, maxLev } = nodes[j];
-
-      for (let k = levs.length - 1; k >= 0; k--) {
-        const l1 = k !== levs.length - 1 ? levs[k + 1] : 0;
-        const l2 = levs[k];
-
-        const meshCoords = waterdropDelta(l1 / maxLev, l2 / maxLev, RAD_PX);
-        const color = new THREE.Color(interpolateWatercolorBlue(k / LEVELS));
-
-        dropsGeometry.addMeshCoords(
-          meshCoords,
-          { x: x, y: -y },
-          color,
-          (j % 5) / 50 + 0.02
-        );
-      }
-
-      outlinePoints.push(
-        ...outlineMeshCoords.map(
-          ([dx, dy]) => new THREE.Vector3(x + dx, -y - dy, (j % 5) / 50 + 0.01)
-        )
-      );
-    }
-  }
-
-  const dropsMesh = new THREE.Mesh(
-    dropsGeometry.threeGeom,
-    new THREE.MeshBasicMaterial({
-      vertexColors: THREE.VertexColors,
-    })
-  );
-  const outlineMesh = new THREE.LineSegments(
-    new THREE.BufferGeometry().setFromPoints(outlinePoints),
-    new THREE.LineBasicMaterial({
-      color: 0xcccccc,
-      transparent: true,
-      opacity: 0,
-    })
-  );
-
-  return {
-    dropsMesh,
-    outlineMesh,
-  };
-}
-
-function initWaterdropsMeshSimplified(waterdrops) {
-  const pointsGeometry = new THREE.Geometry();
-
-  for (let i = 0; i < waterdrops.nodes.length; i++) {
-    const nodes = waterdrops.nodes[i].nodes;
-
-    for (let j = 0; j < nodes.length; j++) {
-      const { globalX: x, globalY: y, levs, domLev } = nodes[j];
-
-      const color = domLev > 0 ? interpolateWatercolorBlue(domLev) : "white";
-
-      pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0));
-      pointsGeometry.colors.push(new THREE.Color(color));
-    }
-  }
-
-  const pointsMaterial = new THREE.PointsMaterial({
-    size: RAD_PX * 2,
-    sizeAttenuation: true,
-    vertexColors: THREE.VertexColors,
-    map: new THREE.TextureLoader().load("drop.png"),
-    transparent: true,
-  });
-
-  const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
-
-  return pointsMesh;
-}
-
-function calcTranslations(waterdropsObjScen, waterdropsScenObj) {
+function calcTranslations(waterdropsTo, waterdropsFrom) {
   const translations = {};
 
-  for (const pKey of Object.keys(waterdropsObjScen.pLookup)) {
-    const row = {};
-    for (const sKey of Object.keys(waterdropsScenObj.pLookup)) {
-      let { globalX: xStart, globalY: yStart } =
-        waterdropsObjScen.nodes[waterdropsObjScen.pLookup[pKey]].nodes[
-          waterdropsObjScen.sLookup[sKey]
-        ];
+  for (const nodeTo of waterdropsTo.nodes) {
+    const { id, globalX: endX, globalY: endY } = nodeTo;
 
-      let { globalX: xEnd, globalY: yEnd } =
-        waterdropsScenObj.nodes[waterdropsScenObj.pLookup[sKey]].nodes[
-          waterdropsScenObj.sLookup[pKey]
-        ];
+    const nodeFromIdx = waterdropsFrom.nodeIDtoIdx[id];
+    const nodeFrom = waterdropsFrom.nodes[nodeFromIdx];
 
-      row[sKey] = [xEnd - xStart, yEnd - yStart];
-    }
+    const { globalX: startX, globalY: startY } = nodeFrom;
 
-    translations[pKey] = row;
+    translations[id] = [endX - startX, endY - startY];
   }
 
   return translations;
@@ -478,7 +418,7 @@ function getTooltipStyle(tooltip) {
 function updateLargeDropSVG(container, waterdrops, onHover, onUnhover) {
   container
     .selectAll(".largeDrop")
-    .data(waterdrops.nodes)
+    .data(waterdrops.groups)
     .join((enter) => {
       return enter
         .append("g")
@@ -495,8 +435,8 @@ function updateLargeDropSVG(container, waterdrops, onHover, onUnhover) {
     .attr("display", "initial")
     .attr(
       "transform",
-      ({ x, y }) =>
-        `translate(${x}, ${y}) scale(${waterdrops.height * HOVER_AREA_FACTOR})`
+      ({ x, y, height }) =>
+        `translate(${x}, ${y}) scale(${height * HOVER_AREA_FACTOR})`
     )
     .on("mouseenter", function (e, d) {
       d3.select(this).select("path").attr("stroke", "lightgray");
@@ -553,4 +493,249 @@ function calcDomLev(levs) {
   }
 
   return mean;
+}
+
+class WaterdropMesh {
+  dropsMesh;
+  outlineMesh;
+
+  added = false;
+
+  // caching vertex ownership so we can update existing vertices instead of creating new one each time
+  idToVertInfo = {};
+
+  createMesh(waterdrops) {
+    if (!this.dropsMesh) {
+      this.initializeMeshes(waterdrops);
+    } else {
+      this.updateMeshes(waterdrops);
+    }
+  }
+
+  draw(scene) {
+    if (!this.added) {
+      scene.add(this.dropsMesh);
+      scene.add(this.outlineMesh);
+      this.added = true;
+    }
+  }
+
+  remove(scene) {
+    if (this.added) {
+      scene.remove(this.dropsMesh);
+      scene.remove(this.outlineMesh);
+      this.added = false;
+    }
+  }
+
+  initializeMeshes(waterdrops) {
+    const dropsGeometry = new MeshGeometry();
+    const outlinePoints = [];
+
+    const outlineMeshCoords = waterdropDeltaOutline(0, 1, RAD_PX * 0.975);
+
+    let outlineVertexIdx = 0,
+      shapeVertexIdx = 0;
+
+    for (let i = 0; i < waterdrops.nodes.length; i++) {
+      const { id, globalX: x, globalY: y, levs, maxLev } = waterdrops.nodes[i];
+
+      let outlineVerticesAdded = outlineMeshCoords.length,
+        shapeVerticesAdded = 0;
+
+      for (let k = levs.length - 1; k >= 0; k--) {
+        const l1 = k !== levs.length - 1 ? levs[k + 1] : 0;
+        const l2 = levs[k];
+
+        const meshCoords = waterdropDelta(l1 / maxLev, l2 / maxLev, RAD_PX);
+        const color = new THREE.Color(interpolateWatercolorBlue(k / LEVELS));
+
+        dropsGeometry.addMeshCoords(
+          meshCoords,
+          { x: x, y: -y },
+          color,
+          (i % 5) / 50 + 0.02
+        );
+
+        shapeVerticesAdded += meshCoords.length * 3;
+      }
+
+      outlinePoints.push(
+        ...outlineMeshCoords.map(
+          ([dx, dy]) => new THREE.Vector3(x + dx, -y - dy, (i % 5) / 50 + 0.01)
+        )
+      );
+
+      this.idToVertInfo[id] = {
+        shapeVertRange: [shapeVertexIdx, shapeVerticesAdded],
+        outlineVertRange: [outlineVertexIdx, outlineVerticesAdded],
+        centroid: [x, y],
+      };
+
+      shapeVertexIdx += shapeVerticesAdded;
+      outlineVertexIdx += outlineVerticesAdded;
+    }
+
+    this.dropsMesh = new THREE.Mesh(
+      dropsGeometry.threeGeom,
+      new THREE.MeshBasicMaterial({
+        vertexColors: THREE.VertexColors,
+      })
+    );
+
+    this.outlineMesh = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(outlinePoints),
+      new THREE.LineBasicMaterial({
+        color: 0xcccccc,
+        transparent: true,
+        opacity: 0,
+      })
+    );
+  }
+
+  updateOutlineVisibility(opac) {
+    if (!this.outlineMesh) return;
+    this.outlineMesh.material.opacity = opac;
+    this.outlineMesh.material.needsUpdate = true;
+  }
+
+  updateMeshes(waterdrops) {
+    for (let i = 0; i < waterdrops.nodes.length; i++) {
+      const { id, globalX: newX, globalY: newY } = waterdrops.nodes[i];
+
+      const [sviStart, sviLen] = this.idToVertInfo[id].shapeVertRange;
+      const [oviStart, oviLen] = this.idToVertInfo[id].outlineVertRange;
+      const [oldX, oldY] = this.idToVertInfo[id].centroid;
+
+      const dx = newX - oldX,
+        dy = newY - oldY;
+
+      const shapeGeom = this.dropsMesh.geometry;
+      const outlineGeom = this.outlineMesh.geometry;
+
+      for (let i = 0; i < sviLen; i++) {
+        const x = shapeGeom.vertices[sviStart + i].x,
+          y = shapeGeom.vertices[sviStart + i].y;
+        shapeGeom.vertices[sviStart + i].setX(x + dx);
+        shapeGeom.vertices[sviStart + i].setY(y - dy);
+      }
+
+      this.idToVertInfo[id].centroid = [newX, newY];
+
+      // TODO find out how to update pos of points
+      // for (let i = 0; i < oviLen; i++) {
+      //   const x = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0],
+      //     y = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1];
+      //   outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0] =
+      //     x + dt * dx;
+      //   outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1] = -(
+      //     y +
+      //     dt * dy
+      //   );
+      // }
+
+      shapeGeom.verticesNeedUpdate = true;
+      // outlineGeom.verticesNeedUpdate = true;
+    }
+  }
+}
+
+class WaterdropSimplifiedMesh {
+  mesh;
+  added = false;
+
+  vertToId = {};
+  idToVert = {};
+
+  draw(scene) {
+    if (!this.added) {
+      scene.add(this.mesh);
+      this.added = true;
+    }
+  }
+
+  remove(scene) {
+    if (this.added) {
+      scene.remove(this.mesh);
+      this.added = false;
+    }
+  }
+
+  createMesh(waterdrops) {
+    if (!this.mesh) {
+      this.initializeMesh(waterdrops);
+    }
+
+    this.updateMesh(waterdrops);
+
+    return this.mesh;
+  }
+
+  initializeMesh(waterdrops) {
+    const pointsGeometry = new THREE.Geometry();
+
+    for (let i = 0; i < waterdrops.nodes.length; i++) {
+      const { id, globalX: x, globalY: y, levs, domLev } = waterdrops.nodes[i];
+
+      const color = domLev > 0 ? interpolateWatercolorBlue(domLev) : "white";
+
+      pointsGeometry.vertices.push(new THREE.Vector3(x, -y, 0));
+      pointsGeometry.colors.push(new THREE.Color(color));
+
+      this.vertToId[i] = id;
+      this.idToVert[id] = i;
+    }
+
+    const pointsMaterial = new THREE.PointsMaterial({
+      size: RAD_PX * 2,
+      sizeAttenuation: true,
+      vertexColors: THREE.VertexColors,
+      map: new THREE.TextureLoader().load("drop.png"),
+      transparent: true,
+    });
+
+    this.mesh = new THREE.Points(pointsGeometry, pointsMaterial);
+  }
+
+  updateMesh(waterdrops) {
+    for (let i = 0; i < waterdrops.nodes.length; i++) {
+      const { id, globalX: newX, globalY: newY } = waterdrops.nodes[i];
+      const idx = this.idToVert[id];
+
+      this.mesh.geometry.vertices[idx].setX(newX);
+      this.mesh.geometry.vertices[idx].setY(-newY);
+    }
+
+    this.mesh.geometry.verticesNeedUpdate = true;
+  }
+
+  updatePoints(waterdrops, translations, dt) {
+    const verts = this.mesh.geometry.vertices;
+
+    for (let i = 0; i < waterdrops.nodes.length; i++) {
+      const { id } = waterdrops.nodes[i];
+      const idx = this.idToVert[id];
+
+      const [dx, dy] = translations[id];
+
+      const x = verts[idx].x;
+      const y = verts[idx].y;
+
+      verts[idx].setX(x + dt * dx);
+      verts[idx].setY(y - dt * dy);
+    }
+
+    this.mesh.geometry.verticesNeedUpdate = true;
+  }
+
+  intersectObject(camera, x, y) {
+    const intersects = camera.intersectObject(x, y, this.mesh);
+
+    if (intersects[0]) {
+      const intersect = sortBy(intersects, "distanceToRay")[0];
+      return this.vertToId[intersect.index];
+    }
+
+    return null;
+  }
 }
