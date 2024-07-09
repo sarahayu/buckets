@@ -28,44 +28,27 @@ import {
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 1; // debugging purposes, don't render all scenarios to speed things up
+const SCEN_DIVISOR = 3; // debugging purposes, don't render all scenarios to speed things up
 const SMALL_DROP_PAD_FACTOR = 1.75;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 1;
 const HOVER_AREA_FACTOR = 1.3 / (1 + Math.SQRT1_2);
 const FILTERED_KEYS = scenarioIDs.filter((_, i) => i % SCEN_DIVISOR === 0);
 
-// ensures order-consistent traversal
-const flattenedData = (function () {
-  const _flattenedData = [];
-  let idx = 0;
-  for (const obj of objectiveIDs) {
-    for (const scen of FILTERED_KEYS) {
-      _flattenedData.push({
-        id: idx,
-        objective: obj,
-        scenario: scen,
-        deliveries:
-          objectivesData[obj][SCENARIO_KEY_STRING][scen][DELIV_KEY_STRING],
-      });
-      idx++;
-    }
-  }
+// Flattening hierarchical data makes it more flexible for classifying
+// (from experience). id conveniently corresponds to index.
+// Also cache classifications (by objective and by scenario, for now)
+const [flattenedData, dataGroupings] = preprocessData();
 
-  return _flattenedData;
-})();
+// pre-calculate these so we don't lag later
+const waterdrops1 = initWaterdrops("objective");
+const waterdrops2 = initWaterdrops("scenario");
 
 export default function LargeDropletV2App() {
   const width = window.innerWidth,
     height = window.innerHeight;
 
   const { current: scene } = useRef(getScene());
-
-  const waterdrops1 = useRef();
-  const waterdrops2 = useRef();
-
-  if (!waterdrops1.current) waterdrops1.current = initWaterdrops("objective");
-  if (!waterdrops2.current) waterdrops2.current = initWaterdrops("scenario");
 
   const [grouping, setGrouping, groupingRef] = useStateRef("objective");
   const [tooltip, setTooltip] = useState({});
@@ -107,8 +90,7 @@ export default function LargeDropletV2App() {
 
       const prevWaterdrops = waterdrops.current;
 
-      waterdrops.current =
-        grouping === "objective" ? waterdrops1.current : waterdrops2.current;
+      waterdrops.current = grouping === "objective" ? waterdrops1 : waterdrops2;
 
       if (prevWaterdrops) {
         setReverseTranslation(
@@ -268,6 +250,77 @@ function InputArea({ grouping, onChange }) {
 
 /*-------------------------------------------- !! spaghetti code below !! --------------------------------------------------------------------*/
 
+function preprocessData() {
+  const flattenedData = [];
+  const dataGroupings = {
+    objective: {},
+    scenario: {},
+  };
+
+  // for ordering later
+  const means = [];
+
+  let idx = 0;
+  for (const obj of objectiveIDs) {
+    for (const scen of FILTERED_KEYS) {
+      if (!dataGroupings["objective"][obj])
+        dataGroupings["objective"][obj] = [];
+
+      if (!dataGroupings["scenario"][scen])
+        dataGroupings["scenario"][scen] = [];
+
+      dataGroupings["objective"][obj].push(idx);
+      dataGroupings["scenario"][scen].push(idx);
+
+      const deliveries =
+        objectivesData[obj][SCENARIO_KEY_STRING][scen][DELIV_KEY_STRING];
+
+      flattenedData.push({
+        id: idx,
+        objective: obj,
+        scenario: scen,
+        deliveries,
+      });
+
+      means.push(d3.mean(deliveries));
+
+      idx++;
+    }
+  }
+
+  const orderedDataGroupings = {};
+
+  for (const criteria of Object.keys(dataGroupings)) {
+    const asdfasdf = [];
+    for (const key of Object.keys(dataGroupings[criteria])) {
+      const ids = dataGroupings[criteria][key];
+      const sortedObjScens = ids.sort((a, b) => means[b] - means[a]);
+      asdfasdf.push({
+        key,
+        sorted: sortedObjScens,
+        mean: d3.mean(ids.map((id) => flattenedData[id].deliveries).flat()),
+      });
+    }
+
+    const sortedObjScens = asdfasdf.sort((a, b) => b.mean - a.mean);
+
+    orderedDataGroupings[criteria] = {};
+
+    for (let i = 0; i < sortedObjScens.length; i++) {
+      const { key, sorted } = sortedObjScens[i];
+      const IDtoRank = {};
+
+      for (let j = 0; j < sorted.length; j++) {
+        IDtoRank[sorted[j]] = j;
+      }
+      orderedDataGroupings[criteria][key] = IDtoRank;
+      orderedDataGroupings[criteria][key].rank = i;
+    }
+  }
+
+  return [flattenedData, orderedDataGroupings];
+}
+
 // TODO optimize!!
 function initWaterdrops(grouping) {
   const groupKeys = grouping === "objective" ? objectiveIDs : FILTERED_KEYS;
@@ -290,9 +343,9 @@ function initWaterdrops(grouping) {
     placeDropsUsingPhysics(
       0,
       0,
-      groupKeys.map((p) => ({
+      groupKeys.map((p, idx) => ({
         r: largeDropRad,
-        id: p,
+        id: idx,
       }))
     ),
     ({ id }) => id
@@ -301,9 +354,9 @@ function initWaterdrops(grouping) {
   const smallNodesPhys = placeDropsUsingPhysics(
     0,
     0,
-    memberKeys.map((s) => ({
+    memberKeys.map((s, idx) => ({
       r: smallDropRad,
-      id: s,
+      id: idx,
     }))
   );
 
@@ -328,6 +381,9 @@ function initWaterdrops(grouping) {
     const groupID = grouping === "objective" ? objective : scenario;
     const memberID = grouping === "objective" ? scenario : objective;
 
+    const groupRank = dataGroupings[grouping][groupID].rank;
+    const memberRank = dataGroupings[grouping][groupID][id];
+
     nodes.push({
       id,
       levs,
@@ -335,12 +391,12 @@ function initWaterdrops(grouping) {
       domLev: calcDomLev(levs),
       tilt: Math.random() * 50 - 25,
       dur: Math.random() * 100 + 400,
-      x: smallNodesPos[memberID].x,
-      y: smallNodesPos[memberID].y,
+      x: smallNodesPos[memberRank].x,
+      y: smallNodesPos[memberRank].y,
       group: groupID,
       key: memberID,
-      globalX: largeNodesPos[groupID].x + smallNodesPos[memberID].x,
-      globalY: largeNodesPos[groupID].y + smallNodesPos[memberID].y,
+      globalX: largeNodesPos[groupRank].x + smallNodesPos[memberRank].x,
+      globalY: largeNodesPos[groupRank].y + smallNodesPos[memberRank].y,
     });
 
     nodeIDtoIdx[id] = idx++;
@@ -348,8 +404,8 @@ function initWaterdrops(grouping) {
 
   for (const groupKey of groupKeys) {
     groupNodes.push({
-      x: largeNodesPos[groupKey].x,
-      y: largeNodesPos[groupKey].y,
+      x: largeNodesPos[dataGroupings[grouping][groupKey].rank].x,
+      y: largeNodesPos[dataGroupings[grouping][groupKey].rank].y,
       tilt: Math.random() * 50 - 25,
       key: groupKey,
       height: smallNodesPhys.height,
@@ -378,27 +434,6 @@ function calcTranslations(waterdropsTo, waterdropsFrom) {
   }
 
   return translations;
-}
-
-function updateGeom(g, endWaterdrops, reverseTranslations, t) {
-  let idx = 0;
-  t = 1 - t;
-
-  for (let i = 0; i < endWaterdrops.nodes.length; i++) {
-    const nodes = endWaterdrops.nodes[i].nodes;
-    const pKey = endWaterdrops.nodes[i].key;
-
-    for (let j = 0; j < nodes.length; j++) {
-      const { globalX: endX, globalY: endY, key: sKey } = nodes[j];
-
-      const [dx, dy] = reverseTranslations[pKey][sKey];
-
-      g.vertices[idx].setX(endX + t * dx);
-      g.vertices[idx].setY(-(endY + t * dy));
-
-      idx++;
-    }
-  }
 }
 
 function getScene() {
@@ -446,40 +481,6 @@ function updateLargeDropSVG(container, waterdrops, onHover, onUnhover) {
       d3.select(this).select("path").attr("stroke", "transparent");
       onUnhover(d);
     });
-}
-
-function getWaterlevels(grouping, primaryKeys, secondaryKeys) {
-  const mat = {};
-
-  if (grouping === "objective") {
-    for (let i = 0; i < primaryKeys.length; i++) {
-      const obj = primaryKeys[i];
-      const row = {};
-
-      for (let j = 0; j < secondaryKeys.length; j++) {
-        const scen = secondaryKeys[j];
-        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
-        row[scen] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-      }
-
-      mat[obj] = row;
-    }
-  } else if (grouping === "scenario") {
-    for (let i = 0; i < primaryKeys.length; i++) {
-      const scen = primaryKeys[i];
-      const row = {};
-
-      for (let j = 0; j < secondaryKeys.length; j++) {
-        const obj = secondaryKeys[j];
-        const i = createInterps(obj, scen, objectivesData, MAX_DELIVS);
-        row[obj] = ticksExact(0, 1, LEVELS + 1).map((d) => i(d));
-      }
-
-      mat[scen] = row;
-    }
-  }
-
-  return mat;
 }
 
 // TODO fix colors
@@ -623,19 +624,15 @@ class WaterdropMesh {
       this.idToVertInfo[id].centroid = [newX, newY];
 
       // TODO find out how to update pos of points
-      // for (let i = 0; i < oviLen; i++) {
-      //   const x = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0],
-      //     y = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1];
-      //   outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0] =
-      //     x + dt * dx;
-      //   outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1] = -(
-      //     y +
-      //     dt * dy
-      //   );
-      // }
+      for (let i = 0; i < oviLen; i++) {
+        const x = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0],
+          y = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1];
+        outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0] = x + dx;
+        outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1] = y - dy;
+      }
 
       shapeGeom.verticesNeedUpdate = true;
-      // outlineGeom.verticesNeedUpdate = true;
+      outlineGeom.attributes.position.needsUpdate = true;
     }
   }
 }
