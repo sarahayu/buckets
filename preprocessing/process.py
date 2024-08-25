@@ -13,13 +13,38 @@ import math
 IN_FOLDER = 'scenarios'
 OUT_FOLDER = 'output'
 
+# for decreasing file size, see `get_percentiles`
+SIMPLIFY_ARR_TO_N_ELEMS = 20
+
 all_files = sorted([f for f in os.listdir(IN_FOLDER) if os.path.isfile(os.path.join(IN_FOLDER, f))])
 
-PREC = 1e2
-
+# truncate decimals to decrease file size
 def num_shorten(n):
     return int(n)
-    # return round(n * PREC) / PREC
+
+# takes arr of some length and find the `slices` percentiles.
+# for our application, we just need to store enough elements to create interpolators,
+# so no need to store array sizes of dozens long.
+def get_percentiles(arr, slices):
+    n = len(arr)
+    perc_arr = []
+
+    for i in range(0, slices + 1):
+        x = i * (n - 1) / slices
+        x_1 = math.floor(x)
+        x_2 = math.ceil(x)
+
+        if x_1 == x_2:
+            perc_arr.append(arr[x_1])
+        else:
+            a = arr[x_1]
+            b = arr[x_2]
+            interp = x - x_1
+            
+            perc_arr.append(a + (b - a) * interp)
+    
+    return perc_arr
+
 
 if not os.path.exists(OUT_FOLDER):
     os.makedirs(OUT_FOLDER)
@@ -28,9 +53,6 @@ all_objectives = []
 
 for objective_file in all_files:
     with open(os.path.join(IN_FOLDER, objective_file), 'r') as objective_csv:
-
-        print(objective_file)
-
         csvreader = csv.reader(objective_csv)
         scenario_map = {}
 
@@ -58,9 +80,11 @@ for objective_file in all_files:
             for i in range(math.ceil(tot_months / 12)):
                 year_data = monthly_data[i * 12:min((i + 1) * 12, tot_months)]
                 year_avg = sum(year_data) / len(year_data)
-                new_data.append(num_shorten(year_avg))
+                new_data.append(year_avg)
 
-            scenario_map[scen_name] = new_data
+            simplified_data = [num_shorten(x) for x in get_percentiles(new_data, SIMPLIFY_ARR_TO_N_ELEMS)]
+
+            scenario_map[scen_name] = simplified_data
 
         # convert map to array
 

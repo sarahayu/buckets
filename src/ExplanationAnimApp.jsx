@@ -1,219 +1,247 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as d3 from "d3";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Scrollama, Step } from "react-scrollama";
+
+import BucketGlyph from "./bucket-lib/BucketGlyph";
+
+import WaterdropGlyph from "./utils/explanation-anim/WaterdropGlyph";
+import DotHistogram from "./utils/explanation-anim/DotHistogram";
+import { useDataStory } from "./utils/explanation-anim/useDataStory";
+import { constants } from "./utils/explanation-anim/constants";
+import { hideElems, showElems } from "./utils/explanation-anim/render-utils";
 import {
   DELIV_KEY_STRING,
-  DELIV_KEY_STRING_UNORD,
-  MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectiveIDs,
   objectivesData,
-} from "./data/objectivesData";
-import BucketGlyph from "./bucket-lib/BucketGlyph";
-import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
+  scenarioIDs,
+} from "./data/completeObjectivesData";
+import { ticksExact } from "./bucket-lib/utils";
 
-const DEFAULT_SCENARIO = "expl0595";
-const DEFAULT_OBJECTIVE = "C_STANGDWN_MIF";
-const DATE_START = 1930;
-const INTERP_COLOR = d3.interpolateRgbBasis([
-  "#F2F5FB",
-  "#D0DDEB",
-  "#7B9BC0",
-  "#4F739F",
-  "#112A57",
-]);
+const BASELINE_SCENARIO = "expl0000";
 
-export default function ExplanationAnimApp() {
-  const [curObjective, setCurObjective] = useState(DEFAULT_OBJECTIVE);
+export default function ExaplanationAnimApp() {
+  const [curObjective, setCurObjective] = useState(constants.DEFAULT_OBJECTIVE);
 
-  const [slide, setSlide] = useState(-1);
-  const lastSlide = useRef();
-  const slideFns = useRef([]);
+  const tutorialState = useTutorialState(curObjective);
+  const getSlidesInRange = useDataStory(tutorialState, curObjective);
 
-  const svgElement = useRef();
-  const [bucketInterper, setBucketInterper] = useState(() => d3.scaleLinear());
+  useEffect(
+    function changeObjective() {
+      hideElems(
+        ".bucket-wrapper, .vardrop, .var-scen-label, .vardrop .dot-histogram-wrapper, .main-histogram, .tut-drop-graphics-wrapper"
+      );
 
-  const width = 800,
-    height = 400;
+      console.log("obj change in effect");
+      tutorialState.setReadyHash((rh) => rh + 1);
+    },
+    [curObjective]
+  );
 
-  const margin = { top: 30, right: 30, bottom: 30, left: 60 };
+  const onStepEnter = async ({ data, direction }) => {
+    if (direction === "up") return;
+    data.animHandler?.do();
+  };
 
-  useLayoutEffect(() => {
-    const svgContainer = d3.select(svgElement.current);
+  const onStepExit = async ({ data, direction }) => {
+    if (direction === "down") return;
+    data.animHandler?.undo();
+  };
 
-    svgContainer.selectAll("*").remove();
-    document.querySelector(".bucket-wrapper").style.display = "none";
+  const allSlides = getSlidesInRange("barsAppear", "ifChangeReality");
 
-    const svgGroup = svgContainer
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .style("background", "rgb(251, 251, 255)")
-      .attr("opacity", 1)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const dataDescending = objectivesData[curObjective][SCENARIO_KEY_STRING][
-      DEFAULT_SCENARIO
-    ][DELIV_KEY_STRING_UNORD].map((val, placeFromLeft) => ({
-      val,
-      placeFromLeft,
-      year: placeFromLeft + DATE_START,
-    })).sort((a, b) => b.val - a.val);
-
-    setBucketInterper(() =>
-      d3
-        .scaleLinear()
-        .domain(ticksExact(0, 1, dataDescending.length))
-        .range(
-          objectivesData[curObjective][SCENARIO_KEY_STRING][DEFAULT_SCENARIO][
-            DELIV_KEY_STRING
-          ].map((v) => v / MAX_DELIVS)
-        )
-        .clamp(true)
-    );
-
-    const x = d3
-      .scaleBand()
-      .domain(dataDescending.map(({ year }) => year).sort())
-      .range([0, width])
-      .padding(0.4);
-    const y = d3.scaleLinear().domain([0, MAX_DELIVS]).range([height, 0]);
-
-    const xaxis = d3
-      .axisBottom(x)
-      .tickSize(0)
-      .tickValues(x.domain().filter((_, i) => i % 10 === 0));
-
-    svgGroup
-      .append("g")
-      .attr("class", "anim-xaxis")
-      .attr("opacity", 1)
-      .attr("transform", `translate(0, ${height})`)
-      .call(xaxis)
-      .selectAll("text")
-      .attr("transform", "translate(-10,0)rotate(-45)")
-      .style("text-anchor", "end");
-    svgGroup.append("g").call(d3.axisLeft(y));
-
-    slideFns.current[0] = () => {
-      svgGroup
-        .selectAll(".bars")
-        .data(dataDescending, (d) => d.placeFromLeft)
-        .join("rect")
-        .attr("class", "bars")
-        .attr("x", (d) => x(d.year))
-        .attr("y", height)
-        .attr("width", x.bandwidth())
-        .attr("height", 0)
-        .attr("opacity", 1)
-        .attr("fill", "steelblue")
-        .transition()
-        .duration(500)
-        .delay((d) => d.placeFromLeft * 10)
-        .attr("y", (d) => y(d.val))
-        .attr("height", (d) => height - y(d.val));
-    };
-
-    slideFns.current[1] = async () => {
-      const finalWidth = width / 8;
-
-      svgGroup.select(".anim-xaxis").call(xaxis.tickFormat(""));
-
-      const bars = svgGroup.selectAll(".bars");
-
-      await bars
-        .style("mix-blend-mode", "multiply")
-        .transition()
-        .duration(500)
-        .attr("opacity", 0.05)
-        .transition()
-        .delay(
-          (d) =>
-            100 +
-            (1 - (1 - d.placeFromLeft / dataDescending.length) ** 4) * 1000
-        )
-        .duration(500)
-        .attr("width", finalWidth)
-        .attr("x", (d) => width / 2 - finalWidth / 2)
-        .end();
-
-      svgGroup
-        .select(".anim-xaxis")
-        .transition()
-        .transition(500)
-        .attr("transform", `translate(0, ${height + 50})`)
-        .attr("opacity", 0);
-
-      bars.transition().delay(500).attr("x", 0);
-
-      svgGroup
-        .transition()
-        .delay(500)
-        .attr(
-          "transform",
-          `translate(${margin.left + width / 2 - finalWidth / 2},${margin.top})`
-        );
-    };
-
-    slideFns.current[2] = () => {
-      document.querySelector(".bucket-wrapper").style.display = "initial";
-      svgContainer.transition().duration(500).attr("opacity", 0);
-    };
-
-    const handleClick = () => {
-      setSlide((p) => p + 1);
-    };
-
-    svgContainer.node().addEventListener("click", handleClick);
-
-    return () => {
-      svgContainer.node().removeEventListener("click", handleClick);
-
-      setSlide(-1);
-    };
-  }, [curObjective]);
-
-  useEffect(() => {
-    if (slide === -1) {
-      setSlide(0);
-      lastSlide.current = -1;
-      return;
-    }
-
-    if (lastSlide.current < slide && slide < slideFns.current.length) {
-      slideFns.current[slide]();
-      lastSlide.current = slide;
-    }
-  }, [slide]);
+  const selectedObjs = [
+    "SWPTOTALDEL",
+    "DEL_CVP_TOTAL",
+    "DEL_SWP_PMI",
+    "DEL_CVP_PAG",
+    "DEL_CVP_PSC_PEX",
+    "S_NOD",
+    "S_SHSTA",
+    "S_OROVL",
+  ];
 
   return (
-    <div className="explanation-anim-wrapper">
+    <div className="tutorial-view">
       <select
         value={curObjective}
         onChange={(e) => setCurObjective(e.target.value)}
       >
-        {objectiveIDs.map((objectiveID) => (
+        {selectedObjs.map((objectiveID) => (
           <option value={objectiveID} key={objectiveID}>
             {objectiveID}
           </option>
         ))}
       </select>
-      <svg ref={svgElement}></svg>
-      <BucketGlyph
-        levelInterp={bucketInterper}
-        width={300}
-        height={height}
-        colorInterp={INTERP_COLOR}
-      />
-      <p>
-        We turn yearly water delivery quantities into a heatmap-like
-        representation, where darker blue indicates ranges of likely quantities
-        and lighter blue indicates ranges of less likely quantities. This works
-        well with the metaphor of a water bucket, since we can imagine water
-        deliveries as levels of water filled in a bucket; darker blue water
-        levels represent how much water we can expect AT LEAST, with lighter
-        blue water levels represent various less likely, but still plausible,
-        water delivery quantities.
-      </p>
+      <div className="scrollama scrollama-1">
+        <div className="tut-graph-wrapper">
+          <div className="tut-graph">
+            <svg id="pag-bar-graph"></svg>
+            <BucketGlyph
+              levelInterp={tutorialState.bucketInterper}
+              width={300}
+              height={constants.BAR_CHART_HEIGHT}
+              colorInterp={constants.INTERP_COLOR}
+            />
+            <p className="fancy-font objective-label">{curObjective}</p>
+          </div>
+        </div>
+
+        <div className="tut-drop-graphics-wrapper">
+          <div className="main-waterdrop">
+            <WaterdropGlyph
+              levelInterp={tutorialState.dropInterper}
+              width={400}
+              height={constants.BAR_CHART_HEIGHT}
+              colorInterp={constants.INTERP_COLOR}
+            />
+          </div>
+          <div className="main-histogram">
+            <DotHistogram
+              width={210}
+              height={140}
+              data={tutorialState.objectiveDelivs}
+              domain={[0, d3.max(tutorialState.objectiveDelivs)]}
+            />
+          </div>
+          {constants.DROP_VARIATIONS.map(({ idx, scen, clas, desc }) => (
+            <div className={`vardrop ${clas}`} key={idx} desc={desc}>
+              <div>
+                <WaterdropGlyph
+                  levelInterp={tutorialState.variationInterpers[idx]}
+                  width={200}
+                  height={(constants.BAR_CHART_HEIGHT * 2) / 3 / 2}
+                  colorInterp={constants.INTERP_COLOR}
+                />
+                <DotHistogram
+                  width={210}
+                  height={140}
+                  data={tutorialState.objectiveVariationDelivs[idx]}
+                  domain={[0, d3.max(tutorialState.objectiveDelivs)]}
+                />
+              </div>
+              <p className="var-scen-label">
+                scenario <span className="scen-number">{scen}</span>
+              </p>
+            </div>
+          ))}
+          <p className="fancy-font objective-label">{curObjective}</p>
+        </div>
+        <Scrollama
+          offset={0.9}
+          onStepEnter={onStepEnter}
+          onStepExit={onStepExit}
+        >
+          {allSlides.map((slide, i) => (
+            <Step key={i} data={slide}>
+              <div className="tut-text-card">{slide.text}</div>
+            </Step>
+          ))}
+          <Step key={"last"} data={{}}>
+            <div className="tut-text-card" style={{ marginBottom: "40vh" }}>
+              <button
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  for (let i = allSlides.length - 1; i >= 0; i--) {
+                    allSlides[i].animHandler?.undo();
+                  }
+                }}
+              >
+                Back to Top
+              </button>
+            </div>
+          </Step>
+        </Scrollama>
+      </div>
     </div>
   );
+}
+
+function useTutorialState(objective) {
+  const [readyHash, setReadyHash] = useState(0);
+
+  const [bucketInterper, setBucketInterper] = useState(() =>
+    d3.scaleLinear().range([0, 0])
+  );
+  const [dropInterper, setDropInterper] = useState(() =>
+    d3.scaleLinear().range([0, 0])
+  );
+  const [variationInterpers, setVariationInterpers] = useState(() =>
+    constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
+  );
+
+  const [objectiveDelivs, setObjectiveDelivs] = useState(() => []);
+  const [objectiveInterper, setObjectiveInterper] = useState(() =>
+    d3.scaleLinear().range([0, 0])
+  );
+  const [objectiveVariationDelivs, setObjectiveVariationDelivs] = useState(() =>
+    constants.VARIATIONS.map(() => [])
+  );
+  const [objectiveVariations, setObjectiveVariations] = useState(() =>
+    constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
+  );
+
+  useEffect(() => {
+    setBucketInterper(() => d3.scaleLinear().range([0, 0]));
+    setDropInterper(() => d3.scaleLinear().range([0, 0]));
+    setVariationInterpers(() =>
+      constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
+    );
+
+    const objDelivs =
+      objectivesData[objective][SCENARIO_KEY_STRING][BASELINE_SCENARIO][
+        DELIV_KEY_STRING
+      ];
+    const maxDelivs = d3.max(objDelivs);
+    const objInterper = d3
+      .scaleLinear()
+      .domain(ticksExact(0, 1, objDelivs.length))
+      .range(
+        objDelivs
+          .map((v) => v / maxDelivs)
+          .sort()
+          .reverse()
+      )
+      .clamp(true);
+
+    setObjectiveDelivs(() => objDelivs);
+    setObjectiveInterper(() => objInterper);
+
+    const varDelivsArr = constants.VARIATIONS.map(
+      (vars) =>
+        objectivesData[objective][SCENARIO_KEY_STRING][vars][DELIV_KEY_STRING]
+    );
+
+    const objVars = varDelivsArr.map((varDelivs) =>
+      d3
+        .scaleLinear()
+        .domain(ticksExact(0, 1, varDelivs.length))
+        .range(
+          varDelivs
+            .map((v) => v / maxDelivs)
+            .sort()
+            .reverse()
+        )
+        .clamp(true)
+    );
+
+    setObjectiveVariationDelivs(() => varDelivsArr);
+    setObjectiveVariations(() => objVars);
+    console.log("obj change in usestate");
+  }, [objective]);
+
+  return {
+    readyHash,
+    setReadyHash,
+    bucketInterper,
+    setBucketInterper,
+    dropInterper,
+    setDropInterper,
+    variationInterpers,
+    setVariationInterpers,
+    objectiveDelivs,
+    objectiveInterper,
+    objectiveVariationDelivs,
+    objectiveVariations,
+  };
 }

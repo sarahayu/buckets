@@ -13,7 +13,7 @@ import {
   createInterps,
   criteriaSort,
   placeDropsUsingPhysics,
-} from "./utils";
+} from "./utils/utils";
 import { useNavigate } from "react-router-dom";
 
 const LEVELS = 5;

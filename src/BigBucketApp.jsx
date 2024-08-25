@@ -5,7 +5,7 @@ import { ticksExact } from "./bucket-lib/utils";
 import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
 
 import { bucketPath } from "./bucket-lib/utils";
-import { createInterps, criteriaSort } from "./utils";
+import { createInterps, criteriaSort } from "./utils/utils";
 
 const LEVELS = 10;
 const LINE_WIDTH = 3;

@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { useEffect, useMemo, useRef } from "react";
 import { getQuantileBins } from "./bucket-lib/quantile-histogram";
-import { WATERDROP_ICON } from "./utils";
+import { WATERDROP_ICON } from "./utils/utils";
 import { MAX_DELIVS } from "./data/objectivesData";
 
 const NUM_CIRCLES = 20;

@@ -1053,3 +1053,204 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   left: 2rem;
   top: 20%;
 }
+
+.tutorial-view {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  background-color: #efefef;
+  isolation: isolate;
+  line-height: 1.5;
+}
+
+.scrollama {
+  padding-bottom: 1px;
+}
+
+.tut-graph-wrapper {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: min-content;
+  margin-inline: auto;
+  z-index: -1;
+  display: flex;
+}
+
+.tut-graph {
+  display: grid;
+  grid-template-areas: "area";
+}
+
+.tut-graph > * {
+  place-self: center;
+  grid-area: area;
+}
+
+.objective-label {
+  text-align: center;
+  color: gray;
+  font-size: 1.5rem;
+  position: absolute;
+  top: calc(50% - 260px);
+  place-self: center;
+}
+
+.objective-label.move-to-bottom {
+  top: auto;
+  bottom: calc(1rem);
+}
+
+.tut-text-card {
+  padding: 2rem;
+  max-width: 30vw;
+  margin-inline: auto;
+  position: relative;
+  isolation: isolate;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 1em;
+}
+
+.tut-text-card + .tut-text-card {
+  margin-top: 100vh;
+}
+
+.tut-text-card:last-of-type {
+  margin-bottom: 100vh;
+}
+
+.vardrop {
+  position: absolute;
+}
+
+.vardrop > div {
+  display: flex;
+  width: min-content;
+  align-items: center;
+}
+
+.vardrop path {
+}
+
+.tut-drop-graphics-wrapper {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  margin-inline: auto;
+  display: grid;
+}
+
+.tut-drop-graphics-wrapper > :first-child {
+  place-self: center;
+}
+
+.drop2 {
+  right: calc(50% + 25ch);
+  bottom: calc(40% + 4rem);
+}
+
+.drop4 {
+  left: calc(50% + 25ch);
+  bottom: calc(40% + 4rem);
+}
+
+.drop3 {
+  bottom: calc(40% + 30ch);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.drop1 {
+  right: calc(50% + 30ch);
+  top: calc(60% + 1rem);
+}
+
+.drop5 {
+  left: calc(50% + 30ch);
+  top: calc(60% + 1rem);
+}
+
+.tut-text-card button {
+  display: block;
+  margin: 1em auto;
+  background-color: none;
+  border: 2px solid lightgray;
+  background-color: transparent;
+  padding: 0.5em 1em;
+  border-radius: 1em;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tut-text-card button:hover {
+  background-color: lightgray;
+}
+
+.main-waterdrop p:nth-of-type(1),
+.vardrop p:nth-of-type(1) {
+  display: block;
+  text-align: center;
+  margin-top: 1em;
+}
+
+.main-waterdrop p:nth-of-type(2) {
+  margin-top: 1em;
+}
+
+.tut-drop-graphics-wrapper .scen-number {
+  color: orange;
+  font-weight: bold;
+}
+
+.vardrop.hasarrow::before {
+  content: attr(desc);
+  display: block;
+  position: absolute;
+  color: gray;
+  opacity: 0.5;
+  width: 15ch;
+  text-align: center;
+  transform-origin: center center;
+  border-bottom: 1px dashed gray;
+}
+
+.drop2.hasarrow::before {
+  top: 50%;
+  left: 100%;
+  transform: rotate(30deg);
+}
+
+.drop4.hasarrow::before {
+  top: 50%;
+  right: 100%;
+  transform: rotate(-30deg);
+}
+
+.drop3.hasarrow::before {
+  top: calc(100% + 7ch);
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+}
+
+.drop1.hasarrow::before {
+  bottom: 60%;
+  left: 100%;
+  transform: rotate(-30deg);
+}
+
+.drop5.hasarrow::before {
+  bottom: 60%;
+  right: 100%;
+  transform: rotate(30deg);
+}
+
+.main-histogram {
+  position: absolute;
+  top: calc(50% + 3rem + 100px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.scrollama-1 .dot-histogram-wrapper text {
+  font-size: 0.5rem;
+}

@@ -8,7 +8,7 @@ import {
   createInterps,
   criteriaSort,
   placeDropsUsingPhysics,
-} from "./utils";
+} from "./utils/utils";
 
 const LEVELS = 5;
 const DEFAULT_OBJECTIVE_IDX = 2;
@@ -147,7 +147,7 @@ export default function ScenarioDropletsApp({ watercolor = false }) {
               .append("g")
               .attr("class", "text-scale")
               .append("text")
-              .style("font-size", 16)
+              .style("font-size", 1)
               .attr("text-anchor", "middle");
 
             const s = d3.select(this);

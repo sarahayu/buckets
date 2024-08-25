@@ -1,4 +1,4 @@
-import { mapBy } from "../utils";
+import { mapBy } from "../utils/utils";
 
 export const MAX_DELIVS = 1200;
 export const SCENARIO_KEY_STRING = "scens";

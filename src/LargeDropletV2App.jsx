@@ -23,12 +23,12 @@ import {
   useStateRef,
   waterdropDelta,
   waterdropDeltaOutline,
-} from "./utils";
+} from "./utils/utils";
 
 const LEVELS = 5;
 const RAD_PX = 3;
 const MIN_LEV_VAL = 0.1;
-const SCEN_DIVISOR = 3; // debugging purposes, don't render all scenarios to speed things up
+const SCEN_DIVISOR = 1; // debugging purposes, don't render all scenarios to speed things up
 const SMALL_DROP_PAD_FACTOR = 1.75;
 const LARGE_DROP_PAD_FACTOR = 1.5;
 const ANIM_TIME = 1;
@@ -623,7 +623,6 @@ class WaterdropMesh {
 
       this.idToVertInfo[id].centroid = [newX, newY];
 
-      // TODO find out how to update pos of points
       for (let i = 0; i < oviLen; i++) {
         const x = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 0],
           y = outlineGeom.attributes.position.array[(oviStart + i) * 3 + 1];

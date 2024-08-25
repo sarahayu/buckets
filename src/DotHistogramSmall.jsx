@@ -5,7 +5,7 @@ import {
   WATERDROP_ICON,
   kernelDensityEstimator,
   kernelEpanechnikov,
-} from "./utils";
+} from "./utils/utils";
 import { MAX_DELIVS } from "./data/objectivesData";
 
 const NUM_CIRCLES = 20;

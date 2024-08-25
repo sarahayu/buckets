@@ -18,7 +18,7 @@ import BucketGlyph from "./bucket-lib/BucketGlyph";
 import DotHistogram from "./DotHistogram";
 import DotHistogramSmall from "./DotHistogramSmall";
 import classNames from "classnames";
-import { criteriaSort } from "./utils";
+import { criteriaSort } from "./utils/utils";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";

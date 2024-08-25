@@ -11,7 +11,7 @@ import {
 } from "./data/objectivesData";
 import { factorsData } from "./data/factorsData";
 import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
-import { useStickyScale } from "./utils";
+import { useStickyScale } from "./utils/utils";
 
 const DEFAULT_SCENARIO = "expl0000";
 const DEFAULT_OBJECTIVE_ID = "DEL_CVP_PAG_N";
