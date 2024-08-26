@@ -5,7 +5,7 @@ import { getQuantileBins } from "../../bucket-lib/quantile-histogram";
 import { MAX_DELIVS } from "../../data/objectivesData";
 
 const NUM_CIRCLES = 20;
-const MARGIN = { top: 10, right: 10, bottom: 20, left: 10 };
+const MARGIN = { top: 10, right: 10, bottom: 40, left: 10 };
 
 const WATERDROP_ICON = {
   draw: function (context, size) {
@@ -45,7 +45,6 @@ export default function DotHistogram({
       .attr("class", "graph-area")
       .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
 
-    console.log(data);
     svgContainer
       .append("g")
       .attr("transform", `translate(0, ${height})`)
@@ -57,8 +56,9 @@ export default function DotHistogram({
       })
       .append("text")
       .attr("fill", "black")
+      .attr("font-size", "2em")
       .attr("transform", `translate(${width / 2}, ${30})`)
-      .text("Delivery (TAF)");
+      .text("Deliveries (TAF)");
   }, [data]);
 
   useEffect(() => {

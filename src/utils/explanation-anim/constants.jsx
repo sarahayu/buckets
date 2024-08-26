@@ -13,57 +13,62 @@ function initConstants() {
   ]);
 
   const DEFAULT_OBJECTIVE = "SWPTOTALDEL";
-  const DEFAULT_SCENARIO = "expl0000";
+  const BASELINE_SCENARIO = "expl0000";
 
-  const VARIATIONS = [
-    "expl0015", // no delta reg
-    "expl0129", // natural flows
-    "expl0512", // shifting priorities
-    "expl0003", // functional flows
-    "expl0320", // prioritize carryover
-  ];
-
-  const DROP_VARIATIONS = [
+  const _VARIATIONS = [
     {
-      idx: 0,
-      scen: "0015",
-      clas: "drop1",
+      scen_num_str: "0015",
       desc: "no delta reg.",
     },
     {
-      idx: 1,
-      scen: "0129",
-      clas: "drop2",
+      scen_num_str: "0129",
       desc: "natural flows",
     },
     {
-      idx: 2,
-      scen: "0512",
-      clas: "drop3",
+      scen_num_str: "0512",
       desc: "shifting priorities",
     },
     {
-      idx: 3,
-      scen: "0003",
-      clas: "drop4",
+      scen_num_str: "0003",
       desc: "functional flows",
     },
     {
-      idx: 4,
-      scen: "0320",
-      clas: "drop5",
+      scen_num_str: "0320",
       desc: "prioritize carryovers",
     },
   ];
+
+  const VARIATIONS = _VARIATIONS.map(extendVarObj);
+
+  const SELECTED_OBJS = {
+    SWPTOTALDEL: "SWP Total Del.",
+    DEL_CVP_TOTAL: "CVP Total Del.",
+    DEL_SWP_PMI: "SWP MI Delivery Mean",
+    DEL_CVP_PAG: "CVP Ag. Delivery Mean",
+    DEL_CVP_PSC_PEX: "CVP SC+EX Delivery Mean",
+    S_NOD: "Agg. NOD Storage April Mean",
+    S_SHSTA: "April Shasta Mean",
+    S_OROVL: "April Orovile Mean",
+  };
 
   return {
     BAR_CHART_WIDTH,
     BAR_CHART_HEIGHT,
     INTERP_COLOR,
     DEFAULT_OBJECTIVE,
-    DEFAULT_SCENARIO,
+    BASELINE_SCENARIO,
     VARIATIONS,
-    DROP_VARIATIONS,
+    SELECTED_OBJS,
+  };
+}
+
+function extendVarObj({ scen_num_str, desc }, idx) {
+  return {
+    idx,
+    scen_num_str,
+    desc,
+    scen_str: `expl${scen_num_str}`,
+    clas: `drop${idx + 1}`,
   };
 }
 

@@ -1061,6 +1061,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   background-color: #efefef;
   isolation: isolate;
   line-height: 1.5;
+  font-family: Georgia, "Times New Roman", Times, serif;
 }
 
 .scrollama {
@@ -1129,7 +1130,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   align-items: center;
 }
 
-.vardrop path {
+.vardrop p {
+  font-style: italic;
+  font-weight: bold;
+  color: orange;
 }
 
 .tut-drop-graphics-wrapper {
@@ -1203,7 +1207,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 }
 
 .vardrop.hasarrow::before {
-  content: attr(desc);
+  content: "";
   display: block;
   position: absolute;
   color: gray;
@@ -1215,13 +1219,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 }
 
 .drop2.hasarrow::before {
-  top: 50%;
+  top: 80%;
   left: 100%;
   transform: rotate(30deg);
 }
 
 .drop4.hasarrow::before {
-  top: 50%;
+  top: 80%;
   right: 100%;
   transform: rotate(-30deg);
 }
@@ -1233,13 +1237,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 }
 
 .drop1.hasarrow::before {
-  bottom: 60%;
+  bottom: 80%;
   left: 100%;
   transform: rotate(-30deg);
 }
 
 .drop5.hasarrow::before {
-  bottom: 60%;
+  bottom: 80%;
   right: 100%;
   transform: rotate(30deg);
 }

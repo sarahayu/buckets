@@ -17,7 +17,6 @@ export function useDataStory(deps, objective, scenario) {
     function initialize() {
       if (deps.readyHash === 0) return;
 
-      console.log("scenario", scenario);
       const context = { deps, objective, scenario };
 
       const chartAnimGroup = anims.initChartAnimGroup(context);
@@ -54,27 +53,9 @@ export function useDataStory(deps, objective, scenario) {
       ];
 
       setSlides(_slides);
-      console.log("hash changed in datastory");
     },
     [deps.readyHash]
   );
 
-  const getFromTo = useCallback(
-    function (from, to) {
-      let idxFrom, idxTo;
-
-      for (let i = 0; i < slides.length; i++) {
-        if (slides[i].name === from) idxFrom = i;
-        else if (slides[i].name === to) {
-          idxTo = i;
-          break;
-        }
-      }
-
-      return slides.slice(idxFrom, idxTo + 1);
-    },
-    [slides]
-  );
-
-  return getFromTo;
+  return slides;
 }

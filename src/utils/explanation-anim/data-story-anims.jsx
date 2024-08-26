@@ -9,6 +9,7 @@ import {
   SCENARIO_KEY_STRING,
 } from "../../data/objectivesData";
 import { ticksExact } from "../../bucket-lib/utils";
+import { percentToRatioFilled } from "../utils";
 
 const BASELINE_SCENARIO = "expl0000";
 
@@ -28,6 +29,25 @@ function getBucketInterper(objective) {
         .reverse()
     )
     .clamp(true);
+}
+
+function getDropInterper(objective) {
+  const delivs =
+    objectivesData[objective][SCENARIO_KEY_STRING][BASELINE_SCENARIO][
+      DELIV_KEY_STRING_UNORD
+    ];
+  const maxDelivs = d3.max(delivs);
+  return (val) =>
+    d3
+      .scaleLinear()
+      .domain(ticksExact(0, 1, delivs.length))
+      .range(
+        delivs
+          .map((v) => v / maxDelivs)
+          .sort()
+          .reverse()
+      )
+      .clamp(true)(percentToRatioFilled(val));
 }
 
 function initAllAnims() {
@@ -309,7 +329,7 @@ function initAllAnims() {
       showElems(".main-waterdrop");
       showElems(".tut-drop-graphics-wrapper", d3, "grid");
       hideElems(".tut-graph-wrapper, .bucket-wrapper");
-      deps.setDropInterper(() => getBucketInterper(objective));
+      deps.setDropInterper(() => getDropInterper(objective));
     }
 
     function animUndo() {
@@ -338,7 +358,7 @@ function initAllAnims() {
           "none"
         );
 
-        deps.setVariationInterpers(deps.objectiveVariations);
+        deps.setVariationInterpers(deps.objectiveVariationInterpers);
 
         // scen labels
         d3.selectAll(".var-scen-label").style("display", "block");
