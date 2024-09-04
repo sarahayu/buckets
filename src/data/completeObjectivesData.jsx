@@ -23,7 +23,8 @@ export const objectivesData = await (async function () {
 
   console.log("DATA: loading objectives data");
 
-  return addAdditionalMetrics(mapBy(objs, ({ obj }) => obj));
+  // return addAdditionalMetrics(mapBy(objs, ({ obj }) => obj));
+  return mapBy(objs, ({ obj }) => obj);
 })();
 
 export const objectiveIDs = Object.keys(objectivesData);

@@ -1,54 +1,59 @@
 import * as d3 from "d3";
+import { interpolateWatercolorBlue } from "../../bucket-lib/utils";
 
 function initConstants() {
   const BAR_CHART_WIDTH = 500,
     BAR_CHART_HEIGHT = 400;
 
-  const INTERP_COLOR = d3.interpolateRgbBasis([
-    "#F2F5FB",
-    "#D0DDEB",
-    "#7B9BC0",
-    "#4F739F",
-    "#112A57",
-  ]);
+  // const INTERP_COLOR = d3.interpolateRgbBasis([
+  //   "#F2F5FB",
+  //   "#D0DDEB",
+  //   "#7B9BC0",
+  //   "#4F739F",
+  //   "#112A57",
+  // ]);
+  const INTERP_COLOR = interpolateWatercolorBlue;
 
-  const DEFAULT_OBJECTIVE = "SWPTOTALDEL";
+  const DEFAULT_OBJECTIVE = "DEL_NOD_AG_TOTAL";
   const BASELINE_SCENARIO = "expl0000";
 
   const _VARIATIONS = [
-    {
-      scen_num_str: "0015",
-      desc: "no delta reg.",
-    },
     {
       scen_num_str: "0129",
       desc: "natural flows",
     },
     {
-      scen_num_str: "0512",
-      desc: "shifting priorities",
-    },
-    {
-      scen_num_str: "0003",
-      desc: "functional flows",
+      scen_num_str: "0015",
+      desc: "reduce delta regs.",
     },
     {
       scen_num_str: "0320",
-      desc: "prioritize carryovers",
+      desc: "prioritize carryover",
+    },
+    {
+      scen_num_str: "0360",
+      desc: "municipal priority",
+    },
+    {
+      scen_num_str: "0261",
+      desc: "rebalancing",
     },
   ];
 
   const VARIATIONS = _VARIATIONS.map(extendVarObj);
 
   const SELECTED_OBJS = {
-    SWPTOTALDEL: "SWP Total Del.",
-    DEL_CVP_TOTAL: "CVP Total Del.",
-    DEL_SWP_PMI: "SWP MI Delivery Mean",
-    DEL_CVP_PAG: "CVP Ag. Delivery Mean",
-    DEL_CVP_PSC_PEX: "CVP SC+EX Delivery Mean",
-    S_NOD: "Agg. NOD Storage April Mean",
-    S_SHSTA: "April Shasta Mean",
-    S_OROVL: "April Orovile Mean",
+    DEL_NOD_AG_TOTAL: "DEL_NOD_AG_TOTAL",
+    DEL_SJV_AG_TOTAL: "DEL_SJV_AG_TOTAL",
+    DEL_NOD_MI_TOTAL: "DEL_NOD_MI_TOTAL",
+    DEL_SJV_MI_TOTAL: "DEL_SJV_MI_TOTAL",
+    DEL_SOCAL_MI_TOTAL: "DEL_SOCAL_MI_TOTAL",
+    CVP_SWP_EXPORTS: "CVP_SWP_EXPORTS",
+    NDO: "NDO",
+    SAC_IN: "SAC_IN",
+    SJR_IN: "SJR_IN",
+    STO_NOD_TOTAL: "STO_NOD_TOTAL",
+    STO_SOD_TOTAL: "STO_SOD_TOTAL",
   };
 
   return {

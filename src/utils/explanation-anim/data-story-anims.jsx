@@ -38,16 +38,18 @@ function getDropInterper(objective) {
     ];
   const maxDelivs = d3.max(delivs);
   return (val) =>
-    d3
-      .scaleLinear()
-      .domain(ticksExact(0, 1, delivs.length))
-      .range(
-        delivs
-          .map((v) => v / maxDelivs)
-          .sort()
-          .reverse()
-      )
-      .clamp(true)(percentToRatioFilled(val));
+    percentToRatioFilled(
+      d3
+        .scaleLinear()
+        .domain(ticksExact(0, 1, delivs.length))
+        .range(
+          delivs
+            .map((v) => v / maxDelivs)
+            .sort()
+            .reverse()
+        )
+        .clamp(true)(val)
+    );
 }
 
 function initAllAnims() {

@@ -8,6 +8,7 @@ import {
   objectivesData,
 } from "../../data/completeObjectivesData";
 import { constants } from "./constants";
+import { percentToRatioFilled } from "../utils";
 
 export default function useTutorialState(objective) {
   const [readyHash, setReadyHash] = useState(0);
@@ -24,9 +25,6 @@ export default function useTutorialState(objective) {
   );
 
   const [objectiveDelivs, setObjectiveDelivs] = useState(() => []);
-  const [objectiveInterper, setObjectiveInterper] = useState(() =>
-    d3.scaleLinear().range([0, 0])
-  );
   const [objectiveVariationDelivs, setObjectiveVariationDelivs] = useState(() =>
     constants.VARIATIONS.map(() => [])
   );
@@ -47,19 +45,8 @@ export default function useTutorialState(objective) {
         constants.BASELINE_SCENARIO
       ][DELIV_KEY_STRING];
     const maxDelivs = d3.max(objDelivs);
-    const objInterper = d3
-      .scaleLinear()
-      .domain(ticksExact(0, 1, objDelivs.length))
-      .range(
-        objDelivs
-          .map((v) => v / maxDelivs)
-          .sort()
-          .reverse()
-      )
-      .clamp(true);
 
     setObjectiveDelivs(() => objDelivs);
-    setObjectiveInterper(() => objInterper);
 
     const varDelivsArr = constants.VARIATIONS.map(
       ({ scen_str }) =>
@@ -68,17 +55,20 @@ export default function useTutorialState(objective) {
         ]
     );
 
-    const objVars = varDelivsArr.map((varDelivs) =>
-      d3
-        .scaleLinear()
-        .domain(ticksExact(0, 1, varDelivs.length))
-        .range(
-          varDelivs
-            .map((v) => v / maxDelivs)
-            .sort()
-            .reverse()
+    const objVars = varDelivsArr.map(
+      (varDelivs) => (val) =>
+        percentToRatioFilled(
+          d3
+            .scaleLinear()
+            .domain(ticksExact(0, 1, varDelivs.length))
+            .range(
+              varDelivs
+                .map((v) => v / maxDelivs)
+                .sort()
+                .reverse()
+            )
+            .clamp(true)(val)
         )
-        .clamp(true)
     );
 
     setObjectiveVariationDelivs(() => varDelivsArr);
@@ -95,7 +85,6 @@ export default function useTutorialState(objective) {
     variationInterpers,
     setVariationInterpers,
     objectiveDelivs,
-    objectiveInterper,
     objectiveVariationDelivs,
     objectiveVariationInterpers,
   };
