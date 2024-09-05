@@ -11,7 +11,7 @@ import { hideElems } from "./utils/explanation-anim/render-utils";
 import { useDataStory } from "./utils/explanation-anim/useDataStory";
 import useTutorialState from "./utils/explanation-anim/useTutorialState";
 
-export default function ExaplanationAnimApp() {
+export default function ExplanationAnimApp() {
   const [curObjective, setCurObjective] = useState(constants.DEFAULT_OBJECTIVE);
 
   const tutorialState = useTutorialState(curObjective);

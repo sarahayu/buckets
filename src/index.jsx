@@ -6,6 +6,7 @@ import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import "./index.css";
 
 const SliderApp = React.lazy(() => import("./SliderApp"));
+const ExplanationAnim2App = React.lazy(() => import("./ExplanationAnim2App"));
 const OldMainApp = React.lazy(() => import("./OldMainApp"));
 const ExplanationAnimApp = React.lazy(() => import("./ExplanationAnimApp"));
 const LargeDropletV2App = React.lazy(() => import("./LargeDropletV2App"));
@@ -33,6 +34,7 @@ root.render(
           <main>
             <div className="main-container">
               <Link to="SliderApp" title="Slider" ><img src="SliderApp.png" className="linkPics" /></Link>
+              <Link to="ExplanationAnim2App">Explanation Anim 2</Link>
               <Link to="OldMainApp" title="Old Main" ><img src="OldMainApp.png" className="linkPics" /></Link>
               <Link to="ExplanationAnimApp" title="Explanation Anim" ><img src="ExplanationAnimApp.png" className="linkPics" /></Link>
               <Link to="LargeDropletV2App" title="Large Droplet V2" ><img src="LargeDropletV2App.png" className="linkPics" /></Link>
@@ -49,6 +51,14 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <SliderApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="ExplanationAnim2App"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <ExplanationAnim2App />
           </React.Suspense>
         }
       />
