@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { animations as anims } from "./data-story-anims";
+import useDataStoryVars from "./useDataStoryVars";
 
-export function useDataStory(deps, objective, scenario) {
+export function useDataStory(objective) {
   /*
     slides = [
         name: string,
@@ -12,12 +13,13 @@ export function useDataStory(deps, objective, scenario) {
     ]
      */
   const [slides, setSlides] = useState([]);
+  const vars = useDataStoryVars(objective);
 
   useEffect(
-    function initialize() {
-      if (deps.readyHash === 0) return;
+    function hookAnimations() {
+      const context = { deps: vars, objective };
 
-      const context = { deps, objective, scenario };
+      anims.prepareDOM();
 
       const chartAnimGroup = anims.initChartAnimGroup(context);
       const bucketsFillAnim = anims.initBucketsFillAnim(context);
@@ -54,8 +56,8 @@ export function useDataStory(deps, objective, scenario) {
 
       setSlides(_slides);
     },
-    [deps.readyHash]
+    [vars.objectiveVariationDelivs]
   );
 
-  return slides;
+  return { slides, vars };
 }

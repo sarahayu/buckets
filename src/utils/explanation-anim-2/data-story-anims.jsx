@@ -9,9 +9,13 @@ import {
   SCENARIO_KEY_STRING,
 } from "../../data/exampleObjectivesData";
 
-const BASELINE_SCENARIO = "expl0000";
-
 function initAllAnims() {
+  function prepareDOM() {
+    hideElems(
+      ".bucket-wrapper, .vardrop, .var-scen-label, .vardrop .dot-histogram-wrapper, .main-histogram, .tut-drop-graphics-wrapper"
+    );
+  }
+
   function initChartAnimGroup({ deps, objective }) {
     let _XInterp;
     let _XAxis;
@@ -357,6 +361,7 @@ function initAllAnims() {
   }
 
   return {
+    prepareDOM,
     initChartAnimGroup,
     initBucketsFillAnim,
     initDropFillAnim,

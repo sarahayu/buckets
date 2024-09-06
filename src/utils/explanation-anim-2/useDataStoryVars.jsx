@@ -11,9 +11,7 @@ import {
 import { constants } from "./constants";
 import { percentToRatioFilled } from "../utils";
 
-export default function useTutorialState(objective) {
-  const [readyHash, setReadyHash] = useState(0);
-
+export default function useDataStoryVars(objective) {
   const [bucketInterper, setBucketInterper] = useState(() =>
     d3.scaleLinear().range([0, 0])
   );
@@ -115,8 +113,6 @@ export default function useTutorialState(objective) {
   }, [objective]);
 
   return {
-    readyHash,
-    setReadyHash,
     bucketInterper,
     setBucketInterper,
     dropInterper,
