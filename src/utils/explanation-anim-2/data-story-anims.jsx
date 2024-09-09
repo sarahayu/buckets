@@ -1,22 +1,14 @@
 import * as d3 from "d3";
 
-import { objectivesData } from "../../data/exampleObjectivesData";
-
 import { constants } from "./constants";
 import { hideElems, showElems } from "../explanation-anim/render-utils";
-import {
-  DELIV_KEY_STRING_UNORD,
-  SCENARIO_KEY_STRING,
-} from "../../data/exampleObjectivesData";
 
 function initAllAnims() {
   function prepareDOM() {
-    hideElems(
-      ".bucket-wrapper, .vardrop, .var-scen-label, .vardrop .dot-histogram-wrapper, .main-histogram, .tut-drop-graphics-wrapper"
-    );
+    hideElems(".bucket-wrapper, .main-histogram, .tut-drop-graphics-wrapper");
   }
 
-  function initChartAnimGroup({ deps, objective }) {
+  function initChartAnimGroup({ deps }) {
     let _XInterp;
     let _XAxis;
     let _dataDescendings;
@@ -26,10 +18,10 @@ function initAllAnims() {
 
     function prepareSVG() {
       {
-        d3.selectAll("#pag-bar-graph > *").remove();
+        d3.selectAll("#bar-graph > *").remove();
 
         const svgGroup = d3
-          .selectAll("#pag-bar-graph")
+          .selectAll("#bar-graph")
           .attr(
             "width",
             constants.BAR_CHART_WIDTH +
@@ -50,12 +42,7 @@ function initAllAnims() {
             `translate(${BAR_CHART_MARGIN.left},${BAR_CHART_MARGIN.top})`
           );
 
-        const allDelivs = constants.VARIATIONS.map(
-          ({ scen_str }) =>
-            objectivesData[objective][SCENARIO_KEY_STRING][scen_str][
-              DELIV_KEY_STRING_UNORD
-            ]
-        );
+        const allDelivs = deps.variationDelivsUnord;
 
         _maxDelivs = d3.max(allDelivs[0]);
 
@@ -124,7 +111,7 @@ function initAllAnims() {
           .domain([0, _maxDelivs])
           .range([constants.BAR_CHART_HEIGHT, 0]);
 
-        d3.selectAll("#pag-bar-graph .svg-group").each(function (_, i) {
+        d3.selectAll("#bar-graph .svg-group").each(function (_, i) {
           const s = d3.select(this);
 
           s.selectAll(".bars")
@@ -148,7 +135,7 @@ function initAllAnims() {
 
     function barsAppearUndo() {
       {
-        d3.selectAll("#pag-bar-graph .svg-group")
+        d3.selectAll("#bar-graph .svg-group")
           .selectAll(".bars")
           // .data(_dataDescendings, (d) => d.placeFromLeft)
           .transition()
@@ -162,7 +149,7 @@ function initAllAnims() {
     async function barsCondenseDo() {
       {
         const newWidth = constants.BAR_CHART_WIDTH / 8;
-        const svgGroup = d3.selectAll("#pag-bar-graph .svg-group");
+        const svgGroup = d3.selectAll("#bar-graph .svg-group");
 
         svgGroup.selectAll(".anim-xaxis").call(_XAxis.tickFormat(""));
 
@@ -215,7 +202,7 @@ function initAllAnims() {
 
     function barsCondenseUndo() {
       {
-        const svgGroup = d3.selectAll("#pag-bar-graph .svg-group");
+        const svgGroup = d3.selectAll("#bar-graph .svg-group");
 
         const bars = svgGroup.selectAll(".bars");
 
@@ -273,27 +260,25 @@ function initAllAnims() {
     };
   }
 
-  function initBucketsFillAnim({ deps, objective }) {
+  function initBucketsFillAnim({ deps }) {
     function animDo() {
       d3.selectAll(".tut-graph-wrapper .bucket-wrapper").style(
         "display",
         "initial"
       );
-      d3.selectAll("#pag-bar-graph").attr("opacity", 0);
+      d3.selectAll("#bar-graph").attr("opacity", 0);
 
-      deps.setVariationBucketInterpers(deps.objectiveVariationBucketInterpers);
+      deps.setCurBucketInterpers(deps.variationBucketInterpers);
     }
 
     function animUndo() {
-      deps.setVariationBucketInterpers(() =>
-        constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
-      );
+      deps.setCurBucketInterpers(() => constants.EMPTY_INTERPERS);
 
       d3.selectAll(".tut-graph-wrapper .bucket-wrapper").style(
         "display",
         "none"
       );
-      d3.selectAll("#pag-bar-graph").transition().attr("opacity", 1);
+      d3.selectAll("#bar-graph").transition().attr("opacity", 1);
     }
 
     return {
@@ -302,22 +287,20 @@ function initAllAnims() {
     };
   }
 
-  function initDropFillAnim({ deps, objective }) {
+  function initDropFillAnim({ deps }) {
     function animDo() {
       showElems(".main-waterdrop");
       showElems(".tut-drop-graphics-wrapper", d3, "grid");
       hideElems(".tut-graph-wrapper, .bucket-wrapper");
 
-      deps.setVariationDropInterpers(deps.objectiveVariationDropInterpers);
+      deps.setCurDropInterpers(deps.variationDropInterpers);
     }
 
     function animUndo() {
       hideElems(".tut-drop-graphics-wrapper, .main-waterdrop");
       showElems(".bucket-wrapper");
       showElems(".tut-graph-wrapper", d3, "flex");
-      deps.setVariationDropInterpers(() =>
-        constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
-      );
+      deps.setCurDropInterpers(() => constants.EMPTY_INTERPERS);
     }
 
     return {

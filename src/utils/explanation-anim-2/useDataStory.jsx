@@ -13,11 +13,11 @@ export function useDataStory(objective) {
     ]
      */
   const [slides, setSlides] = useState([]);
-  const vars = useDataStoryVars(objective);
+  const storyVars = useDataStoryVars(objective);
 
   useEffect(
     function hookAnimations() {
-      const context = { deps: vars, objective };
+      const context = { deps: storyVars, objective };
 
       anims.prepareDOM();
 
@@ -56,8 +56,8 @@ export function useDataStory(objective) {
 
       setSlides(_slides);
     },
-    [vars.objectiveVariationDelivs]
+    [storyVars.variationDelivsUnord]
   );
 
-  return { slides, vars };
+  return { slides, storyVars };
 }

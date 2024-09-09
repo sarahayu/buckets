@@ -1,3 +1,5 @@
+import * as d3 from "d3";
+
 import { interpolateWatercolorBlue } from "../../bucket-lib/utils";
 
 function initConstants() {
@@ -7,9 +9,8 @@ function initConstants() {
   const INTERP_COLOR = interpolateWatercolorBlue;
 
   const DEFAULT_OBJECTIVE = "exampleObj";
-  const BASELINE_SCENARIO = "expl0000";
 
-  const _VARIATIONS = [
+  const VARIATIONS = [
     {
       scen_str: "always_100_perc",
     },
@@ -24,24 +25,16 @@ function initConstants() {
     },
   ];
 
-  const VARIATIONS = _VARIATIONS.map(extendVarObj);
+  const EMPTY_INTERPER = d3.scaleLinear().range([0, 0]);
+  const EMPTY_INTERPERS = VARIATIONS.map(() => EMPTY_INTERPER);
 
   return {
     BAR_CHART_WIDTH,
     BAR_CHART_HEIGHT,
     INTERP_COLOR,
     DEFAULT_OBJECTIVE,
-    BASELINE_SCENARIO,
     VARIATIONS,
-  };
-}
-
-function extendVarObj({ scen_str, desc }, idx) {
-  return {
-    idx,
-    scen_str,
-    desc,
-    clas: `drop${idx + 1}`,
+    EMPTY_INTERPERS,
   };
 }
 

@@ -1201,6 +1201,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   margin-top: 1em;
 }
 
+.main-waterdrop .bucket-outline {
+  stroke-width: 6;
+}
+
 .tut-drop-graphics-wrapper .scen-number {
   color: orange;
   font-weight: bold;
@@ -1262,7 +1266,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 }
 
 .scrollama-1 .dot-histogram-wrapper text {
-  font-size: 0.5rem;
+  font-size: 0.7rem;
 }
 
 .main-histogram.example-drops-hg text {

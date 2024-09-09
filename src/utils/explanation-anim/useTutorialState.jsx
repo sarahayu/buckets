@@ -19,6 +19,12 @@ export default function useTutorialState(objective) {
   const [dropInterper, setDropInterper] = useState(() =>
     d3.scaleLinear().range([0, 0])
   );
+  const [objectiveInterper, setObjectiveInterper] = useState(() =>
+    d3.scaleLinear().range([0, 0])
+  );
+  const [objectiveInterperDrop, setObjectiveInterperDrop] = useState(() =>
+    d3.scaleLinear().range([0, 0])
+  );
 
   const [variationInterpers, setVariationInterpers] = useState(() =>
     constants.VARIATIONS.map(() => d3.scaleLinear().range([0, 0]))
@@ -44,9 +50,38 @@ export default function useTutorialState(objective) {
       objectivesData[objective][SCENARIO_KEY_STRING][
         constants.BASELINE_SCENARIO
       ][DELIV_KEY_STRING];
-    const maxDelivs = d3.max(objDelivs);
+    const maxDelivs =
+      objective === "NDO" ? d3.quantile(objDelivs, 0.75) : d3.max(objDelivs);
 
     setObjectiveDelivs(() => objDelivs);
+
+    const objectiveInterperBucket = d3
+      .scaleLinear()
+      .domain(ticksExact(0, 1, objDelivs.length))
+      .range(
+        objDelivs
+          .map((v) => v / maxDelivs)
+          .sort()
+          .reverse()
+      )
+      .clamp(true);
+
+    const objectiveInterperDrop = (val) =>
+      percentToRatioFilled(
+        d3
+          .scaleLinear()
+          .domain(ticksExact(0, 1, objDelivs.length))
+          .range(
+            objDelivs
+              .map((v) => v / maxDelivs)
+              .sort()
+              .reverse()
+          )
+          .clamp(true)(val)
+      );
+
+    setObjectiveInterper(() => objectiveInterperBucket);
+    setObjectiveInterperDrop(() => objectiveInterperDrop);
 
     const varDelivsArr = constants.VARIATIONS.map(
       ({ scen_str }) =>
@@ -85,6 +120,8 @@ export default function useTutorialState(objective) {
     variationInterpers,
     setVariationInterpers,
     objectiveDelivs,
+    objectiveInterper,
+    objectiveInterperDrop,
     objectiveVariationDelivs,
     objectiveVariationInterpers,
   };

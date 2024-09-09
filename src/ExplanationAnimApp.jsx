@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import React, { useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useState } from "react";
 import { Scrollama, Step } from "react-scrollama";
 
 import BucketGlyph from "./bucket-lib/BucketGlyph";
@@ -28,6 +28,175 @@ export default function ExplanationAnimApp() {
     [curObjective]
   );
 
+  return (
+    <div className="tutorial-view">
+      <Selector
+        val={curObjective}
+        setVal={setCurObjective}
+        options={Object.keys(constants.SELECTED_OBJS).map((objId) => ({
+          options: objId,
+          display_name: constants.SELECTED_OBJS[objId],
+        }))}
+      />
+      <div className="scrollama scrollama-1">
+        <DataStoryGraphics
+          curObjective={curObjective}
+          tutorialState={tutorialState}
+        />
+        <DataStoryTexts slides={slides} />
+      </div>
+    </div>
+  );
+}
+
+function DataStoryGraphics({ curObjective, tutorialState }) {
+  const baselineMax =
+    curObjective === "NDO"
+      ? d3.quantile(tutorialState.objectiveDelivs, 0.75)
+      : d3.max(tutorialState.objectiveDelivs);
+  const mainHistData = {
+    data: tutorialState.objectiveDelivs,
+    max: baselineMax,
+  };
+  return (
+    <>
+      <BucketConstructionGraphics
+        label={constants.SELECTED_OBJS[curObjective]}
+        bucketInterper={tutorialState.bucketInterper}
+      />
+
+      <ScenarioComparingGraphics
+        label={constants.SELECTED_OBJS[curObjective]}
+        mainDropInterper={tutorialState.dropInterper}
+        mainHistData={mainHistData}
+        variations={constants.VARIATIONS.map((variation) => ({
+          ...variation,
+          interper: tutorialState.variationInterpers[variation.idx],
+          histData: {
+            data: tutorialState.objectiveVariationDelivs[variation.idx],
+            max: baselineMax,
+          },
+        }))}
+      />
+    </>
+  );
+}
+
+function DataStoryTexts({ slides }) {
+  return (
+    <DataStoryScrollama
+      cleanupFn={() => {
+        for (let i = slides.length - 1; i >= 0; i--) {
+          slides[i].animHandler?.undo();
+        }
+      }}
+    >
+      {slides.map((slide, i) => (
+        <Step key={i} data={slide}>
+          <Slide slide={slide} />
+        </Step>
+      ))}
+    </DataStoryScrollama>
+  );
+}
+
+function Selector({ val, setVal, options }) {
+  return (
+    <select value={val} onChange={(e) => setVal(e.target.value)}>
+      {options.map(({ option, display_name }, i) => (
+        <option value={option} key={i}>
+          {display_name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ScenarioComparingGraphics({
+  label,
+  mainDropInterper,
+  mainHistData,
+  variations,
+}) {
+  return (
+    <div className="tut-drop-graphics-wrapper">
+      <MainScenarioInfo
+        dropInterper={mainDropInterper}
+        histData={mainHistData}
+        label={label}
+      />
+      {variations.map((variation, i) => (
+        <VariationScenarioPanel key={i} variation={variation} />
+      ))}
+    </div>
+  );
+}
+
+function MainScenarioInfo({ dropInterper, histData, label }) {
+  return (
+    <>
+      <div className="main-waterdrop">
+        <WaterdropGlyph
+          levelInterp={dropInterper}
+          width={400}
+          height={constants.BAR_CHART_HEIGHT}
+          colorInterp={constants.INTERP_COLOR}
+        />
+      </div>
+      <div className="main-histogram">
+        <DotHistogram
+          width={330}
+          height={220}
+          data={histData.data}
+          domain={[0, histData.max]}
+        />
+      </div>
+      <p className="fancy-font objective-label">{label}</p>
+    </>
+  );
+}
+
+function VariationScenarioPanel({ variation }) {
+  const { idx, clas, desc, interper, histData } = variation;
+  return (
+    <div className={`vardrop ${clas}`} key={idx} desc={desc}>
+      <div>
+        <WaterdropGlyph
+          levelInterp={interper}
+          width={200}
+          height={constants.BAR_CHART_HEIGHT / 2}
+          colorInterp={constants.INTERP_COLOR}
+        />
+        <DotHistogram
+          width={330}
+          height={220}
+          data={histData.data}
+          domain={[0, histData.max]}
+        />
+      </div>
+      <p className="var-scen-label">{desc}</p>
+    </div>
+  );
+}
+
+function BucketConstructionGraphics({ label, bucketInterper }) {
+  return (
+    <div className="tut-graph-wrapper">
+      <div className="tut-graph">
+        <svg id="pag-bar-graph"></svg>
+        <BucketGlyph
+          levelInterp={bucketInterper}
+          width={300}
+          height={constants.BAR_CHART_HEIGHT}
+          colorInterp={constants.INTERP_COLOR}
+        />
+        <p className="fancy-font objective-label">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function DataStoryScrollama({ cleanupFn, children }) {
   const onStepEnter = async ({ data, direction }) => {
     if (direction === "up") return;
     data.animHandler?.do();
@@ -39,99 +208,34 @@ export default function ExplanationAnimApp() {
   };
 
   return (
-    <div className="tutorial-view">
-      <select
-        value={curObjective}
-        onChange={(e) => setCurObjective(e.target.value)}
-      >
-        {Object.keys(constants.SELECTED_OBJS).map((objectiveID) => (
-          <option value={objectiveID} key={objectiveID}>
-            {constants.SELECTED_OBJS[objectiveID]}
-          </option>
-        ))}
-      </select>
-      <div className="scrollama scrollama-1">
-        <div className="tut-graph-wrapper">
-          <div className="tut-graph">
-            <svg id="pag-bar-graph"></svg>
-            <BucketGlyph
-              levelInterp={tutorialState.bucketInterper}
-              width={300}
-              height={constants.BAR_CHART_HEIGHT}
-              colorInterp={constants.INTERP_COLOR}
-            />
-            <p className="fancy-font objective-label">
-              {constants.SELECTED_OBJS[curObjective]}
-            </p>
-          </div>
-        </div>
-
-        <div className="tut-drop-graphics-wrapper">
-          <div className="main-waterdrop">
-            <WaterdropGlyph
-              levelInterp={tutorialState.dropInterper}
-              width={400}
-              height={constants.BAR_CHART_HEIGHT}
-              colorInterp={constants.INTERP_COLOR}
-            />
-          </div>
-          <div className="main-histogram">
-            <DotHistogram
-              width={330}
-              height={220}
-              data={tutorialState.objectiveDelivs}
-              domain={[0, d3.max(tutorialState.objectiveDelivs)]}
-            />
-          </div>
-          {constants.VARIATIONS.map(({ idx, clas, desc }) => (
-            <div className={`vardrop ${clas}`} key={idx} desc={desc}>
-              <div>
-                <WaterdropGlyph
-                  levelInterp={tutorialState.variationInterpers[idx]}
-                  width={200}
-                  height={(constants.BAR_CHART_HEIGHT * 2) / 3 / 2}
-                  colorInterp={constants.INTERP_COLOR}
-                />
-                <DotHistogram
-                  width={330}
-                  height={220}
-                  data={tutorialState.objectiveVariationDelivs[idx]}
-                  domain={[0, d3.max(tutorialState.objectiveDelivs)]}
-                />
-              </div>
-              <p className="var-scen-label">{desc}</p>
-            </div>
-          ))}
-          <p className="fancy-font objective-label">
-            {constants.SELECTED_OBJS[curObjective]}
-          </p>
-        </div>
-        <Scrollama
-          offset={0.9}
-          onStepEnter={onStepEnter}
-          onStepExit={onStepExit}
-        >
-          {slides.map((slide, i) => (
-            <Step key={i} data={slide}>
-              <div className="tut-text-card">{slide.text}</div>
-            </Step>
-          ))}
-          <Step key={"last"} data={{}}>
-            <div className="tut-text-card" style={{ marginBottom: "40vh" }}>
-              <button
-                onClick={() => {
-                  window.scrollTo(0, 0);
-                  for (let i = slides.length - 1; i >= 0; i--) {
-                    slides[i].animHandler?.undo();
-                  }
-                }}
-              >
-                Back to Top
-              </button>
-            </div>
-          </Step>
-        </Scrollama>
-      </div>
-    </div>
+    <Scrollama offset={0.9} onStepEnter={onStepEnter} onStepExit={onStepExit}>
+      {children}
+      <Step key={"last"} data={{}}>
+        <ReturnToTop cleanupFn={cleanupFn} />
+      </Step>
+    </Scrollama>
   );
 }
+
+const Slide = forwardRef(function Slide({ slide }, ref) {
+  return (
+    <div ref={ref} className="tut-text-card">
+      {slide.text}
+    </div>
+  );
+});
+
+const ReturnToTop = forwardRef(function ReturnToTop({ cleanupFn }, ref) {
+  return (
+    <div ref={ref} className="tut-text-card" style={{ marginBottom: "40vh" }}>
+      <button
+        onClick={() => {
+          window.scrollTo(0, 0);
+          cleanupFn();
+        }}
+      >
+        Back to Top
+      </button>
+    </div>
+  );
+});

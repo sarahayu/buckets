@@ -13,45 +13,6 @@ import { percentToRatioFilled } from "../utils";
 
 const BASELINE_SCENARIO = "expl0000";
 
-function getBucketInterper(objective) {
-  const delivs =
-    objectivesData[objective][SCENARIO_KEY_STRING][BASELINE_SCENARIO][
-      DELIV_KEY_STRING_UNORD
-    ];
-  const maxDelivs = d3.max(delivs);
-  return d3
-    .scaleLinear()
-    .domain(ticksExact(0, 1, delivs.length))
-    .range(
-      delivs
-        .map((v) => v / maxDelivs)
-        .sort()
-        .reverse()
-    )
-    .clamp(true);
-}
-
-function getDropInterper(objective) {
-  const delivs =
-    objectivesData[objective][SCENARIO_KEY_STRING][BASELINE_SCENARIO][
-      DELIV_KEY_STRING_UNORD
-    ];
-  const maxDelivs = d3.max(delivs);
-  return (val) =>
-    percentToRatioFilled(
-      d3
-        .scaleLinear()
-        .domain(ticksExact(0, 1, delivs.length))
-        .range(
-          delivs
-            .map((v) => v / maxDelivs)
-            .sort()
-            .reverse()
-        )
-        .clamp(true)(val)
-    );
-}
-
 function initAllAnims() {
   function initChartAnimGroup({ deps, objective }) {
     let _XInterp;
@@ -92,7 +53,8 @@ function initAllAnims() {
             DELIV_KEY_STRING_UNORD
           ];
 
-        _maxDelivs = d3.max(delivs);
+        _maxDelivs =
+          objective === "NDO" ? d3.quantile(delivs, 0.75) : d3.max(delivs);
 
         const dataDescending = delivs
           .map((val, placeFromLeft) => ({
@@ -307,7 +269,7 @@ function initAllAnims() {
       );
       d3.select("#pag-bar-graph").attr("opacity", 0);
 
-      deps.setBucketInterper(() => getBucketInterper(objective));
+      deps.setBucketInterper(() => deps.objectiveInterper);
     }
 
     function animUndo() {
@@ -331,7 +293,7 @@ function initAllAnims() {
       showElems(".main-waterdrop");
       showElems(".tut-drop-graphics-wrapper", d3, "grid");
       hideElems(".tut-graph-wrapper, .bucket-wrapper");
-      deps.setDropInterper(() => getDropInterper(objective));
+      deps.setDropInterper(() => deps.objectiveInterperDrop);
     }
 
     function animUndo() {
