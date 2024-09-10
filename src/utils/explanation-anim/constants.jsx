@@ -19,7 +19,7 @@ function initConstants() {
 
   const _VARIATIONS = [
     {
-      scen_num_str: "0129",
+      scen_num_str: "0004",
       desc: "natural flows",
     },
     {

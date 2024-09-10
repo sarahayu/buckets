@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useMemo, useState } from "react";
 import { Scrollama, Step } from "react-scrollama";
 
 import BucketGlyph from "./bucket-lib/BucketGlyph";
@@ -13,9 +13,10 @@ import useTutorialState from "./utils/explanation-anim/useTutorialState";
 
 export default function ExplanationAnimApp() {
   const [curObjective, setCurObjective] = useState(constants.DEFAULT_OBJECTIVE);
+  const [normalized, setNormalized] = useState(false);
 
-  const tutorialState = useTutorialState(curObjective);
-  const slides = useDataStory(tutorialState, curObjective);
+  const tutorialState = useTutorialState(curObjective, normalized);
+  const slides = useDataStory(tutorialState, curObjective, normalized);
 
   useEffect(
     function changeObjective() {
@@ -25,7 +26,7 @@ export default function ExplanationAnimApp() {
 
       tutorialState.setReadyHash((rh) => rh + 1);
     },
-    [curObjective]
+    [curObjective, normalized]
   );
 
   return (
@@ -38,9 +39,15 @@ export default function ExplanationAnimApp() {
           display_name: constants.SELECTED_OBJS[objId],
         }))}
       />
+      <Toggle
+        label="normalize across scenarios"
+        val={normalized}
+        setVal={setNormalized}
+      />
       <div className="scrollama scrollama-1">
         <DataStoryGraphics
           curObjective={curObjective}
+          normalized={normalized}
           tutorialState={tutorialState}
         />
         <DataStoryTexts slides={slides} />
@@ -50,14 +57,29 @@ export default function ExplanationAnimApp() {
 }
 
 function DataStoryGraphics({ curObjective, tutorialState }) {
-  const baselineMax =
-    curObjective === "NDO"
-      ? d3.quantile(tutorialState.objectiveDelivs, 0.75)
-      : d3.max(tutorialState.objectiveDelivs);
-  const mainHistData = {
-    data: tutorialState.objectiveDelivs,
-    max: baselineMax,
-  };
+  const { maxDelivs, minDelivs } = tutorialState;
+
+  const mainHistData = useMemo(
+    () => ({
+      data: tutorialState.objectiveDelivs,
+      domain: [minDelivs, maxDelivs],
+    }),
+    [tutorialState.objectiveDelivs]
+  );
+
+  const variations = useMemo(
+    () =>
+      constants.VARIATIONS.map((variation) => ({
+        ...variation,
+        interper: tutorialState.variationInterpers[variation.idx],
+        histData: {
+          data: tutorialState.objectiveVariationDelivs[variation.idx],
+          domain: [minDelivs, maxDelivs],
+        },
+      })),
+    [tutorialState.objectiveVariationDelivs, tutorialState.variationInterpers]
+  );
+
   return (
     <>
       <BucketConstructionGraphics
@@ -69,14 +91,7 @@ function DataStoryGraphics({ curObjective, tutorialState }) {
         label={constants.SELECTED_OBJS[curObjective]}
         mainDropInterper={tutorialState.dropInterper}
         mainHistData={mainHistData}
-        variations={constants.VARIATIONS.map((variation) => ({
-          ...variation,
-          interper: tutorialState.variationInterpers[variation.idx],
-          histData: {
-            data: tutorialState.objectiveVariationDelivs[variation.idx],
-            max: baselineMax,
-          },
-        }))}
+        variations={variations}
       />
     </>
   );
@@ -109,6 +124,21 @@ function Selector({ val, setVal, options }) {
         </option>
       ))}
     </select>
+  );
+}
+
+function Toggle({ label, val, setVal }) {
+  return (
+    <>
+      <label htmlFor="normalize">{label}</label>
+      <input
+        checked={val}
+        onChange={(e) => setVal(e.target.checked)}
+        type="checkbox"
+        name="normalize"
+        id="normalize"
+      />
+    </>
   );
 }
 
@@ -148,7 +178,7 @@ function MainScenarioInfo({ dropInterper, histData, label }) {
           width={330}
           height={220}
           data={histData.data}
-          domain={[0, histData.max]}
+          domain={histData.domain}
         />
       </div>
       <p className="fancy-font objective-label">{label}</p>
@@ -171,7 +201,7 @@ function VariationScenarioPanel({ variation }) {
           width={330}
           height={220}
           data={histData.data}
-          domain={[0, histData.max]}
+          domain={histData.domain}
         />
       </div>
       <p className="var-scen-label">{desc}</p>

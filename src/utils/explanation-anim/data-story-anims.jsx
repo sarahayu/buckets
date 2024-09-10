@@ -14,10 +14,11 @@ import { percentToRatioFilled } from "../utils";
 const BASELINE_SCENARIO = "expl0000";
 
 function initAllAnims() {
-  function initChartAnimGroup({ deps, objective }) {
+  function initChartAnimGroup({ deps, objective, normalized }) {
     let _XInterp;
     let _XAxis;
     let _dataDescending;
+    let _minDelivs;
     let _maxDelivs;
 
     const BAR_CHART_MARGIN = { top: 40, right: 30, bottom: 40, left: 60 };
@@ -53,8 +54,8 @@ function initAllAnims() {
             DELIV_KEY_STRING_UNORD
           ];
 
-        _maxDelivs =
-          objective === "NDO" ? d3.quantile(delivs, 0.75) : d3.max(delivs);
+        _maxDelivs = deps.maxDelivs;
+        _minDelivs = deps.minDelivs;
 
         const dataDescending = delivs
           .map((val, placeFromLeft) => ({
@@ -71,7 +72,7 @@ function initAllAnims() {
           .padding(0.4);
         const y = d3
           .scaleLinear()
-          .domain([0, _maxDelivs])
+          .domain([_minDelivs, _maxDelivs])
           .range([constants.BAR_CHART_HEIGHT, 0]);
 
         const xaxis = d3
@@ -114,7 +115,7 @@ function initAllAnims() {
       {
         const y = d3
           .scaleLinear()
-          .domain([0, _maxDelivs])
+          .domain([_minDelivs, _maxDelivs])
           .range([constants.BAR_CHART_HEIGHT, 0]);
 
         d3.select("#pag-bar-graph .svg-group")

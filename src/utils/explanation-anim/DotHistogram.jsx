@@ -26,7 +26,7 @@ export default function DotHistogram({
   const circles = useMemo(
     () =>
       getQuantileBins(data, domain, data.length / NUM_CIRCLES, width, height),
-    [data]
+    [data, domain]
   );
 
   const dataRange = [0, data.length];
@@ -57,7 +57,7 @@ export default function DotHistogram({
       .attr("font-size", "2em")
       .attr("transform", `translate(${width / 2}, ${30})`)
       .text("Deliveries (TAF)");
-  }, [data]);
+  }, [data, domain]);
 
   useEffect(() => {
     const svgCircles = svgSelector.current

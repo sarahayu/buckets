@@ -10,8 +10,10 @@ import {
 import { constants } from "./constants";
 import { percentToRatioFilled } from "../utils";
 
-export default function useTutorialState(objective) {
+export default function useTutorialState(objective, normalized) {
   const [readyHash, setReadyHash] = useState(0);
+  const [maxDelivs, setMaxDelivs] = useState(0);
+  const [minDelivs, setMinDelivs] = useState(0);
 
   const [bucketInterper, setBucketInterper] = useState(() =>
     d3.scaleLinear().range([0, 0])
@@ -50,8 +52,29 @@ export default function useTutorialState(objective) {
       objectivesData[objective][SCENARIO_KEY_STRING][
         constants.BASELINE_SCENARIO
       ][DELIV_KEY_STRING];
-    const maxDelivs =
+    let maxDelivs, minDelivs;
+
+    maxDelivs =
       objective === "NDO" ? d3.quantile(objDelivs, 0.75) : d3.max(objDelivs);
+
+    if (normalized) {
+      const allScenMins = [
+        constants.BASELINE_SCENARIO,
+        ...constants.VARIATIONS.map(({ scen_str }) => scen_str),
+      ].map((scen_str) =>
+        d3.min(
+          objectivesData[objective][SCENARIO_KEY_STRING][scen_str][
+            DELIV_KEY_STRING
+          ]
+        )
+      );
+      minDelivs = d3.min(allScenMins);
+    } else {
+      minDelivs = 0;
+    }
+
+    setMaxDelivs(maxDelivs);
+    setMinDelivs(minDelivs);
 
     setObjectiveDelivs(() => objDelivs);
 
@@ -60,7 +83,7 @@ export default function useTutorialState(objective) {
       .domain(ticksExact(0, 1, objDelivs.length))
       .range(
         objDelivs
-          .map((v) => v / maxDelivs)
+          .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
           .sort()
           .reverse()
       )
@@ -73,7 +96,7 @@ export default function useTutorialState(objective) {
           .domain(ticksExact(0, 1, objDelivs.length))
           .range(
             objDelivs
-              .map((v) => v / maxDelivs)
+              .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
               .sort()
               .reverse()
           )
@@ -98,7 +121,7 @@ export default function useTutorialState(objective) {
             .domain(ticksExact(0, 1, varDelivs.length))
             .range(
               varDelivs
-                .map((v) => v / maxDelivs)
+                .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
                 .sort()
                 .reverse()
             )
@@ -108,11 +131,13 @@ export default function useTutorialState(objective) {
 
     setObjectiveVariationDelivs(() => varDelivsArr);
     setObjectiveVariationInterpers(() => objVars);
-  }, [objective]);
+  }, [objective, normalized]);
 
   return {
     readyHash,
     setReadyHash,
+    maxDelivs,
+    minDelivs,
     bucketInterper,
     setBucketInterper,
     dropInterper,

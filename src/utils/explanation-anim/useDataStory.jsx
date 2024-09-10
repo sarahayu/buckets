@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { animations as anims } from "./data-story-anims";
 
-export function useDataStory(deps, objective, scenario) {
+export function useDataStory(deps, objective, normalized) {
   /*
     slides = [
         name: string,
@@ -17,7 +17,7 @@ export function useDataStory(deps, objective, scenario) {
     function initialize() {
       if (deps.readyHash === 0) return;
 
-      const context = { deps, objective, scenario };
+      const context = { deps, objective, normalized };
 
       const chartAnimGroup = anims.initChartAnimGroup(context);
       const bucketsFillAnim = anims.initBucketsFillAnim(context);
