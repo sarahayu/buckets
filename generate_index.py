@@ -11,7 +11,7 @@ SRC_DIR = 'src'
 PUBLIC_DIR = 'public'
 
 # collect all jsx files ending in 'App'
-apps = [f.split('.')[0] for f in os.listdir(SRC_DIR) if re.match(r'\w*App\b.jsx', f)]
+apps = sorted([f.split('.')[0] for f in os.listdir(SRC_DIR) if re.match(r'\w*App\b.jsx', f)])
 
 # collect all png files ending in 'App'
 app_pics = [f.split('.')[0] for f in os.listdir(PUBLIC_DIR) if re.match(r'\w*App\b.png', f)]
