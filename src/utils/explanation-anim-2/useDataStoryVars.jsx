@@ -60,7 +60,7 @@ export default function useDataStoryVars(objective) {
             .range(
               varDelivs
                 .map((v) => v / baselineMaxDelivs)
-                .sort()
+                .sort((a, b) => a - b)
                 .reverse()
             )
             .clamp(true)(val)
@@ -75,7 +75,7 @@ export default function useDataStoryVars(objective) {
               .range(
                 varDelivs
                   .map((v) => v / baselineMaxDelivs)
-                  .sort()
+                  .sort((a, b) => a - b)
                   .reverse()
               )
               .clamp(true)(val)

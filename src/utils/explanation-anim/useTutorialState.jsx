@@ -84,7 +84,7 @@ export default function useTutorialState(objective, normalized) {
       .range(
         objDelivs
           .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
-          .sort()
+          .sort((a, b) => a - b)
           .reverse()
       )
       .clamp(true);
@@ -97,7 +97,7 @@ export default function useTutorialState(objective, normalized) {
           .range(
             objDelivs
               .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
-              .sort()
+              .sort((a, b) => a - b)
               .reverse()
           )
           .clamp(true)(val)
@@ -122,7 +122,7 @@ export default function useTutorialState(objective, normalized) {
             .range(
               varDelivs
                 .map((v) => (v - minDelivs) / (maxDelivs - minDelivs))
-                .sort()
+                .sort((a, b) => a - b)
                 .reverse()
             )
             .clamp(true)(val)
