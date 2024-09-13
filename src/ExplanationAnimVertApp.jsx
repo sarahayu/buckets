@@ -175,8 +175,8 @@ function MainScenarioInfo({ dropInterper, histData, label }) {
       </div>
       <div className="main-histogram">
         <DotHistogram
-          width={330}
-          height={220}
+          width={167}
+          height={200}
           data={histData.data}
           domain={histData.domain}
         />
@@ -198,8 +198,8 @@ function VariationScenarioPanel({ variation }) {
           colorInterp={constants.INTERP_COLOR}
         />
         <DotHistogram
-          width={330}
-          height={220}
+          width={167}
+          height={200}
           data={histData.data}
           domain={histData.domain}
         />
