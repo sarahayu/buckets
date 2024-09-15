@@ -12,13 +12,13 @@ import {
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "./data/objectivesData";
-import { ticksExact } from "./bucket-lib/utils";
-import BucketGlyph from "./bucket-lib/BucketGlyph";
-import DotHistogram from "./DotHistogram";
-import DotHistogramSmall from "./DotHistogramSmall";
+} from "data/objectivesData";
+import { ticksExact } from "bucket-lib/utils";
+import BucketGlyph from "bucket-lib/BucketGlyph";
+import DotHistogram from "utils/main/DotHistogram";
+import DotHistogramSmall from "utils/main/DotHistogramSmall";
 import classNames from "classnames";
-import { criteriaSort } from "./utils/utils";
+import { criteriaSort } from "utils/common";
 
 const DEFAULT_GOAL = 200;
 const DEFAULT_OBJECTIVE_NAME = "DEL_CVP_PAG_N";

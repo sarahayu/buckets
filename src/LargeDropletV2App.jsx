@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import * as THREE from "three";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
+import { interpolateWatercolorBlue, ticksExact } from "bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
   MAX_DELIVS,
@@ -10,7 +10,7 @@ import {
   objectiveIDs,
   objectivesData,
   scenarioIDs,
-} from "./data/objectivesData";
+} from "data/objectivesData";
 import {
   Camera,
   DROPLET_SHAPE,
@@ -23,7 +23,7 @@ import {
   useStateRef,
   waterdropDelta,
   waterdropDeltaOutline,
-} from "./utils/utils";
+} from "utils/common";
 
 const LEVELS = 5;
 const RAD_PX = 3;

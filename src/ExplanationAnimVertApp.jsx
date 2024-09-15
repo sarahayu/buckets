@@ -2,14 +2,14 @@ import * as d3 from "d3";
 import React, { forwardRef, useEffect, useMemo, useState } from "react";
 import { Scrollama, Step } from "react-scrollama";
 
-import BucketGlyph from "./bucket-lib/BucketGlyph";
+import BucketGlyph from "bucket-lib/BucketGlyph";
 
-import DotHistogram from "./utils/explanation-anim-vert/DotHistogram";
-import WaterdropGlyph from "./utils/explanation-anim/WaterdropGlyph";
-import { constants } from "./utils/explanation-anim/constants";
-import { hideElems } from "./utils/explanation-anim/render-utils";
-import { useDataStory } from "./utils/explanation-anim/useDataStory";
-import useTutorialState from "./utils/explanation-anim/useTutorialState";
+import DotHistogram from "utils/explanation-anim-vert/DotHistogram";
+import WaterdropGlyph from "utils/explanation-anim/WaterdropGlyph";
+import { constants } from "utils/explanation-anim/constants";
+import { hideElems } from "utils/explanation-anim/render-utils";
+import { useDataStory } from "utils/explanation-anim/useDataStory";
+import useTutorialState from "utils/explanation-anim/useTutorialState";
 
 export default function ExplanationAnimApp() {
   const [curObjective, setCurObjective] = useState(constants.DEFAULT_OBJECTIVE);

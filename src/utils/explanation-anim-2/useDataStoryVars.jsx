@@ -1,16 +1,16 @@
 import * as d3 from "d3";
 import { useEffect, useState } from "react";
 
-import { ticksExact } from "../../bucket-lib/utils";
+import { ticksExact } from "bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
   DELIV_KEY_STRING_UNORD,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "../../data/exampleObjectivesData";
+} from "data/exampleObjectivesData";
 import { constants } from "./constants";
-import { percentToRatioFilled } from "../utils";
+import { percentToRatioFilled } from "utils/common";
 
 export default function useDataStoryVars(objective) {
   const [curDropInterpers, setCurDropInterpers] = useState(

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
-import { ticksExact } from "./bucket-lib/utils";
-import { MAX_DELIVS, objectivesData } from "./data/objectivesData";
+import { ticksExact } from "bucket-lib/utils";
+import { MAX_DELIVS, objectivesData } from "data/objectivesData";
 
-import { bucketPath } from "./bucket-lib/utils";
-import { createInterps, criteriaSort } from "./utils/utils";
+import { bucketPath } from "bucket-lib/utils";
+import { createInterps, criteriaSort } from "utils/common";
 
 const LEVELS = 10;
 const LINE_WIDTH = 3;

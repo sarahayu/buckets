@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
+import { hideElems, showElems } from "utils/explanation-anim/render-utils";
 import { constants } from "./constants";
-import { hideElems, showElems } from "../explanation-anim/render-utils";
 
 function initAllAnims() {
   function prepareDOM() {

@@ -1,15 +1,15 @@
 import * as d3 from "d3";
 
-import { objectivesData } from "../../data/completeObjectivesData";
+import { objectivesData } from "data/completeObjectivesData";
 
 import { constants } from "./constants";
 import { hideElems, showElems } from "./render-utils";
 import {
   DELIV_KEY_STRING_UNORD,
   SCENARIO_KEY_STRING,
-} from "../../data/objectivesData";
-import { ticksExact } from "../../bucket-lib/utils";
-import { percentToRatioFilled } from "../utils";
+} from "data/objectivesData";
+import { ticksExact } from "bucket-lib/utils";
+import { percentToRatioFilled } from "utils/common";
 
 const BASELINE_SCENARIO = "expl0000";
 

@@ -4,7 +4,7 @@ import {
   interpolateWatercolorBlue,
   ticksExact,
   usePrevious,
-} from "../../bucket-lib/utils";
+} from "bucket-lib/utils";
 import { waterdropDeltaOutline } from "./render-utils";
 const CIRC_RAD = Math.SQRT1_2;
 

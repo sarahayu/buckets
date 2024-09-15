@@ -9,8 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { DELIV_KEY_STRING, SCENARIO_KEY_STRING } from "../data/objectivesData";
-import { ticksExact } from "../bucket-lib/utils";
+import { DELIV_KEY_STRING, SCENARIO_KEY_STRING } from "data/objectivesData";
+import { ticksExact } from "bucket-lib/utils";
 
 export function clamp(x, a, b) {
   return Math.max(a, Math.min(b, x));

@@ -1,14 +1,14 @@
 import * as d3 from "d3";
 import { useEffect, useState } from "react";
 
-import { ticksExact } from "../../bucket-lib/utils";
+import { ticksExact } from "bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "../../data/completeObjectivesData";
+} from "data/completeObjectivesData";
 import { constants } from "./constants";
-import { percentToRatioFilled } from "../utils";
+import { percentToRatioFilled } from "utils/common";
 
 export default function useTutorialState(objective, normalized) {
   const [readyHash, setReadyHash] = useState(0);

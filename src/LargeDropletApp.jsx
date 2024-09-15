@@ -1,19 +1,19 @@
 import * as d3 from "d3";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
+import { interpolateWatercolorBlue, ticksExact } from "bucket-lib/utils";
 import {
   DELIV_KEY_STRING,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectiveIDs,
   objectivesData,
-} from "./data/objectivesData";
+} from "data/objectivesData";
 import {
   DROPLET_SHAPE,
   createInterps,
   criteriaSort,
   placeDropsUsingPhysics,
-} from "./utils/utils";
+} from "utils/common";
 import { useNavigate } from "react-router-dom";
 
 const LEVELS = 5;

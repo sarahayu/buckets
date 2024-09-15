@@ -2,13 +2,13 @@ import * as d3 from "d3";
 import React, { forwardRef } from "react";
 import { Scrollama, Step } from "react-scrollama";
 
-import BucketGlyph from "./bucket-lib/BucketGlyph";
+import BucketGlyph from "bucket-lib/BucketGlyph";
 
-import DotHistogram from "./utils/explanation-anim-vert/DotHistogram";
-import WaterdropGlyph from "./utils/explanation-anim/WaterdropGlyph";
+import DotHistogram from "utils/explanation-anim-vert/DotHistogram";
+import WaterdropGlyph from "utils/explanation-anim/WaterdropGlyph";
 
-import { constants } from "./utils/explanation-anim-2/constants";
-import { useDataStory } from "./utils/explanation-anim-2/useDataStory";
+import { constants } from "utils/explanation-anim-2/constants";
+import { useDataStory } from "utils/explanation-anim-2/useDataStory";
 
 export default function ExplanationAnim2App() {
   const { slides, storyVars } = useDataStory(constants.DEFAULT_OBJECTIVE);

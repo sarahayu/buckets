@@ -1,17 +1,17 @@
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
-import BucketGlyph from "./bucket-lib/BucketGlyph";
+import BucketGlyph from "bucket-lib/BucketGlyph";
 
 import {
   DELIV_KEY_STRING,
   MAX_DELIVS,
   SCENARIO_KEY_STRING,
   objectivesData,
-} from "./data/objectivesData";
-import { factorsData } from "./data/factorsData";
-import { interpolateWatercolorBlue, ticksExact } from "./bucket-lib/utils";
-import { useStickyScale } from "./utils/utils";
+} from "data/objectivesData";
+import { factorsData } from "data/factorsData";
+import { interpolateWatercolorBlue, ticksExact } from "bucket-lib/utils";
+import { useStickyScale } from "utils/common";
 
 const DEFAULT_SCENARIO = "expl0000";
 const DEFAULT_OBJECTIVE_ID = "DEL_CVP_PAG_N";

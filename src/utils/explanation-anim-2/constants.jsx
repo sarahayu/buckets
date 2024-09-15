@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 
-import { interpolateWatercolorBlue } from "../../bucket-lib/utils";
+import { interpolateWatercolorBlue } from "bucket-lib/utils";
 
 function initConstants() {
   const BAR_CHART_WIDTH = 500,
