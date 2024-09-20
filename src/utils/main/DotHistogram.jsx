@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import { useEffect, useMemo, useRef } from "react";
-import { getQuantileBins } from "bucket-lib/quantile-histogram";
+import { quantileBins } from "bucket-lib/quantile-bins";
 import { WATERDROP_ICON } from "utils/common";
 import { MAX_DELIVS } from "data/objectivesData";
 
@@ -17,8 +17,7 @@ export default function DotHistogram({
 }) {
   const svgSelector = useRef();
   const circles = useMemo(
-    () =>
-      getQuantileBins(data, DOMAIN, data.length / NUM_CIRCLES, width, height),
+    () => quantileBins(width, height, data.length / NUM_CIRCLES, DOMAIN)(data),
     [data]
   );
 

@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import { useEffect, useMemo, useRef } from "react";
-import { getQuantileBins } from "bucket-lib/quantile-histogram";
+import { quantileBins } from "bucket-lib/quantile-bins";
 
 const NUM_CIRCLES = 20;
 const MARGIN = { top: 10, right: 10, bottom: 40, left: 10 };
@@ -24,8 +24,7 @@ export default function DotHistogram({
 }) {
   const svgSelector = useRef();
   const circles = useMemo(
-    () =>
-      getQuantileBins(data, domain, data.length / NUM_CIRCLES, width, height),
+    () => quantileBins(width, height, data.length / NUM_CIRCLES, domain)(data),
     [data, domain]
   );
 

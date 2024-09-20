@@ -5,7 +5,7 @@ import { Scrollama, Step } from "react-scrollama";
 import BucketGlyph from "bucket-lib/BucketGlyph";
 
 import DotHistogram from "utils/explanation-anim-vert/DotHistogram";
-import WaterdropGlyph from "utils/explanation-anim/WaterdropGlyph";
+import DropletGlyph from "bucket-lib/DropletGlyph";
 
 import { constants } from "utils/explanation-anim-2/constants";
 import { useDataStory } from "utils/explanation-anim-2/useDataStory";
@@ -95,7 +95,7 @@ function VariationPanels({ label, bucketInterper, dropInterper, histData }) {
 
       <div className="tut-drop-graphics-wrapper">
         <div className="main-waterdrop">
-          <WaterdropGlyph
+          <DropletGlyph
             levelInterp={dropInterper}
             width={400}
             height={constants.BAR_CHART_HEIGHT}

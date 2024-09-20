@@ -5,7 +5,7 @@ import { Scrollama, Step } from "react-scrollama";
 import BucketGlyph from "bucket-lib/BucketGlyph";
 
 import DotHistogram from "utils/explanation-anim/DotHistogram";
-import WaterdropGlyph from "utils/explanation-anim/WaterdropGlyph";
+import DropletGlyph from "bucket-lib/DropletGlyph";
 import { constants } from "utils/explanation-anim/constants";
 import { hideElems } from "utils/explanation-anim/render-utils";
 import { useDataStory } from "utils/explanation-anim/useDataStory";
@@ -166,7 +166,7 @@ function MainScenarioInfo({ dropInterper, histData, label }) {
   return (
     <>
       <div className="main-waterdrop">
-        <WaterdropGlyph
+        <DropletGlyph
           levelInterp={dropInterper}
           width={400}
           height={constants.BAR_CHART_HEIGHT}
@@ -191,7 +191,7 @@ function VariationScenarioPanel({ variation }) {
   return (
     <div className={`vardrop ${clas}`} key={idx} desc={desc}>
       <div>
-        <WaterdropGlyph
+        <DropletGlyph
           levelInterp={interper}
           width={200}
           height={constants.BAR_CHART_HEIGHT / 2}

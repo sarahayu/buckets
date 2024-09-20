@@ -4,17 +4,16 @@ import { useLayoutEffect, useRef } from "react";
 import {
   bucketGlyph,
   bucketShape,
-  drawBucketMask,
-  drawBucketOutline,
+  drawDroplet,
   transitionSway,
 } from "./bucket-glyph";
-import { interpolateWatercolorBlue } from "./utils";
+import { interpolateWatercolorBlue, levelToDropletLevel } from "./utils";
 
 import { ticksExact } from "./utils";
 
 const LEVELS = 10;
 
-export default function BucketGlyph({
+export default function DropletGlyph({
   levelInterp,
   colorInterp = interpolateWatercolorBlue,
   width = 200,
@@ -35,9 +34,7 @@ export default function BucketGlyph({
       .attr("class", "bucket")
       .attr("transform", `translate(${LINE_WIDTH}, ${LINE_WIDTH / 2})`);
 
-    svgContainer.call(
-      bucketShape(innerWidth, innerHeight, drawBucketMask, drawBucketOutline)
-    );
+    svgContainer.call(bucketShape(innerWidth, innerHeight, drawDroplet));
   }, []);
 
   useLayoutEffect(
@@ -46,7 +43,7 @@ export default function BucketGlyph({
         levelInterp(d)
       );
 
-      const glyph = bucketGlyph(innerWidth, innerHeight);
+      const glyph = bucketGlyph(innerWidth, innerHeight, levelToDropletLevel);
 
       const liquids = svgElement.current
         .select(".graph-area")
@@ -65,7 +62,7 @@ export default function BucketGlyph({
   );
 
   return (
-    <div className="bucket-wrapper">
+    <div className="waterdrop-wrapper">
       <svg ref={(e) => void (svgElement.current = d3.select(e))}></svg>
     </div>
   );
