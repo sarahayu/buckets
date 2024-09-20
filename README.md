@@ -1,5 +1,7 @@
 # buckets
 
-Concept website for visualization ideas.
+Sketches of data visualizations showing California water supply. Uses [Bucket Glyph](https://github.com/sarahayu/bucket-glyph/).
 
-[https://sarahayu.github.io/buckets/](https://sarahayu.github.io/buckets/)
+![screenshot of live website](img/website-screenshot.png)
+
+Live website [here](https://sarahayu.github.io/buckets/).
