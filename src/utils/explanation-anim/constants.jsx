@@ -5,6 +5,8 @@ function initConstants() {
   const BAR_CHART_WIDTH = 500,
     BAR_CHART_HEIGHT = 400;
 
+  const BUCKET_RES = 4;
+
   // const INTERP_COLOR = d3.interpolateRgbBasis([
   //   "#F2F5FB",
   //   "#D0DDEB",
@@ -59,6 +61,7 @@ function initConstants() {
   return {
     BAR_CHART_WIDTH,
     BAR_CHART_HEIGHT,
+    BUCKET_RES,
     INTERP_COLOR,
     DEFAULT_OBJECTIVE,
     BASELINE_SCENARIO,

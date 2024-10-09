@@ -8,9 +8,7 @@ import {
   drawBucketOutline,
   transitionSway,
 } from "./bucket-glyph";
-import { interpolateWatercolorBlue } from "./utils";
-
-import { ticksExact } from "./utils";
+import { interpolateWatercolorBlue, ticksExact } from "./utils";
 
 const LEVELS = 10;
 

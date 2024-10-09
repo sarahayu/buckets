@@ -7,9 +7,11 @@ import {
   drawDroplet,
   transitionSway,
 } from "./bucket-glyph";
-import { interpolateWatercolorBlue, levelToDropletLevel } from "./utils";
-
-import { ticksExact } from "./utils";
+import {
+  interpolateWatercolorBlue,
+  levelToDropletLevel,
+  ticksExact,
+} from "./utils";
 
 const LEVELS = 10;
 

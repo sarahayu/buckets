@@ -171,6 +171,7 @@ function MainScenarioInfo({ dropInterper, histData, label }) {
           width={400}
           height={constants.BAR_CHART_HEIGHT}
           colorInterp={constants.INTERP_COLOR}
+          resolution={constants.BUCKET_RES}
         />
       </div>
       <div className="main-histogram">
@@ -196,6 +197,7 @@ function VariationScenarioPanel({ variation }) {
           width={200}
           height={constants.BAR_CHART_HEIGHT / 2}
           colorInterp={constants.INTERP_COLOR}
+          resolution={constants.BUCKET_RES}
         />
         <DotHistogram
           width={330}
@@ -219,6 +221,7 @@ function BucketConstructionGraphics({ label, bucketInterper }) {
           width={300}
           height={constants.BAR_CHART_HEIGHT}
           colorInterp={constants.INTERP_COLOR}
+          resolution={constants.BUCKET_RES}
         />
         <p className="fancy-font objective-label">{label}</p>
       </div>
