@@ -10,6 +10,7 @@ const ExplanationAnim2App = React.lazy(() => import("./ExplanationAnim2App"));
 const ExplanationAnim2VertApp = React.lazy(() => import("./ExplanationAnim2VertApp"));
 const ExplanationAnimApp = React.lazy(() => import("./ExplanationAnimApp"));
 const ExplanationAnimVertApp = React.lazy(() => import("./ExplanationAnimVertApp"));
+const FacetedSearchApp = React.lazy(() => import("./FacetedSearchApp"));
 const LargeDropletApp = React.lazy(() => import("./LargeDropletApp"));
 const LargeDropletV2App = React.lazy(() => import("./LargeDropletV2App"));
 const MainApp = React.lazy(() => import("./MainApp"));
@@ -40,6 +41,7 @@ root.render(
               <Link to="ExplanationAnim2VertApp" title="Explanation Anim 2 Vert" ><img src="ExplanationAnim2VertApp.png" className="linkPics" /></Link>
               <Link to="ExplanationAnimApp" title="Explanation Anim" ><img src="ExplanationAnimApp.png" className="linkPics" /></Link>
               <Link to="ExplanationAnimVertApp" title="Explanation Anim Vert" ><img src="ExplanationAnimVertApp.png" className="linkPics" /></Link>
+              <Link to="FacetedSearchApp">Faceted Search</Link>
               <Link to="LargeDropletApp" title="Large Droplet" ><img src="LargeDropletApp.png" className="linkPics" /></Link>
               <Link to="LargeDropletV2App" title="Large Droplet V2" ><img src="LargeDropletV2App.png" className="linkPics" /></Link>
               <Link to="MainApp" title="Main" ><img src="MainApp.png" className="linkPics" /></Link>
@@ -87,6 +89,14 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <ExplanationAnimVertApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="FacetedSearchApp"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <FacetedSearchApp />
           </React.Suspense>
         }
       />

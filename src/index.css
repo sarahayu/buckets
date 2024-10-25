@@ -1287,3 +1287,80 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   height: 100%;
   position: static;
 }
+
+.faceted-main {
+  background-color: #efefef;
+  width: 100%;
+  display: grid;
+  min-height: 100vh;
+}
+
+.faceted-container {
+  --inline-padding: 2rem;
+  place-self: center;
+  width: calc(90rem + var(--inline-padding));
+  margin: 2rem auto;
+  padding-block: 1rem;
+  border-radius: 0.3rem;
+  box-shadow: rgba(122, 80, 20, 0.25) 0px 54px 55px,
+    rgba(122, 80, 20, 0.12) 0px -12px 30px, rgba(122, 80, 20, 0.12) 0px 4px 6px,
+    rgba(122, 80, 20, 0.17) 0px 12px 13px, rgba(122, 80, 20, 0.09) 0px -3px 5px;
+}
+
+.faceted-question {
+  text-align: center;
+  padding-block: 1rem;
+}
+
+.faceted-graphics {
+  padding: 1rem var(--inline-padding);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.faceted-graphics > * {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* width: 50%; */
+  flex-wrap: wrap;
+  padding-block: 1rem;
+  outline: 1px solid #bca78d;
+  border-radius: 0.3rem;
+}
+
+.faceted-graphics > * h3 {
+  width: 100%;
+  color: gray;
+  font-weight: normal;
+  text-align: center;
+  padding-block: 1em;
+}
+
+.faceted-graphics .hist-wrapper {
+  width: 10rem;
+}
+
+.faceted-graphics .bar-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.faceted-graphics .bar-wrapper .axis-x .tick text {
+  transform: translate(-10px, 0px) rotate(-45deg);
+  text-anchor: end;
+}
+
+.faceted-graphics .axis-y-label {
+  text-anchor: middle;
+  alignment-baseline: hanging;
+  fill: black;
+}
+
+.bucket-label text {
+  text-anchor: middle;
+  font-size: 0.8rem;
+  alignment-baseline: middle;
+}
