@@ -41,7 +41,7 @@ export const displayNames = {
   DEL_SJV_MI_TOTAL: "San Joaquin Valley municipality and industry",
   DEL_SOCAL_MI_TOTAL: "south California municipality and industry",
   CVP_SWP_EXPORTS: "Central Valley Project and State Water Project",
-  NDO: "north of delta",
+  NDO: "net delta outflow",
   SAC_IN: "Sacramento inflow",
   SJR_IN: "San Joaquin River inflow",
   STO_NOD_TOTAL: "north of delta storage",
