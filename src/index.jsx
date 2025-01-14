@@ -6,6 +6,7 @@ import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import "./index.css";
 
 const BigBucketApp = React.lazy(() => import("./BigBucketApp"));
+const CompareGlyphsApp = React.lazy(() => import("./CompareGlyphsApp"));
 const ExplanationAnim2App = React.lazy(() => import("./ExplanationAnim2App"));
 const ExplanationAnim2VertApp = React.lazy(() => import("./ExplanationAnim2VertApp"));
 const ExplanationAnimApp = React.lazy(() => import("./ExplanationAnimApp"));
@@ -37,6 +38,7 @@ root.render(
           <main>
             <div className="main-container">
               <Link to="BigBucketApp" title="Big Bucket" ><img src="BigBucketApp.png" className="linkPics" /></Link>
+              <Link to="CompareGlyphsApp">Compare Glyphs</Link>
               <Link to="ExplanationAnim2App" title="Explanation Anim 2" ><img src="ExplanationAnim2App.png" className="linkPics" /></Link>
               <Link to="ExplanationAnim2VertApp" title="Explanation Anim 2 Vert" ><img src="ExplanationAnim2VertApp.png" className="linkPics" /></Link>
               <Link to="ExplanationAnimApp" title="Explanation Anim" ><img src="ExplanationAnimApp.png" className="linkPics" /></Link>
@@ -57,6 +59,14 @@ root.render(
         element={
           <React.Suspense fallback={<Loader />}>
             <BigBucketApp />
+          </React.Suspense>
+        }
+      />
+      <Route
+        path="CompareGlyphsApp"
+        element={
+          <React.Suspense fallback={<Loader />}>
+            <CompareGlyphsApp />
           </React.Suspense>
         }
       />

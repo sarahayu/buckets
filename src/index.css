@@ -1364,3 +1364,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   font-size: 0.8rem;
   alignment-baseline: middle;
 }
+
+.compare-glyphs-app {
+  display: flex;
+  align-items: end;
+  gap: 2rem;
+  padding: 2rem;
+}

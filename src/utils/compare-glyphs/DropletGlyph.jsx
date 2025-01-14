@@ -24,8 +24,9 @@ const PERCENTILE_LABELS = [
   "Minimum",
 ];
 
-export default function DropletGlyph({
+export default function TaggedBottleGlyph({
   levelInterp,
+  maxValue = 100,
   colorInterp = interpolateWatercolorBlue,
   width = 200,
   height = 400,
@@ -33,10 +34,10 @@ export default function DropletGlyph({
 }) {
   const LINE_WIDTH = 3;
   const GLYPH_MARGIN = {
-    top: 30,
+    top: LINE_WIDTH / 2 + height / 6,
     right: LINE_WIDTH / 2,
-    bottom: 30,
-    left: 140,
+    bottom: LINE_WIDTH / 2 + 20,
+    left: 180,
   };
 
   const svgElement = useRef();
@@ -46,7 +47,7 @@ export default function DropletGlyph({
       .attr("width", width + GLYPH_MARGIN.left + GLYPH_MARGIN.right)
       .attr("height", height + GLYPH_MARGIN.top + GLYPH_MARGIN.bottom)
       .append("g")
-      .attr("class", "svg-area")
+      .attr("class", "bucket")
       .attr("transform", `translate(${GLYPH_MARGIN.left},${GLYPH_MARGIN.top})`);
 
     svgContainer.call(bucketShape(width, height, drawDroplet));
@@ -77,8 +78,8 @@ export default function DropletGlyph({
       // percentile labels that appear on the side
       const reverseData = data.reverse();
 
-      const labelWidth = 128,
-        labelHeight = 24;
+      const labelWidth = 170,
+        labelHeight = 30;
 
       const xOffset = collideOffsetter(reverseData, labelHeight);
 
@@ -89,7 +90,7 @@ export default function DropletGlyph({
         });
 
       const labels = svgElement.current
-        .select(".svg-area")
+        .select(".bucket")
         .selectAll(".bucket-label")
         .data(reverseData)
         .join(tagElem)
@@ -98,7 +99,9 @@ export default function DropletGlyph({
         .attr(
           "transform",
           (d, i) =>
-            `translate(${-labelWidth / 2 + xOffset(i)}, ${d.y + height / 2})`
+            `translate(${-labelWidth / 2 - 3 + xOffset(i)}, ${
+              d.y + height / 2
+            })`
         );
 
       labels
@@ -112,16 +115,16 @@ export default function DropletGlyph({
         .attr("height", labelHeight)
         .attr("x", -labelWidth / 2)
         .attr("y", -labelHeight / 2)
-        .attr("rx", 3)
+        .attr("rx", 8)
         .style("fill", (_, i) =>
-          interpolateWatercolorBlue((data.length - 1 - i) / resolution)
+          colorInterp((data.length - 1 - i) / resolution)
         );
     },
     [levelInterp]
   );
 
   return (
-    <div className="waterdrop-wrapper">
+    <div className="bottle-wrapper">
       <svg ref={(e) => void (svgElement.current = d3.select(e))}></svg>
     </div>
   );

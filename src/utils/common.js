@@ -625,3 +625,19 @@ export function useStateRef(val) {
 
   return [state, setState, stateRef];
 }
+
+export function collideOffsetter(data, size) {
+  const isTooClose = (i) => {
+    if (i == 0) return false;
+    return Math.abs(data[i - 1].y - data[i].y) < size;
+  };
+
+  let curXOffset = 0;
+
+  const xOffset = (i) => {
+    if (isTooClose(i)) return ++curXOffset * -3;
+    return (curXOffset = 0);
+  };
+
+  return xOffset;
+}
